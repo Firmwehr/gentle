@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" shutdownHook="disable">
+	<Appenders>
+		<Console name="Console" target="SYSTEM_ERR">
+			<PatternLayout
+					pattern="%highlight{[%d{HH:mm:ss]}[%p{length=3}][%10.10c{1}] %m%n}{FATAL=black, ERROR=red, WARN=yellow, INFO=green, DEBUG=blue, TRACE=white}"
+					disableAnsi="false"/>
+		</Console>
+	</Appenders>
+	<Loggers>
+		<!-- if some modules overwhelm you with messages, you can mute them -->
+		<!-- <Logger name="annoying.stuff" level="DEBUG"/> -->
+		
+		<Root level="TRACE">
+			<AppenderRef ref="Console"/>
+		</Root>
+	</Loggers>
+</Configuration>

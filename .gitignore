@@ -1,0 +1,11 @@
+# gradle related
+/.gradle
+/build/
+/out/
+
+# IDE
+/.idea/
+!/.idea/codeStyles
+
+# application stuff
+*.log
