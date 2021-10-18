@@ -4,6 +4,8 @@ import com.djdch.log4j.StaticShutdownCallbackRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
+
 public class GentleCompiler {
 	
 	static {
@@ -14,6 +16,8 @@ public class GentleCompiler {
 	
 	public static void main(String[] args) {
 		LOGGER.info("Hello World, please be gentle UwU");
+		LOGGER.info("Your args are: {}", (Object) args);
+		LOGGER.info("My current working directory is: {}", Path.of(".").toAbsolutePath());
 		
 		StaticShutdownCallbackRegistry.invoke();
 	}
