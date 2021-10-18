@@ -1,6 +1,8 @@
 package com.github.firmwehr.gentle;
 
 import com.djdch.log4j.StaticShutdownCallbackRegistry;
+import com.github.firmwehr.gentle.cli.CommandArguments;
+import com.github.firmwehr.gentle.cli.CommandArgumentsParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +20,8 @@ public class GentleCompiler {
 		LOGGER.info("Hello World, please be gentle UwU");
 		LOGGER.info("Your args are: {}", (Object) args);
 		LOGGER.info("My current working directory is: {}", Path.of(".").toAbsolutePath());
+		CommandArguments arguments = new CommandArgumentsParser().parseOrExit(args);
+		System.out.println(arguments.path());
 		
 		StaticShutdownCallbackRegistry.invoke();
 	}
