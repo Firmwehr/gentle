@@ -4,7 +4,7 @@
 /out/
 
 # IDE
-/.idea/
+/.idea/*
 !/.idea/codeStyles
 
 # application stuff
