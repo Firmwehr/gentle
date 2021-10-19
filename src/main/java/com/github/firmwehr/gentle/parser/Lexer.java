@@ -2,10 +2,11 @@ package com.github.firmwehr.gentle.parser;
 
 import java.io.*;
 import java.util.HashMap;
-import java.util.Optional;
 
 public class Lexer {
-    public static void main(String args[]) throws FileNotFoundException, IOException {
+    // TODO: Remove this demo
+    public static void main(String args[]) throws IOException {
+        // TODO: There is probably a nicer way to refer to stuff within the resources directory
         String path = "src/test/resources/Collatz.java";
         BufferedReader input = new BufferedReader(new FileReader(path));
         Lexer l = new Lexer(input);
@@ -16,15 +17,69 @@ public class Lexer {
         }
     }
 
-    private static final HashMap<String, TokenType> KEYWORDS = new HashMap<>();
-    private static final SymbolTrie<TokenType> SYMBOLS = new SymbolTrie<>();
+    // All keywords and all symbols are handled very similarly.
+    // Therefore we save their string->tokentype mappings in these collections
+    public static final HashMap<String, TokenType> KEYWORDS = new HashMap<>();
+    // Tries are useful for reading symbols character by character, see lexSymbolOrError()
+    public static final SymbolTrie<TokenType> SYMBOLS = new SymbolTrie<>();
     static {
-        // TODO: Complete this
         Lexer.KEYWORDS.put("abstract", TokenType.ABSTRACT);
         Lexer.KEYWORDS.put("assert", TokenType.ASSERT);
         Lexer.KEYWORDS.put("boolean", TokenType.BOOLEAN);
+        Lexer.KEYWORDS.put("break", TokenType.BREAK);
+        Lexer.KEYWORDS.put("byte", TokenType.BYTE);
+        Lexer.KEYWORDS.put("case", TokenType.CASE);
+        Lexer.KEYWORDS.put("catch", TokenType.CATCH);
+        Lexer.KEYWORDS.put("char", TokenType.CHAR);
+        Lexer.KEYWORDS.put("class", TokenType.CLASS);
+        Lexer.KEYWORDS.put("const", TokenType.CONST);
+        Lexer.KEYWORDS.put("continue", TokenType.CONTINUE);
+        Lexer.KEYWORDS.put("default", TokenType.DEFAULT);
+        Lexer.KEYWORDS.put("double", TokenType.DOUBLE);
+        Lexer.KEYWORDS.put("do", TokenType.DO);
+        Lexer.KEYWORDS.put("else", TokenType.ELSE);
+        Lexer.KEYWORDS.put("enum", TokenType.ENUM);
+        Lexer.KEYWORDS.put("extends", TokenType.EXTENDS);
+        Lexer.KEYWORDS.put("false", TokenType.FALSE);
+        Lexer.KEYWORDS.put("finally", TokenType.FINALLY);
+        Lexer.KEYWORDS.put("final", TokenType.FINAL);
+        Lexer.KEYWORDS.put("float", TokenType.FLOAT);
+        Lexer.KEYWORDS.put("for", TokenType.FOR);
+        Lexer.KEYWORDS.put("goto", TokenType.GOTO);
+        Lexer.KEYWORDS.put("if", TokenType.IF);
+        Lexer.KEYWORDS.put("implements", TokenType.IMPLEMENTS);
+        Lexer.KEYWORDS.put("import", TokenType.IMPORT);
+        Lexer.KEYWORDS.put("instanceof", TokenType.INSTANCEOF);
+        Lexer.KEYWORDS.put("interface", TokenType.INTERFACE);
+        Lexer.KEYWORDS.put("int", TokenType.INT);
+        Lexer.KEYWORDS.put("long", TokenType.LONG);
+        Lexer.KEYWORDS.put("native", TokenType.NATIVE);
         Lexer.KEYWORDS.put("new", TokenType.NEW);
+        Lexer.KEYWORDS.put("null", TokenType.NULL);
+        Lexer.KEYWORDS.put("package", TokenType.PACKAGE);
+        Lexer.KEYWORDS.put("private", TokenType.PRIVATE);
+        Lexer.KEYWORDS.put("protected", TokenType.PROTECTED);
+        Lexer.KEYWORDS.put("public", TokenType.PUBLIC);
+        Lexer.KEYWORDS.put("return", TokenType.RETURN);
+        Lexer.KEYWORDS.put("short", TokenType.SHORT);
+        Lexer.KEYWORDS.put("static", TokenType.STATIC);
+        Lexer.KEYWORDS.put("strictfp", TokenType.STRICTFP);
+        Lexer.KEYWORDS.put("super", TokenType.SUPER);
+        Lexer.KEYWORDS.put("switch", TokenType.SWITCH);
+        Lexer.KEYWORDS.put("synchronized", TokenType.SYNCHRONIZED);
+        Lexer.KEYWORDS.put("this", TokenType.THIS);
+        Lexer.KEYWORDS.put("throws", TokenType.THROWS);
+        Lexer.KEYWORDS.put("throw", TokenType.THROW);
+        Lexer.KEYWORDS.put("transient", TokenType.TRANSIENT);
+        Lexer.KEYWORDS.put("true", TokenType.TRUE);
+        Lexer.KEYWORDS.put("try", TokenType.TRY);
+        Lexer.KEYWORDS.put("void", TokenType.VOID);
+        Lexer.KEYWORDS.put("volatile", TokenType.VOLATILE);
+        Lexer.KEYWORDS.put("while", TokenType.WHILE);
 
+        // The order of the symbols is the same as in sprachbericht.pdf.
+        // The order is not relevant for lookup speed.
+        // This way it's easier to check whether all symbols are handled tho.
         Lexer.SYMBOLS.put("!=", TokenType.NOT_EQUALS);
         Lexer.SYMBOLS.put("!", TokenType.LOGICAL_NOT);
         Lexer.SYMBOLS.put("(", TokenType.LEFT_PAREN);
@@ -39,7 +94,7 @@ public class Lexer {
         Lexer.SYMBOLS.put("--", TokenType.POSTFIX_DECREMENT);
         Lexer.SYMBOLS.put("-", TokenType.SUBTRACT);
         Lexer.SYMBOLS.put(".", TokenType.DOT);
-        // There is an impostor among us: This "symbol" needs to be handled seperately
+        // There is an impostor among us: This "symbol" needs to be handled separately
         Lexer.SYMBOLS.put("/*", TokenType.COMMENT);
         Lexer.SYMBOLS.put("/=", TokenType.ASSIGN_DIVIDE);
         Lexer.SYMBOLS.put("/", TokenType.DIVIDE);
@@ -73,11 +128,15 @@ public class Lexer {
         Lexer.SYMBOLS.put("|=", TokenType.ASSIGN_BITWISE_OR);
         Lexer.SYMBOLS.put("||", TokenType.LOGICAL_OR);
         Lexer.SYMBOLS.put("|", TokenType.BITWISE_OR);
-    };
+    }
 
+    // Used to read the input character by character
     private final BufferedReader input;
+    // Used to incrementally build the token text for each consumed character
     private final StringBuilder sb;
 
+    // This field is only ever set using BufferedReader#read()
+    // Therefore it is either a character or -1 (meaning EOF was reached)
     private int lookahead;
 
     // line and column describe the position of the character in lookahead
@@ -93,7 +152,17 @@ public class Lexer {
         this.column = 0;
     }
 
+    // Invariant: lex().type() != WHITESPACE
     public Token lex() throws IOException {
+        while (true) {
+            Token t = this.lexIncludingWhitespace();
+            if (!t.type().equals(TokenType.WHITESPACE)) {
+                return t;
+            }
+        }
+    }
+
+    public Token lexIncludingWhitespace() throws IOException {
         this.resetSb();
 
         if (this.lookahead == -1) {
@@ -112,6 +181,7 @@ public class Lexer {
             return this.lexIntegerLiteral();
         }
 
+        // Symbol parsing logic is heavy, moved to its own method
         return this.lexSymbolCommentOrError();
     }
 
@@ -127,7 +197,8 @@ public class Lexer {
             this.consume();
         }
 
-        // TODO: Add guard for longest keyword length (otherwise this branch will never be taken)
+        // TODO: Add guard for longest keyword length
+        // TODO: We don't need to check whether very long identifiers are keywords. They aren't.
         if (Lexer.KEYWORDS.containsKey(this.sb.toString())) {
             return this.emit(this.KEYWORDS.get(this.sb.toString()));
         }
@@ -145,16 +216,17 @@ public class Lexer {
     private Token lexSymbolCommentOrError() throws IOException {
         // Greedily read the next symbol using the symbol trie
         SymbolTrie.STNode<TokenType> node = Lexer.SYMBOLS.getRoot();
+        // The casts are kind of ugly but needed this.lookahead is an int
         while (node.getChildren().containsKey((char) this.lookahead)) {
             node = node.getChildren().get((char) this.lookahead);
             this.consume();
         }
 
-        // Still at the root node, no symbol was read
+        // Still at the root node ==> no symbol was read
         if (node.getContent().isEmpty()) {
             throw new RuntimeException("Symbol or comment expected");
         }
-        // Comment "operator", special case
+        // Comment "operator" ==> special case, read rest of comment
         if (node.getContent().get().equals(TokenType.COMMENT)) {
             return this.lexCommentRest();
         }
@@ -162,6 +234,7 @@ public class Lexer {
         return this.emit(node.getContent().get());
     }
 
+    // TODO: This can probably be improved somehow, seems ugly
     private Token lexCommentRest() throws IOException {
         while (true) {
             switch (this.lookahead) {
@@ -191,6 +264,7 @@ public class Lexer {
     // TODO: This method is called whenever a new token is started
     // TODO: Remember the position so it can be passed to the new token in emit()
     private void resetSb() {
+        // Only resets the length, not the capacity.
         this.sb.setLength(0);
     }
 
