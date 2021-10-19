@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle;
 
 import org.buildobjects.process.ProcBuilder;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
@@ -12,6 +13,7 @@ import java.util.Collections;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
+@ExtendWith({BuildGentle.class})
 public class EchoTest {
 	
 	@TempDir

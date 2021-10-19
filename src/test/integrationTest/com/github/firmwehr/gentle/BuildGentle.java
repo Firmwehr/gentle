@@ -8,7 +8,7 @@ import java.io.IOException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
 
-public class MockingExtension implements BeforeAllCallback, ExtensionContext.Store.CloseableResource {
+public class BuildGentle implements BeforeAllCallback, ExtensionContext.Store.CloseableResource {
 	
 	private static boolean started = false;
 	
