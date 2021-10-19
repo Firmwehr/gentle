@@ -22,8 +22,36 @@ java {
 	targetCompatibility = JavaVersion.VERSION_17
 }
 
-dependencies {
+sourceSets {
+	create("integrationTest") {
+		java {
+			srcDir("src/test/integrationTest")
+		}
+		
+		compileClasspath += sourceSets.main.get().output
+		runtimeClasspath += sourceSets.main.get().output
+	}
+}
 
+val integrationTestImplementation by configurations.getting {
+	extendsFrom(configurations.implementation.get())
+	extendsFrom(configurations.testImplementation.get())
+	extendsFrom(configurations.testRuntimeOnly.get())
+}
+
+val integrationTest = task<Test>("integrationTest") {
+	description = "Runs integration tests."
+	group = "verification"
+	
+	testClassesDirs = sourceSets["integrationTest"].output.classesDirs
+	classpath = sourceSets["integrationTest"].runtimeClasspath
+	shouldRunAfter("test")
+}
+
+tasks.check { dependsOn(integrationTest) }
+
+dependencies {
+	
 	// logging
 	val slf4jVersion = "1.7.32"
 	val log4j2 = "2.14.1"
@@ -31,19 +59,21 @@ dependencies {
 	implementation("org.apache.logging.log4j:log4j-core:$log4j2")
 	implementation("org.apache.logging.log4j:log4j-slf4j-impl:$log4j2")
 	implementation("com.djdch.log4j:log4j-staticshutdown:1.1.0") // https://stackoverflow.com/a/28835409/1834100
-
+	
 	// commons stuff
 	implementation("commons-io:commons-io:2.11.0")
-
+	
 	// Command line parsing
 	val jbock = "5.12"
 	implementation("io.github.jbock-java:jbock:$jbock")
 	annotationProcessor("io.github.jbock-java:jbock-compiler:$jbock")
-
+	
 	// junit
 	val junitVersion = "5.8.1"
 	testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
 	testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
+	testImplementation("org.assertj:assertj-core:3.21.0")
+	testImplementation("org.buildobjects:jproc:2.6.2")
 }
 
 // set encoding for all compilation passes
@@ -52,5 +82,9 @@ tasks.withType<JavaCompile> {
 }
 
 tasks.getByName<Test>("test") {
+	useJUnitPlatform()
+}
+
+tasks.getByName<Test>("integrationTest") {
 	useJUnitPlatform()
 }
