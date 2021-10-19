@@ -16,6 +16,8 @@ application {
 	mainClass.set("com.github.firmwehr.gentle.GentleCompiler")
 }
 
+buildDir = File("_build")
+
 java {
 	sourceCompatibility = JavaVersion.VERSION_17
 	targetCompatibility = JavaVersion.VERSION_17
