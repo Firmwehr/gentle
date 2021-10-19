@@ -6,6 +6,8 @@ import com.github.firmwehr.gentle.cli.CommandArgumentsParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class GentleCompiler {
@@ -18,11 +20,20 @@ public class GentleCompiler {
 	
 	public static void main(String[] args) {
 		LOGGER.info("Hello World, please be gentle UwU");
-		LOGGER.info("Your args are: {}", (Object) args);
-		LOGGER.info("My current working directory is: {}", Path.of(".").toAbsolutePath());
 		CommandArguments arguments = new CommandArgumentsParser().parseOrExit(args);
-		System.out.println(arguments.path());
+		
+		if (arguments.path().isPresent()) {
+			echoCommand(arguments.path().get());
+		}
 		
 		StaticShutdownCallbackRegistry.invoke();
+	}
+	
+	private static void echoCommand(Path path) {
+		try {
+			Files.lines(path).forEach(System.out::println);
+		} catch (IOException e) {
+			LOGGER.error("Could not echo file '{}': {}", path, e.getMessage());
+		}
 	}
 }
