@@ -13,6 +13,7 @@ repositories {
 
 application {
 	mainClass.set("com.github.firmwehr.gentle.GentleCompiler")
+	applicationDefaultJvmArgs = listOf("--enable-preview");
 }
 
 buildDir = File("_build")
