@@ -1,6 +1,6 @@
 # gradle related
 /.gradle
-/build/
+/_build/
 /out/
 
 # IDE

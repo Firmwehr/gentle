@@ -1,0 +1,4 @@
+#!/bin/sh
+
+BIN_DIR="$(dirname "$0")/build/install/gentle/bin"
+$BIN_DIR/gentle $*
