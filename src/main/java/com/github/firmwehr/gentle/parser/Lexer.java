@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 
+// TODO: Save identifiers in symbol table
 public class Lexer {
 	
 	// All keywords and all symbols are handled very similarly.
@@ -168,15 +169,16 @@ public class Lexer {
 		return c >= '0' && c <= '9';
 	}
 	
-	// lex() is the method you'd use in a parser
+	// lex() is the method you'd use in a parser, returning only tokens that are semantically relevant
 	// lexIncludingWhitespaceAndComments() returns all tokens in the CST
 	// the remaining lex* methods are private and for internal use only (they may have unexpected conditions!)
+	// All lex* methods potentially consume characters in this.input
 	
-	// Invariant: lex().type() != WHITESPACE
+	// Invariant: lex().type() != WHITESPACE && lex().type() != COMMENT
 	public Token lex() throws IOException {
 		while (true) {
 			Token t = this.lexIncludingWhitespaceAndComments();
-			if (!t.type().equals(TokenType.WHITESPACE) && !t.type().equals(TokenType.COMMENT)) {
+			if (t.type() != TokenType.WHITESPACE && t.type() != TokenType.COMMENT) {
 				return t;
 			}
 		}
@@ -236,7 +238,7 @@ public class Lexer {
 	private Token lexSymbolCommentOrError() throws IOException {
 		// Greedily read the next symbol using the symbol trie
 		SymbolTrie.STNode<TokenType> node = Lexer.SYMBOLS.getRoot();
-		// The casts are kind of ugly but needed this.lookahead is an int
+		// The casts are kind of ugly but needed as this.lookahead is an int
 		while (node.getChildren().containsKey((char) this.lookahead)) {
 			node = node.getChildren().get((char) this.lookahead);
 			this.consume();
@@ -247,7 +249,7 @@ public class Lexer {
 			throw new RuntimeException("Symbol or comment expected");
 		}
 		// Comment "operator" ==> special case, read rest of comment
-		if (node.getContent().get().equals(TokenType.COMMENT)) {
+		if (node.getContent().get() == TokenType.COMMENT) {
 			return this.lexCommentRest();
 		}
 		// Otherwise, the node contains a valid symbol
