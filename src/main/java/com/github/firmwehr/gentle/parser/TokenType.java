@@ -1,0 +1,67 @@
+package com.github.firmwehr.gentle.parser;
+
+public enum TokenType {
+    // Special stuff
+    EOF,
+    WHITESPACE,
+    COMMENT,
+
+    // Keywords
+    ABSTRACT,
+    ASSERT,
+    BOOLEAN,
+    // ...
+    NEW,
+    // ...
+
+    // Symbols
+    NOT_EQUALS,
+    LOGICAL_NOT,
+    LEFT_PAREN,
+    RIGHT_PAREN,
+    ASSIGN_MULTIPLY,
+    MULTIPLY,
+    POSTFIX_INCREMENT,
+    ASSIGN_ADD,
+    ADD,
+    COMMA,
+    ASSIGN_SUBTRACT,
+    POSTFIX_DECREMENT,
+    SUBTRACT,
+    DOT,
+    ASSIGN_DIVIDE,
+    DIVIDE,
+    COLON,
+    SEMICOLON,
+    ASSIGN_BITSHIFT_LEFT,
+    BITSHIFT_LEFT,
+    LESS_THAN_EQUALS,
+    LESS_THAN,
+    ASSIGN,
+    EQUALS,
+    GREATER_THAN_EQUALS,
+    ASSIGN_BITSHIFT_RIGHT,
+    ASSIGN_BITSHIFT_RIGHT_ZEROFILL,
+    BITSHIFT_RIGHT_ZEROFILL,
+    BITSHIFT_RIGHT,
+    GREATER_THAN,
+    QUESTION_MARK,
+    ASSIGN_MODULO,
+    MODULO,
+    ASSIGN_BITWISE_AND,
+    LOGICAL_AND,
+    BITWISE_AND,
+    LEFT_BRACKET,
+    RIGHT_BRACKET,
+    ASSIGN_BITWISE_XOR,
+    BITWISE_XOR,
+    LEFT_BRACE,
+    RIGHT_BRACE,
+    BITWISE_NOT,
+    ASSIGN_BITWISE_OR,
+    LOGICAL_OR,
+    BITWISE_OR,
+
+    IDENTIFIER,
+    INTEGER_LITERAL
+}
