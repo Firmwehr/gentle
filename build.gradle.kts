@@ -49,6 +49,7 @@ dependencies {
 // set encoding for all compilation passes
 tasks.withType<JavaCompile> {
 	options.encoding = "UTF-8"
+	options.compilerArgs.add("--enable-preview")
 }
 
 tasks.getByName<Test>("test") {
