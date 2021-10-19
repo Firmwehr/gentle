@@ -1,5 +1,6 @@
 plugins {
 	application
+	id("com.google.cloud.tools.jib") version "3.1.4"
 }
 
 group = "com.github.firmwehr"
@@ -49,6 +50,13 @@ val integrationTest = task<Test>("integrationTest") {
 	testClassesDirs = sourceSets["integrationTest"].output.classesDirs
 	classpath = sourceSets["integrationTest"].runtimeClasspath
 	shouldRunAfter("test")
+}
+
+jib {
+	from.image = "eclipse-temurin:17"
+	to {
+		image = "firmwehr/gentle:latest"
+	}
 }
 
 dependencies {
