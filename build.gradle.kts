@@ -13,6 +13,7 @@ repositories {
 	mavenLocal()
 	mavenCentral()
 	maven("https://jitpack.io")
+	maven("https://oss.sonatype.org/content/repositories/snapshots/")
 }
 
 application {
@@ -68,7 +69,10 @@ dependencies {
 	
 	// nullaway + errorprone + annotations
 	annotationProcessor("com.uber.nullaway", "nullaway", "0.9.2")
-	errorprone("com.google.errorprone", "error_prone_core", "2.9.0")
+	// Current pre-release at the time of adding error-prone
+	errorprone("com.google.errorprone", "error_prone_core", "HEAD-20211020.202200-314")
+	// The annotations do not have pre-release jars, apparently. Add the released ones
+	errorprone("com.google.errorprone", "error_prone_annotations", "2.9.0")
 	compileOnly("org.jetbrains", "annotations", "22.0.0")
 	
 	// commons stuff
