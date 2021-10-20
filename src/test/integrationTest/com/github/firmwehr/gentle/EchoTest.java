@@ -2,6 +2,8 @@ package com.github.firmwehr.gentle;
 
 import org.buildobjects.process.ProcBuilder;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -14,6 +16,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 @ExtendWith({BuildGentle.class})
+@DisabledOnOs(OS.WINDOWS)
 public class EchoTest {
 	
 	@TempDir
