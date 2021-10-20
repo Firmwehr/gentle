@@ -65,10 +65,10 @@ dependencies {
 	implementation("org.apache.logging.log4j:log4j-core:$log4j2")
 	implementation("org.apache.logging.log4j:log4j-slf4j-impl:$log4j2")
 	implementation("com.djdch.log4j:log4j-staticshutdown:1.1.0") // https://stackoverflow.com/a/28835409/1834100
-
+	
 	// nullaway + errorprone + annotations
 	annotationProcessor("com.uber.nullaway", "nullaway", "0.9.2")
-    errorprone("com.google.errorprone", "error_prone_core", "2.9.0")
+	errorprone("com.google.errorprone", "error_prone_core", "2.9.0")
 	compileOnly("org.jetbrains", "annotations", "22.0.0")
 	
 	// commons stuff
