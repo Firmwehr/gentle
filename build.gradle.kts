@@ -13,13 +13,15 @@ repositories {
 
 application {
 	mainClass.set("com.github.firmwehr.gentle.GentleCompiler")
+	applicationDefaultJvmArgs = listOf("--enable-preview");
 }
 
 buildDir = File("_build")
 
 java {
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
+	toolchain {
+		languageVersion.set(JavaLanguageVersion.of(17))
+	}
 }
 
 sourceSets {
@@ -79,6 +81,7 @@ dependencies {
 // set encoding for all compilation passes
 tasks.withType<JavaCompile> {
 	options.encoding = "UTF-8"
+	options.compilerArgs.add("--enable-preview")
 }
 
 tasks.getByName<Test>("test") {
