@@ -1,6 +1,9 @@
 name: Build
 
-on: [pull_request]
+on:
+  push:
+    branches: [master]
+  pull_request:
 
 env:
   JAVA_VERSION: 17
@@ -29,3 +32,15 @@ jobs:
       - uses: actions/checkout@v2
       - name: Run gradle tests
         run: ./gradlew test
+
+  gradle-integration-test:
+    name: "Gradle Integration Test"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: actions/checkout@v2
+      - name: Run gradle integration tests
+        run: ./gradlew integrationTest
