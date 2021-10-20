@@ -1,0 +1,29 @@
+name: Analysis
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  qodana:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/work/_temp/_github_home/qodana-cache
+          key: ${{ runner.os }}-qodana-${{ github.ref }}
+          restore-keys: |
+            ${{ runner.os }}-qodana-${{ github.ref }}
+            ${{ runner.os }}-qodana-
+      - uses: JetBrains/qodana-action@v3.1.1
+        with:
+          linter: qodana-jvm-community
+          fail-threshold: 1
+      - name: Print problems
+        run: cat qodana/report/results/result-allProblems.json | jq
+      - name: Fail on problems
+        run: |
+          VIOLATIONS=$(jq ".listProblem | length" qodana/report/results/result-allProblems.json)
+          if [ "$VIOLATIONS" -gt "0" ]; then exit 1; fi
