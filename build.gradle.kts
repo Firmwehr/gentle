@@ -91,9 +91,11 @@ dependencies {
 tasks.withType<JavaCompile> {
 	options.encoding = "UTF-8"
 	options.compilerArgs.add("--enable-preview")
-	options.errorprone.apply {
-        check("NullAway", CheckSeverity.ERROR)
-        option("NullAway:AnnotatedPackages", "com.github.firmwehr.gentle")
+	if (!name.toLowerCase().contains("test")) {
+		options.errorprone.apply {
+			check("NullAway", CheckSeverity.ERROR)
+			option("NullAway:AnnotatedPackages", "com.github.firmwehr.gentle")
+		}
 	}
 }
 
