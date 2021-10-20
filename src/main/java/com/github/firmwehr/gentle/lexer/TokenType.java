@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.lexer.tokens.GentleToken;
 import com.github.firmwehr.gentle.lexer.tokens.KeywordToken;
 import com.github.firmwehr.gentle.lexer.tokens.TokenEndOfFile;
 import com.github.firmwehr.gentle.lexer.tokens.TokenWhitespace;
+import com.google.errorprone.annotations.Immutable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -167,7 +168,7 @@ public enum TokenType {
 		throw new LexerException("unable to find suitable token", reader);
 	}
 	
-	public record ParsedToken (GentleToken token, LexReader reader) {};
+	public record ParsedToken (GentleToken token, LexReader reader) {}
 	
 	@FunctionalInterface
 	public interface TokenFactory {
@@ -176,6 +177,7 @@ public enum TokenType {
 	}
 	
 	@FunctionalInterface
+	@Immutable
 	private interface ParserBinding {
 		
 		public GentleToken callParser(LexReader reader, TokenType tokenType) throws LexerException;

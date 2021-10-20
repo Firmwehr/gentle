@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.lexer;
 
 import com.github.firmwehr.gentle.SourcePosition;
 import com.google.common.base.Preconditions;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.IntPredicate;
 
@@ -28,7 +29,7 @@ public class LexReader {
 		return "LexReader{index=%d, lineCount=%d, charCount=%d, current='%s'}".formatted(index, lineCount, charCount, input.substring(index));
 	}
 	
-	public String printPosition(String message) {
+	public String printPosition(@Nullable String message) {
 		var before = Math.max(0, index - PRINT_POSITION_BEFORE); // select slice to left
 		var after = Math.min(index + PRINT_POSITION_AFTER, input.length() - 1); // select slice to right
 		
@@ -60,10 +61,9 @@ public class LexReader {
 	 * @param other Another reader that is operating on the same string as this one.
 	 * @return String slice between both indicies.
 	 */
-	@SuppressWarnings("StringEquality") // use of ref is okay since fork reuses same ref
 	public String diff(LexReader other) {
 		// ensure both readers are operating on same string
-		Preconditions.checkArgument(input == other.input || input.equals(other.input), "readers do not share same input string");
+		Preconditions.checkArgument(input.equals(other.input), "readers do not share same input string");
 		
 		int first = Math.min(index, other.index);
 		int second = Math.max(index, other.index);
