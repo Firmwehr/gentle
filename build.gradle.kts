@@ -65,6 +65,7 @@ dependencies {
 	compileOnly("org.jetbrains", "annotations", "22.0.0")
 	
 	// commons stuff
+	implementation("com.google.guava:guava:31.0.1-jre")
 	implementation("commons-io:commons-io:2.11.0")
 	
 	// Command line parsing
