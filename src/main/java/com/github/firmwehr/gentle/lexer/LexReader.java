@@ -7,6 +7,9 @@ import java.util.function.IntPredicate;
 
 public class LexReader {
 	
+	private static final int PRINT_POSITION_BEFORE = 20;
+	private static final int PRINT_POSITION_AFTER = 20;
+	
 	private static final int CODEPOINT_LINE_FEED = "\n".codePointAt(0);
 	private static final int CODEPOINT_CARRIGE_RETURN = "\r".codePointAt(0);
 	
@@ -22,13 +25,25 @@ public class LexReader {
 	
 	@Override
 	public String toString() {
-		return "LexReader{" +
-				"input='" + input + '\'' +
-				", index=" + index +
-				", lineCount=" + lineCount +
-				", charCount=" + charCount +
-				", current='" + input.substring(index) + '\'' +
-				'}';
+		return "LexReader{index=%d, lineCount=%d, charCount=%d, current='%s'}".formatted(index, lineCount, charCount, input.substring(index));
+	}
+	
+	public String printPosition(String message) {
+		var before = Math.max(0, index - PRINT_POSITION_BEFORE); // select slice to left
+		var after = Math.min(index + PRINT_POSITION_AFTER, input.length() - 1); // select slice to right
+		
+		var slice = input.substring(before, after);
+		var pos = position().print();
+		return """
+					at line %s
+						%s
+						%s%s
+				""".formatted(
+				pos,
+				slice,
+				" ".repeat(index - before),
+				"^---- " + message
+				);
 	}
 	
 	public LexReader fork() { // deliberately not named clone to not clash with java clone method
@@ -61,6 +76,14 @@ public class LexReader {
 	}
 	
 	public String readUntil(IntPredicate predicate, boolean includeLastCodepoint) throws LexerException {
+		return readUntil(predicate, includeLastCodepoint, false);
+	}
+	
+	public String readUntilOrEndOfFile(IntPredicate predicate, boolean includeLastCodepoint) throws LexerException {
+		return readUntil(predicate, includeLastCodepoint, true);
+	}
+	
+	private String readUntil(IntPredicate predicate, boolean includeLastCodepoint, boolean allowEOF) throws LexerException {
 		var sb = new StringBuilder();
 		var it = input.substring(index).codePoints().iterator();
 		while (true) {
@@ -79,7 +102,10 @@ public class LexReader {
 			
 			// if we reached end without matching predicate, the read can not be completed
 			if (!it.hasNext())
-				throw new LexerException("end of input reached without matching expected predicated", this);
+				if (allowEOF)
+					break; // accept match
+				else
+					throw new LexerException("end of input reached without matching expected predicated", this);
 		}
 		var s = sb.toString();
 		advanceSourcePosition(s);
@@ -106,8 +132,8 @@ public class LexReader {
 			i++; // effectively marks cp as read
 			
 			if (cp == CODEPOINT_CARRIGE_RETURN) {
-				// check for additional \n in case we use windows
-				if (i+1 < cpts.length && cpts[i+1] == CODEPOINT_LINE_FEED)
+				// check for additional \n in case we use windows line endings
+				if (i + 1 < cpts.length && cpts[i + 1] == CODEPOINT_LINE_FEED)
 					i++;
 				break;
 			}
@@ -123,14 +149,23 @@ public class LexReader {
 		if (i == 0)
 			throw new LexerException("unable to read line, end of input reached", this);
 		
-		//assemble captured codepoints
+		// assemble captured codepoints
 		var s = new String(cpts, 0, i);
 		advanceSourcePosition(s);
 		return s;
 	}
 	
+	public int peek() throws LexerException {
+		if (index < input.length())
+			return input.codePointAt(index);
+		throw new LexerException("end of input reached", this);
+	}
+	
 	public void expect(String needle) throws LexerException {
-		readUntil(needle, true); // do NOT call advance, already done be callee
+		var i = input.indexOf(needle, index) - index;
+		if (i != 0) // needle must be at current cursor position
+			throw new LexerException("did not match '%s'".formatted(needle), this);
+		advanceSourcePosition(needle);
 	}
 	
 	public boolean isEndOfInput() {
@@ -150,7 +185,7 @@ public class LexReader {
 			var cp = cpts[i];
 			if (cp == CODEPOINT_CARRIGE_RETURN) {
 				// check for additional \n in case we use windows
-				if (i+1 < cpts.length && cpts[i+1] == CODEPOINT_LINE_FEED)
+				if (i + 1 < cpts.length && cpts[i + 1] == CODEPOINT_LINE_FEED)
 					i++;
 				lineCount++;
 				charCount = 0;
@@ -167,10 +202,4 @@ public class LexReader {
 		index += str.length();
 	}
 	
-	public static class LexerException extends Exception {
-		
-		public LexerException(String message, LexReader reader) {
-			throw new Error("not implemented");
-		}
-	}
 }

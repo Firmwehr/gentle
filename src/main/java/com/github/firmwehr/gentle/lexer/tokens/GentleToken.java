@@ -2,20 +2,18 @@ package com.github.firmwehr.gentle.lexer.tokens;
 
 import com.github.firmwehr.gentle.SourcePosition;
 import com.github.firmwehr.gentle.lexer.TokenType;
-import com.github.firmwehr.gentle.lexer.tokens.descriptors.TokenDescriptor;
 
-public abstract class Token {
+public abstract class GentleToken {
 	
-	private final TokenDescriptor descriptor;
+	private final TokenType tokenType;
 	private final SourcePosition position;
 	
-	protected Token(TokenDescriptor descriptor, SourcePosition position) {
-		this.descriptor = descriptor;
+	protected GentleToken(TokenType tokenType, SourcePosition position) {
+		this.tokenType = tokenType;
 		this.position = position;
 	}
-	
 	public final TokenType tokenType() {
-		return descriptor.tokenType();
+		return tokenType;
 	}
 	
 	public final SourcePosition position() {
