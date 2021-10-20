@@ -39,7 +39,7 @@ sourceSets {
 	}
 }
 
-val integrationTestImplementation by configurations.getting {
+val integrationTestImplementation: Configuration by configurations.getting {
 	extendsFrom(configurations.implementation.get())
 	extendsFrom(configurations.testImplementation.get())
 	extendsFrom(configurations.testRuntimeOnly.get())
