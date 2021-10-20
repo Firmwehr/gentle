@@ -1,5 +1,9 @@
+import net.ltgt.gradle.errorprone.CheckSeverity
+import net.ltgt.gradle.errorprone.errorprone
+
 plugins {
 	application
+	id("net.ltgt.errorprone") version "2.0.2"
 }
 
 group = "com.github.firmwehr"
@@ -61,6 +65,11 @@ dependencies {
 	implementation("org.apache.logging.log4j:log4j-core:$log4j2")
 	implementation("org.apache.logging.log4j:log4j-slf4j-impl:$log4j2")
 	implementation("com.djdch.log4j:log4j-staticshutdown:1.1.0") // https://stackoverflow.com/a/28835409/1834100
+
+	// nullaway + errorprone + annotations
+	annotationProcessor("com.uber.nullaway", "nullaway", "0.9.2")
+    errorprone("com.google.errorprone", "error_prone_core", "2.9.0")
+	compileOnly("org.jetbrains", "annotations", "22.0.0")
 	
 	// commons stuff
 	implementation("commons-io:commons-io:2.11.0")
@@ -82,6 +91,10 @@ dependencies {
 tasks.withType<JavaCompile> {
 	options.encoding = "UTF-8"
 	options.compilerArgs.add("--enable-preview")
+	options.errorprone.apply {
+        check("NullAway", CheckSeverity.ERROR)
+        option("NullAway:AnnotatedPackages", "com.github.firmwehr.gentle")
+	}
 }
 
 tasks.getByName<Test>("test") {
