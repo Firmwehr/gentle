@@ -24,6 +24,9 @@ public final class TokenIntegerLiteral extends GentleToken {
 	public static TokenIntegerLiteral create(LexReader reader) throws LexerException {
 		try {
 			var str = reader.readUntilOrEndOfFile(v -> !Character.isDigit(v), false);
+			if (str.startsWith("0") && str.length() > 1)
+				throw new LexerException("leading zero is not allowed", reader);
+			
 			int number = Integer.parseInt(str);
 			return new TokenIntegerLiteral(reader.position(), number);
 		} catch (NumberFormatException e) {
