@@ -7,7 +7,7 @@ import com.github.firmwehr.gentle.lexer.TokenType;
 
 public final class TokenIntegerLiteral extends GentleToken {
 	
-	public int number;
+	public final int number;
 	
 	private TokenIntegerLiteral(SourcePosition position, int number) {
 		super(TokenType.INTEGER_LITERAL, position);
