@@ -22,7 +22,7 @@ public class TokenIdentifier extends GentleToken {
 	}
 	
 	public static TokenIdentifier create(LexReader reader) throws LexerException {
-		if (!Character.isJavaIdentifierPart(reader.peek())) // change to start to ignore identifiert starting with numbers
+		if (!Character.isJavaIdentifierStart(reader.peek()))
 			throw new LexerException("does not start with identifier codepoint", reader);
 		var id = reader.readUntil(cp -> !Character.isJavaIdentifierPart(cp), false);
 		return new TokenIdentifier(reader.position(), id);
