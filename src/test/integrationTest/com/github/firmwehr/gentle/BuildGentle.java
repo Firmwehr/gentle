@@ -15,6 +15,7 @@ public class BuildGentle implements BeforeAllCallback, ExtensionContext.Store.Cl
 	@Override
 	public void beforeAll(ExtensionContext context) throws IOException, InterruptedException {
 		if (!started) {
+			//noinspection AssignmentToStaticFieldFromInstanceMethod
 			started = true;
 			context.getRoot().getStore(GLOBAL).put(getClass().getSimpleName(), this);
 			int exitCode = new ProcessBuilder("sh", "-c", "./build").inheritIO().start().waitFor();

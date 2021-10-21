@@ -18,7 +18,7 @@ repositories {
 
 application {
 	mainClass.set("com.github.firmwehr.gentle.GentleCompiler")
-	applicationDefaultJvmArgs = listOf("--enable-preview");
+	applicationDefaultJvmArgs = listOf("--enable-preview")
 }
 
 buildDir = File("_build")
@@ -54,8 +54,6 @@ val integrationTest = task<Test>("integrationTest") {
 	classpath = sourceSets["integrationTest"].runtimeClasspath
 	shouldRunAfter("test")
 }
-
-tasks.check { dependsOn(integrationTest) }
 
 dependencies {
 	

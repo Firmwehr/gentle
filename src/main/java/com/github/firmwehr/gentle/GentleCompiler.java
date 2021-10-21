@@ -32,6 +32,7 @@ public class GentleCompiler {
 	
 	private static void echoCommand(Path path) {
 		try (Stream<String> stream = Files.lines(path)) {
+			//noinspection UseOfSystemOutOrSystemErr
 			stream.forEach(System.out::println);
 		} catch (IOException e) {
 			LOGGER.error("Could not echo file '{}': {}", path, e.getMessage());
