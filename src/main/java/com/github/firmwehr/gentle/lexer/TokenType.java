@@ -2,7 +2,10 @@ package com.github.firmwehr.gentle.lexer;
 
 import com.github.firmwehr.gentle.lexer.tokens.GentleToken;
 import com.github.firmwehr.gentle.lexer.tokens.KeywordToken;
+import com.github.firmwehr.gentle.lexer.tokens.TokenComment;
 import com.github.firmwehr.gentle.lexer.tokens.TokenEndOfFile;
+import com.github.firmwehr.gentle.lexer.tokens.TokenIdentifier;
+import com.github.firmwehr.gentle.lexer.tokens.TokenIntegerLiteral;
 import com.github.firmwehr.gentle.lexer.tokens.TokenWhitespace;
 import com.google.errorprone.annotations.Immutable;
 import org.slf4j.Logger;
@@ -14,7 +17,7 @@ import java.util.Optional;
 public enum TokenType {
 	EOF(TokenEndOfFile::create),
 	WHITESPACE(TokenWhitespace::create),
-	//COMMENT,
+	COMMENT(TokenComment::create),
 	
 	// Keywords
 	ABSTRACT("abstract"),
@@ -119,8 +122,8 @@ public enum TokenType {
 	LOGICAL_OR("||"),
 	BITWISE_OR("|"),
 	
-	//IDENTIFIER,
-	//INTEGER_LITERAL
+	INTEGER_LITERAL(TokenIntegerLiteral::create),
+	IDENTIFIER(TokenIdentifier::create)
 	;
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(TokenType.class);

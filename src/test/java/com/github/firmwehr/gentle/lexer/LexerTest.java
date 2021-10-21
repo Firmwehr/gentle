@@ -10,7 +10,14 @@ public class LexerTest {
 
 	private static final String TEST_INPUT = """
 			void   void
-			void
+			void 123
+			// ich bin ein kommentar
+			/* und ich bin sogar
+			int void
+			ein mehrzeiliger
+			kommentar
+			*/
+			fun(toast);
 			""";
 	
 	private static final String TEST_INPUT2 = """
@@ -19,7 +26,7 @@ public class LexerTest {
 	
 	@Test
 	public void basicLexerTest() throws Exception {
-		GentleLexer lexer = new GentleLexer(TEST_INPUT2);
+		GentleLexer lexer = new GentleLexer(TEST_INPUT);
 		var list = readUntilEOF(lexer);
 	}
 	
