@@ -11,6 +11,7 @@ public final class TokenIntegerLiteral extends GentleToken {
 	
 	private TokenIntegerLiteral(SourcePosition position, int number) {
 		super(TokenType.INTEGER_LITERAL, position);
+		this.number = number;
 	}
 	
 	@Override
