@@ -10,28 +10,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Set up JDK
-        uses: actions/setup-java@v1
-        with:
-          java-version: 17
-      - uses: actions/cache@v2
-        with:
-          path: ~/work/_temp/_github_home/qodana-cache
-          key: ${{ runner.os }}-qodana-${{ github.ref }}
-          restore-keys: |
-            ${{ runner.os }}-qodana-${{ github.ref }}
-            ${{ runner.os }}-qodana-
-      - run: ./gradlew build
-      - uses: JetBrains/qodana-action@v3.1.1
-        with:
-          linter: qodana-jvm-community
-          fail-threshold: 1
-      - uses: actions/upload-artifact@v2
-        with:
-          path: ${{ github.workspace }}/qodana
-      - name: Print problems
-        run: cat qodana/report/results/result-allProblems.json | jq
-      - name: Fail on problems
-        run: |
-          VIOLATIONS=$(jq ".listProblem | length" qodana/report/results/result-allProblems.json)
-          if [ "$VIOLATIONS" -gt "0" ]; then exit 1; fi
+      - run: sudo docker run --rm -v $PWD/:/data/project/ jetbrains/qodana-jvm-community:2021.2 --show-report
