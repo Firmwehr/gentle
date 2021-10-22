@@ -123,8 +123,7 @@ public enum TokenType {
 	BITWISE_OR("|"),
 	
 	INTEGER_LITERAL(TokenIntegerLiteral::create),
-	IDENTIFIER(TokenIdentifier::create)
-	;
+	IDENTIFIER(TokenIdentifier::create);
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(TokenType.class);
 	
@@ -171,7 +170,7 @@ public enum TokenType {
 		throw new LexerException("unable to find suitable token", reader);
 	}
 	
-	public record ParsedToken (GentleToken token, LexReader reader) {}
+	public record ParsedToken(GentleToken token, LexReader reader) {}
 	
 	@FunctionalInterface
 	public interface TokenFactory {
@@ -183,6 +182,6 @@ public enum TokenType {
 	@Immutable
 	private interface ParserBinding {
 		
-		public GentleToken callParser(LexReader reader, TokenType tokenType) throws LexerException;
+		GentleToken callParser(LexReader reader, TokenType tokenType) throws LexerException;
 	}
 }
