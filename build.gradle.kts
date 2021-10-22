@@ -1,9 +1,5 @@
-import net.ltgt.gradle.errorprone.CheckSeverity
-import net.ltgt.gradle.errorprone.errorprone
-
 plugins {
 	application
-	id("net.ltgt.errorprone") version "2.0.2"
 }
 
 group = "com.github.firmwehr"
@@ -65,12 +61,7 @@ dependencies {
 	implementation("org.apache.logging.log4j:log4j-slf4j-impl:$log4j2")
 	implementation("com.djdch.log4j:log4j-staticshutdown:1.1.0") // https://stackoverflow.com/a/28835409/1834100
 	
-	// nullaway + errorprone + annotations
-	annotationProcessor("com.uber.nullaway", "nullaway", "0.9.2")
-	// Current pre-release at the time of adding error-prone
-	errorprone("com.google.errorprone", "error_prone_core", "HEAD-20211020.202200-314")
-	// The annotations do not have pre-release jars, apparently. Add the released ones
-	errorprone("com.google.errorprone", "error_prone_annotations", "2.9.0")
+	// annotations
 	compileOnly("org.jetbrains", "annotations", "22.0.0")
 	
 	// commons stuff
@@ -93,12 +84,6 @@ dependencies {
 tasks.withType<JavaCompile> {
 	options.encoding = "UTF-8"
 	options.compilerArgs.add("--enable-preview")
-	if (!name.toLowerCase().contains("test")) {
-		options.errorprone.apply {
-			check("NullAway", CheckSeverity.ERROR)
-			option("NullAway:AnnotatedPackages", "com.github.firmwehr.gentle")
-		}
-	}
 }
 
 tasks.getByName<Test>("test") {
