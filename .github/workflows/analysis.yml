@@ -14,13 +14,6 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 17
-      - uses: actions/cache@v2
-        with:
-          path: ~/work/_temp/_github_home/qodana-cache
-          key: ${{ runner.os }}-qodana-${{ github.ref }}
-          restore-keys: |
-            ${{ runner.os }}-qodana-${{ github.ref }}
-            ${{ runner.os }}-qodana-
       - run: ./gradlew build
       - uses: JetBrains/qodana-action@v3.1.1
         with:
