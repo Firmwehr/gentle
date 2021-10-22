@@ -1,16 +1,16 @@
 package com.github.firmwehr.gentle.parser;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 
-// TODO: Save identifiers in symbol table
 public class Lexer {
 	
 	// All keywords and all symbols are handled very similarly.
 	// Therefore we save their string->tokentype mappings in these collections
 	public static final HashMap<String, TokenType> KEYWORDS = new HashMap<>();
+	// Can't be final if set in static block apparently
+	public static final int MAX_KEYWORD_LENGTH;
 	// Tries are useful for reading symbols character by character, see lexSymbolOrError()
 	public static final SymbolTrie<TokenType> SYMBOLS = new SymbolTrie<>();
 	
@@ -68,6 +68,8 @@ public class Lexer {
 		Lexer.KEYWORDS.put("void", TokenType.VOID);
 		Lexer.KEYWORDS.put("volatile", TokenType.VOLATILE);
 		Lexer.KEYWORDS.put("while", TokenType.WHILE);
+		
+		MAX_KEYWORD_LENGTH = Lexer.KEYWORDS.keySet().stream().mapToInt(kw -> kw.length()).max().getAsInt();
 		
 		// The order of the symbols is the same as in sprachbericht.pdf.
 		// The order is not relevant for lookup speed.
@@ -142,19 +144,6 @@ public class Lexer {
 		this.column = 0;
 	}
 	
-	// TODO: Remove this demo
-	public static void main(String[] args) throws IOException {
-		// TODO: There is probably a nicer way to refer to stuff within the resources directory
-		String path = "src/test/resources/Collatz.java";
-		BufferedReader input = new BufferedReader(new FileReader(path));
-		Lexer l = new Lexer(input);
-		
-		Token t;
-		while ((t = l.lex()).type() != TokenType.EOF) {
-			System.out.println(t);
-		}
-	}
-	
 	// Character classification functions
 	
 	private static boolean isWhitespace(int c) {
@@ -219,15 +208,10 @@ public class Lexer {
 			this.consume();
 		}
 		
-		// TODO: Add guard for longest keyword length
-		// TODO: We don't need to check whether very long identifiers are keywords. They aren't.
-		if (Lexer.KEYWORDS.containsKey(this.sb.toString())) {
-			return this.emit(KEYWORDS.get(this.sb.toString()));
-		}
-		
-		return this.emit(TokenType.IDENTIFIER);
+		return this.emitIdentifierOrKeyword();
 	}
 	
+	// TODO: Literals start with [1-9]
 	private Token lexIntegerLiteral() throws IOException {
 		while (Lexer.isDigit(this.lookahead)) {
 			this.consume();
@@ -257,6 +241,7 @@ public class Lexer {
 	}
 	
 	// TODO: This can probably be improved somehow, seems ugly
+	// Reads input until */ is encountered
 	private Token lexCommentRest() throws IOException {
 		while (true) {
 			switch (this.lookahead) {
@@ -281,6 +266,16 @@ public class Lexer {
 	
 	private Token emit(TokenType type) {
 		return new Token(type, this.sb.toString());
+	}
+	
+	private Token emitIdentifierOrKeyword() {
+		String text = this.sb.toString();
+		
+		if (text.length() <= Lexer.MAX_KEYWORD_LENGTH && Lexer.KEYWORDS.containsKey(text)) {
+			return new Token(Lexer.KEYWORDS.get(text), text);
+		}
+		
+		return new Token(TokenType.IDENTIFIER, text);
 	}
 	
 	// TODO: This method is called whenever a new token is started
