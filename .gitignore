@@ -6,6 +6,7 @@
 # IDE
 /.idea/*
 !/.idea/codeStyles
+!/.idea/inspectionProfiles
 
 # application stuff
 *.log
