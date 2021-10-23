@@ -117,7 +117,7 @@ public enum TokenType {
 	LEFT_BRACE("{"),
 	RIGHT_BRACE("}"),
 	BITWISE_NOT("~"),
-	ASSIGN_BITWISE_OR("&="),
+	ASSIGN_BITWISE_OR("|="),
 	LOGICAL_OR("||"),
 	BITWISE_OR("|"),
 	
