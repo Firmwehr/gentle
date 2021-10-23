@@ -30,7 +30,7 @@ public class EchoTest {
 				.withWorkingDirectory(tempFolder.toAbsolutePath().toFile())
 				.run()
 				.getOutputString();
-		assertThat(output).isEqualTo("Hello\nworld!\n");
+		assertThat(output).isEqualTo("Hello\nworld!");
 	}
 	
 	@Test
@@ -42,7 +42,7 @@ public class EchoTest {
 		String output = buildRunCommand("--echo", relativePath.toString())
 				.run()
 				.getOutputString();
-		assertThat(output).isEqualTo("Hello\nworld!\n");
+		assertThat(output).isEqualTo("Hello\nworld!");
 	}
 	
 	@Test
@@ -53,7 +53,7 @@ public class EchoTest {
 				.withWorkingDirectory(tempFolder.toFile())
 				.run()
 				.getOutputString();
-		assertThat(output).isEqualTo("Hello\nworld!\n");
+		assertThat(output).isEqualTo("Hello\nworld!");
 	}
 	
 	@Test
