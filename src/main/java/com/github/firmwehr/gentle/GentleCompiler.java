@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.stream.Stream;
 
 public class GentleCompiler {
 	
@@ -31,9 +30,11 @@ public class GentleCompiler {
 	}
 	
 	private static void echoCommand(Path path) {
-		try (Stream<String> stream = Files.lines(path)) {
+		try {
 			//noinspection UseOfSystemOutOrSystemErr
-			stream.forEach(System.out::println);
+			System.out.write(Files.readAllBytes(path));
+			//noinspection UseOfSystemOutOrSystemErr
+			System.out.flush();
 		} catch (IOException e) {
 			LOGGER.error("Could not echo file '{}': {}", path, e.getMessage());
 		}
