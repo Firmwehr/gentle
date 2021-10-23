@@ -132,16 +132,16 @@ public class Lexer {
 	// Therefore it is either a character or -1 (meaning EOF was reached)
 	private int lookahead;
 	// line and column describe the position of the character in lookahead
-	private final int line;
-	private final int column;
+	private int line;
+	private int column;
 	
 	public Lexer(BufferedReader input) throws IOException {
 		this.input = input;
 		
 		this.sb = new StringBuilder();
 		this.lookahead = this.input.read();
-		this.line = 0;
-		this.column = 0;
+		this.line = 1;
+		this.column = 1;
 	}
 	
 	// Character classification functions
@@ -230,7 +230,7 @@ public class Lexer {
 		
 		// Still at the root node ==> no symbol was read
 		if (node.getContent().isEmpty()) {
-			throw new RuntimeException("Symbol or comment expected");
+			throw new RuntimeException("Lexer error at %s:%s".formatted(this.line, this.column));
 		}
 		// Comment "operator" ==> special case, read rest of comment
 		if (node.getContent().get() == TokenType.COMMENT) {
@@ -287,6 +287,12 @@ public class Lexer {
 	
 	private void consume() throws IOException {
 		this.sb.append((char) this.lookahead);
+		if (this.lookahead == '\n') {
+			this.line++;
+			this.column = 1;
+		} else {
+			this.column++;
+		}
 		this.lookahead = this.input.read();
 	}
 }

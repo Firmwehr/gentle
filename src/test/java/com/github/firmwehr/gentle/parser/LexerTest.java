@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.parser;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -18,6 +19,17 @@ public class LexerTest {
 	
 	private static Stream<Arguments> provideLexerTestFiles() throws IOException {
 		return Files.list(Path.of("src", "test", "resources", "lexer")).filter(path -> path.toString().endsWith(".java")).map(Arguments::of);
+	}
+	
+	@Test
+	public void lex_longFile() throws IOException {
+		BufferedReader input = new BufferedReader(new FileReader("src/test/resources/lexer/3kLines.java.long"));
+		Lexer lexer = new Lexer(input);
+		
+		while (true) {
+			Token t = lexer.lex();
+			if (t.type() == TokenType.EOF) break;
+		}
 	}
 	
 	@ParameterizedTest
