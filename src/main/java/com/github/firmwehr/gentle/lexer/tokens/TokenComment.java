@@ -40,7 +40,7 @@ public final class TokenComment extends Token {
 				reader.expect("/*");
 				var s = reader.readUntil("*/", true);
 				s = s.substring(0, s.length() - 2); // strip trailing '*/'
-				return new TokenComment(pos, s, CommentType.SINGLE_LINE);
+				return new TokenComment(pos, s, CommentType.STAR);
 			}
 			default -> throw new LexerException("could not detect comment start with either '//' or '/*'", reader);
 		}
