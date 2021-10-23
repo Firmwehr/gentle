@@ -5,7 +5,7 @@ import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 
-public final class TokenComment extends GentleToken {
+public final class TokenComment extends Token {
 	
 	public enum CommentType {
 		STAR, SINGLE_LINE
@@ -29,32 +29,20 @@ public final class TokenComment extends GentleToken {
 	}
 	
 	public static TokenComment create(LexReader reader) throws LexerException {
-		CommentFetcher fetcher;
-		CommentType type;
-		try {
-			reader.expect("//");
-			type = CommentType.SINGLE_LINE;
-			fetcher = LexReader::readLine;
-		} catch (LexerException ignore) {
-			try {
-				reader.expect("/*");
-				type = CommentType.STAR;
-				fetcher = r -> {
-					// strip trailing '*/'
-					var s = r.readUntil("*/", true);
-					return s.substring(0, s.length() - 2);
-				};
-			} catch (LexerException ignore2) {
-				throw new LexerException("could not detect command start with either '//' or '/*'", reader);
+		var peek = reader.peek(2);
+		var pos = reader.position(); // important to capture position before we consume entire comment
+		switch (peek) {
+			case "//" -> {
+				reader.expect("//");
+				return new TokenComment(pos, reader.readLine(), CommentType.SINGLE_LINE);
 			}
+			case "/*" -> {
+				reader.expect("/*");
+				var s = reader.readUntil("*/", true);
+				s = s.substring(0, s.length() - 2); // strip trailing '*/'
+				return new TokenComment(pos, s, CommentType.SINGLE_LINE);
+			}
+			default -> throw new LexerException("could not detect comment start with either '//' or '/*'", reader);
 		}
-		return new TokenComment(reader.position(), fetcher.fetch(reader), type);
 	}
-	
-	@FunctionalInterface
-	private interface CommentFetcher {
-		
-		String fetch(LexReader reader) throws LexerException;
-	}
-	
 }

@@ -3,12 +3,12 @@ package com.github.firmwehr.gentle.lexer.tokens;
 import com.github.firmwehr.gentle.SourcePosition;
 import com.github.firmwehr.gentle.lexer.TokenType;
 
-public abstract class GentleToken {
+public abstract class Token {
 	
 	private final TokenType tokenType;
 	private final SourcePosition position;
 	
-	protected GentleToken(TokenType tokenType, SourcePosition position) {
+	protected Token(TokenType tokenType, SourcePosition position) {
 		this.tokenType = tokenType;
 		this.position = position;
 	}

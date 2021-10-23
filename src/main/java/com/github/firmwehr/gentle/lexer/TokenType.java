@@ -1,13 +1,12 @@
 package com.github.firmwehr.gentle.lexer;
 
-import com.github.firmwehr.gentle.lexer.tokens.GentleToken;
-import com.github.firmwehr.gentle.lexer.tokens.KeywordToken;
+import com.github.firmwehr.gentle.lexer.tokens.Token;
 import com.github.firmwehr.gentle.lexer.tokens.TokenComment;
 import com.github.firmwehr.gentle.lexer.tokens.TokenEndOfFile;
 import com.github.firmwehr.gentle.lexer.tokens.TokenIdentifier;
 import com.github.firmwehr.gentle.lexer.tokens.TokenIntegerLiteral;
+import com.github.firmwehr.gentle.lexer.tokens.TokenKeyword;
 import com.github.firmwehr.gentle.lexer.tokens.TokenWhitespace;
-import com.google.errorprone.annotations.Immutable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,10 +134,10 @@ public enum TokenType {
 	
 	// special handling for keywords since these are already bound to their type by their factory
 	TokenType(String keyword) {
-		parser = (reader, tokenType) -> KeywordToken.create(reader, tokenType, keyword);
+		parser = (reader, tokenType) -> TokenKeyword.create(reader, tokenType, keyword);
 	}
 	
-	private Optional<GentleToken> attemptParse(LexReader reader) {
+	private Optional<Token> attemptParse(LexReader reader) {
 		try {
 			var token = parser.callParser(reader, this);
 			if (token.tokenType() != this) {
@@ -170,18 +169,17 @@ public enum TokenType {
 		throw new LexerException("unable to find suitable token", reader);
 	}
 	
-	public record ParsedToken(GentleToken token, LexReader reader) {}
+	public record ParsedToken(Token token, LexReader reader) {}
 	
 	@FunctionalInterface
 	public interface TokenFactory {
 		
-		GentleToken attemptParse(LexReader reader) throws LexerException;
+		Token attemptParse(LexReader reader) throws LexerException;
 	}
 	
 	@FunctionalInterface
-	@Immutable
 	private interface ParserBinding {
 		
-		GentleToken callParser(LexReader reader, TokenType tokenType) throws LexerException;
+		Token callParser(LexReader reader, TokenType tokenType) throws LexerException;
 	}
 }

@@ -7,7 +7,7 @@ import com.github.firmwehr.gentle.lexer.TokenType;
 
 import java.text.MessageFormat;
 
-public final class TokenWhitespace extends GentleToken {
+public final class TokenWhitespace extends Token {
 	
 	public final String whitespaces;
 	

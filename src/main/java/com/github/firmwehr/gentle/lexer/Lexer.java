@@ -1,20 +1,20 @@
 package com.github.firmwehr.gentle.lexer;
 
-import com.github.firmwehr.gentle.lexer.tokens.GentleToken;
+import com.github.firmwehr.gentle.lexer.tokens.Token;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GentleLexer {
+public class Lexer {
 	
-	private static final Logger LOGGER = LoggerFactory.getLogger(GentleLexer.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(Lexer.class);
 	
 	private LexReader reader;
 	
-	public GentleLexer(String input) {
+	public Lexer(String input) {
 		reader = new LexReader(input);
 	}
 	
-	public GentleToken nextToken() throws LexerException {
+	public Token nextToken() throws LexerException {
 		var parse = TokenType.parseNextToken(reader);
 		var childReader = parse.reader();
 		var token = parse.token();

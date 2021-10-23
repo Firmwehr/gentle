@@ -19,7 +19,7 @@ public class LexReaderTest {
 		var reader = new LexReader(TEST_INPUT);
 		var reader2 = reader.fork();
 		assertThat(reader.readLine()).isEqualTo("This is the first line.\n");
-		assertThat(reader.position()).isEqualTo(new SourcePosition(1, 0));
+		assertThat(reader.position()).isEqualTo(new SourcePosition(2, 0));
 		
 		assertThat(reader.readUntil(".", false)).isEqualTo("This is the second line");
 		assertThat(reader.readLine()).isEqualTo(".\n");

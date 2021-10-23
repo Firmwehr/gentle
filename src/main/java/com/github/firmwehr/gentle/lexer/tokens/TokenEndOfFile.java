@@ -5,7 +5,7 @@ import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 
-public final class TokenEndOfFile extends GentleToken {
+public final class TokenEndOfFile extends Token {
 	
 	private TokenEndOfFile(SourcePosition position) {
 		super(TokenType.EOF, position);

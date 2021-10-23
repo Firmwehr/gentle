@@ -5,7 +5,7 @@ import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 
-public class TokenIdentifier extends GentleToken {
+public final class TokenIdentifier extends Token {
 	
 	public final String id;
 	
