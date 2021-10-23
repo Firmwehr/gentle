@@ -149,8 +149,8 @@ public class LexReader {
 	 *
 	 * @param needle        The string to search for.
 	 * @param includeNeedle {@code true} if the needle itself should be appended to the end of the returned string.
-	 * @return
-	 * @throws LexerException
+	 * @return The string up until (or including) the given needle.
+	 * @throws LexerException If the needle could not be found within the remaining input string.
 	 */
 	public String readUntil(String needle, boolean includeNeedle) throws LexerException {
 		var match = input.indexOf(needle, index);
