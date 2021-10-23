@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static com.github.firmwehr.gentle.RunUtils.buildRunCommand;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -54,6 +55,30 @@ public class EchoTest {
 				.run()
 				.getOutputString();
 		assertThat(output).isEqualTo("Hello\nworld!");
+	}
+	
+	@Test
+	void testDifferentLineEndings() throws IOException {
+		Files.writeString(tempFolder.resolve("Foo hey.txt"), "Hello\r\nworld\nLast line!");
+		
+		String output = buildRunCommand("--echo", "Foo hey.txt")
+				.withWorkingDirectory(tempFolder.toFile())
+				.run()
+				.getOutputString();
+		assertThat(output).isEqualTo("Hello\r\nworld\nLast line!");
+	}
+	
+	@Test
+	void testRandomBytes() throws IOException {
+		byte[] bytes = new byte[1024];
+		ThreadLocalRandom.current().nextBytes(bytes);
+		Files.write(tempFolder.resolve("Foo hey.txt"), bytes);
+		
+		byte[] output = buildRunCommand("--echo", "Foo hey.txt")
+				.withWorkingDirectory(tempFolder.toFile())
+				.run()
+				.getOutputBytes();
+		assertThat(output).isEqualTo(bytes);
 	}
 	
 	@Test
