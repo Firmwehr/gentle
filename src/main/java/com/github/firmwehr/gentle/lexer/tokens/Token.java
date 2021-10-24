@@ -3,20 +3,10 @@ package com.github.firmwehr.gentle.lexer.tokens;
 import com.github.firmwehr.gentle.SourcePosition;
 import com.github.firmwehr.gentle.lexer.TokenType;
 
-public abstract class Token {
+public sealed interface Token
+		permits TokenComment, TokenEndOfFile, TokenIdentifier, TokenIntegerLiteral, TokenKeyword, TokenWhitespace {
 	
-	private final TokenType tokenType;
-	private final SourcePosition position;
+	TokenType tokenType();
 	
-	protected Token(TokenType tokenType, SourcePosition position) {
-		this.tokenType = tokenType;
-		this.position = position;
-	}
-	public final TokenType tokenType() {
-		return tokenType;
-	}
-	
-	public final SourcePosition position() {
-		return position;
-	}
+	SourcePosition position();
 }

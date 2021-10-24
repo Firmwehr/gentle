@@ -5,28 +5,7 @@ import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 
-public final class TokenComment extends Token {
-	
-	public enum CommentType {
-		STAR, SINGLE_LINE
-	}
-	
-	public final CommentType type;
-	public final String text;
-	
-	private TokenComment(SourcePosition position, String text, CommentType type) {
-		super(TokenType.COMMENT, position);
-		this.type = type;
-		this.text = text;
-	}
-	
-	@Override
-	public String toString() {
-		return "TokenComment{" +
-				"type=" + type +
-				", text='" + text + '\'' +
-				'}';
-	}
+public record TokenComment(SourcePosition position, String text, CommentType type) implements Token {
 	
 	public static TokenComment create(LexReader reader) throws LexerException {
 		var peek = reader.peek(2);
@@ -44,5 +23,15 @@ public final class TokenComment extends Token {
 			}
 			default -> throw new LexerException("could not detect comment start with either '//' or '/*'", reader);
 		}
+	}
+	
+	@Override
+	public TokenType tokenType() {
+		return TokenType.COMMENT;
+	}
+	
+	public enum CommentType {
+		STAR,
+		SINGLE_LINE
 	}
 }
