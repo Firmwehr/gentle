@@ -55,4 +55,4 @@ if __name__ == '__main__':
         comment = comment.replace('%', '%25').replace('\n', '%0A').replace('\r', '%0D')
 
         print('::set-output name=body::' + comment)
-        print('::set-output name::has-problems::true')
+        print('::set-output name=has-problems::true')
