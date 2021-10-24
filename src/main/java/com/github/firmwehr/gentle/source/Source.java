@@ -1,6 +1,7 @@
 package com.github.firmwehr.gentle.source;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class Source {
@@ -11,6 +12,10 @@ public class Source {
 	public Source(String content) {
 		this.content = content;
 		this.lines = content.lines().collect(Collectors.toList());
+	}
+	
+	public String getContent() {
+		return content;
 	}
 	
 	public String formatErrorAtPosition(SourcePosition position, String message, String description) {
@@ -45,5 +50,20 @@ public class Source {
 				.append(description);
 		
 		return builder.toString();
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if (this == o)
+			return true;
+		if (o == null || getClass() != o.getClass())
+			return false;
+		Source source = (Source) o;
+		return Objects.equals(content, source.content);
+	}
+	
+	@Override
+	public int hashCode() {
+		return Objects.hash(content);
 	}
 }

@@ -1,6 +1,7 @@
 package com.github.firmwehr.gentle.lexer;
 
 import com.github.firmwehr.gentle.lexer.tokens.Token;
+import com.github.firmwehr.gentle.source.Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,8 +11,8 @@ public class Lexer {
 	
 	private LexReader reader;
 	
-	public Lexer(String input) {
-		reader = new LexReader(input);
+	public Lexer(Source source) {
+		reader = new LexReader(source);
 	}
 	
 	public Token nextToken() throws LexerException {
@@ -24,7 +25,7 @@ public class Lexer {
 			throw new Error("parsed token from empty string, this is an error in the code");
 		}
 		
-		LOGGER.trace("emiting token {} from string slice @ {}: '{}'", token, reader.position().print(), diff);
+		LOGGER.trace("emitting token {} from string slice @ {}: '{}'", token, reader.position().format(), diff);
 		reader = childReader;
 		return token;
 	}
