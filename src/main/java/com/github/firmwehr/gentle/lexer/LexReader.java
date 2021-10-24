@@ -11,10 +11,9 @@ import java.util.function.IntPredicate;
  * the caller to be as well.
  * <p>
  * <strong>PLEASE NOTE:</strong> All methods besides {@code peek*} will advance the reader by the read string. Meaning
- * that whatever has been returned by the method will
- * not be read in subsequent calls <strong>BY ANY MEANS</strong>. This is especially important to consieder when
- * deciding to include or exclude the final codepoints of a sequence-read (for instance the closing quotes of a
- * string).
+ * that whatever has been returned by the method will not be read in subsequent calls <strong>BY ANY MEANS</strong>.
+ * This is especially important to consieder when deciding to include or exclude the final codepoints of a sequence-read
+ * (for instance the closing quotes of a string).
  * </p>
  */
 public class LexReader {
@@ -41,12 +40,8 @@ public class LexReader {
 
 	@Override
 	public String toString() {
-		return "LexReader{index=%d, lineCount=%d, charCount=%d, current='%s'}".formatted(
-			index,
-			lineCount,
-			charCount,
-			source.getContent().substring(index)
-		);
+		return "LexReader{index=%d, lineCount=%d, charCount=%d, current='%s'}".formatted(index, lineCount, charCount,
+			source.getContent().substring(index));
 	}
 
 
