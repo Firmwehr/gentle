@@ -5,8 +5,12 @@ import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 import com.github.firmwehr.gentle.source.SourcePosition;
 
-public record TokenComment(SourcePosition position, String text, CommentType type) implements Token {
-	
+public record TokenComment(
+	SourcePosition position,
+	String text,
+	CommentType type
+) implements Token {
+
 	public static TokenComment create(LexReader reader) throws LexerException {
 		var peek = reader.peek(2);
 		var pos = reader.position(); // important to capture position before we consume entire comment
@@ -24,12 +28,12 @@ public record TokenComment(SourcePosition position, String text, CommentType typ
 			default -> throw new LexerException("could not detect comment start with either '//' or '/*'", reader);
 		}
 	}
-	
+
 	@Override
 	public TokenType tokenType() {
 		return TokenType.COMMENT;
 	}
-	
+
 	public enum CommentType {
 		STAR,
 		SINGLE_LINE

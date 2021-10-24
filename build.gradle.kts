@@ -30,7 +30,7 @@ sourceSets {
 		java {
 			srcDir("src/test/integrationTest")
 		}
-		
+
 		compileClasspath += sourceSets.main.get().output
 		runtimeClasspath += sourceSets.main.get().output
 	}
@@ -45,14 +45,14 @@ val integrationTestImplementation: Configuration by configurations.getting {
 val integrationTest = task<Test>("integrationTest") {
 	description = "Runs integration tests."
 	group = "verification"
-	
+
 	testClassesDirs = sourceSets["integrationTest"].output.classesDirs
 	classpath = sourceSets["integrationTest"].runtimeClasspath
 	shouldRunAfter("test")
 }
 
 dependencies {
-	
+
 	// logging
 	val slf4jVersion = "1.7.32"
 	val log4j2 = "2.14.1"
@@ -60,19 +60,19 @@ dependencies {
 	implementation("org.apache.logging.log4j:log4j-core:$log4j2")
 	implementation("org.apache.logging.log4j:log4j-slf4j-impl:$log4j2")
 	implementation("com.djdch.log4j:log4j-staticshutdown:1.1.0") // https://stackoverflow.com/a/28835409/1834100
-	
+
 	// annotations
 	compileOnly("org.jetbrains", "annotations", "22.0.0")
-	
+
 	// commons stuff
 	implementation("com.google.guava:guava:31.0.1-jre")
 	implementation("commons-io:commons-io:2.11.0")
-	
+
 	// Command line parsing
 	val jbock = "5.12"
 	implementation("io.github.jbock-java:jbock:$jbock")
 	annotationProcessor("io.github.jbock-java:jbock-compiler:$jbock")
-	
+
 	// junit
 	val junitVersion = "5.8.1"
 	testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
