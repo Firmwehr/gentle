@@ -26,10 +26,10 @@ public class LexReader {
 	private static final int CODEPOINT_CARRIAGE_RETURN = "\r".codePointAt(0);
 
 	private final Source source;
-	private int index = 0;
+	private int index;
 
-	private int lineCount = 0;
-	private int charCount = 0;
+	private int lineCount;
+	private int charCount;
 
 	public LexReader(Source source) {
 		this.source = source;
