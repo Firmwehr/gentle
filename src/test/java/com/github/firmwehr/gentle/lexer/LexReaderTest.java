@@ -1,6 +1,7 @@
 package com.github.firmwehr.gentle.lexer;
 
-import com.github.firmwehr.gentle.SourcePosition;
+import com.github.firmwehr.gentle.source.Source;
+import com.github.firmwehr.gentle.source.SourcePosition;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,10 +17,10 @@ public class LexReaderTest {
 	
 	@Test
 	public void simpleReadTest() throws Exception {
-		var reader = new LexReader(TEST_INPUT);
+		var reader = new LexReader(new Source(TEST_INPUT));
 		var reader2 = reader.fork();
 		assertThat(reader.readLine()).isEqualTo("This is the first line.\n");
-		assertThat(reader.position()).isEqualTo(new SourcePosition(2, 0));
+		assertThat(reader.position()).isEqualTo(new SourcePosition(24, 1, 0));
 		
 		assertThat(reader.readUntil(".", false)).isEqualTo("This is the second line");
 		assertThat(reader.readLine()).isEqualTo(".\n");
@@ -32,7 +33,7 @@ public class LexReaderTest {
 	
 	@Test
 	public void testReaderDiff() throws Exception {
-		var reader = new LexReader(TEST_INPUT);
+		var reader = new LexReader(new Source(TEST_INPUT));
 		var reader2 = reader.fork();
 		
 		var line = reader.readLine();

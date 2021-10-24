@@ -1,8 +1,8 @@
 package com.github.firmwehr.gentle.lexer;
 
-import com.github.firmwehr.gentle.SourcePosition;
+import com.github.firmwehr.gentle.source.Source;
+import com.github.firmwehr.gentle.source.SourcePosition;
 import com.google.common.base.Preconditions;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.function.IntPredicate;
 
@@ -20,49 +20,33 @@ public class LexReader {
 	private static final int PRINT_POSITION_AFTER = 20;
 	
 	private static final int CODEPOINT_LINE_FEED = "\n".codePointAt(0);
-	private static final int CODEPOINT_CARRIGE_RETURN = "\r".codePointAt(0);
+	private static final int CODEPOINT_CARRIAGE_RETURN = "\r".codePointAt(0);
 	
-	private final String input;
+	private final Source source;
 	private int index = 0;
 	
-	private int lineCount = 1;
+	private int lineCount = 0;
 	private int charCount = 0;
 	
-	public LexReader(String input) {
-		this.input = input;
+	public LexReader(Source source) {
+		this.source = source;
+	}
+	
+	public Source getSource() {
+		return source;
 	}
 	
 	@Override
 	public String toString() {
-		return "LexReader{index=%d, lineCount=%d, charCount=%d, current='%s'}".formatted(index, lineCount, charCount, input.substring(index));
+		return "LexReader{index=%d, lineCount=%d, charCount=%d, current='%s'}".formatted(index, lineCount, charCount, source.getContent().substring(index));
 	}
 	
-	// TODO: should be move to a better place since we will need this in many more places
-	public String printPosition(@Nullable String message) {
-		var before = Math.max(0, index - PRINT_POSITION_BEFORE); // select slice to left
-		var after = Math.min(index + PRINT_POSITION_AFTER, input.length() - 1); // select slice to right
-		
-		// TODO: cut off right part at linebreaks
-		
-		var slice = input.substring(before, after);
-		var pos = position().print();
-		return """
-					at line %s
-						%s
-						%s%s
-				""".formatted(
-				pos,
-				slice,
-				" ".repeat(index - before),
-				"^---- " + message
-		);
-	}
 	
 	/**
 	 * @return A duplicated reader with independent cursor meaning that both readers can be advanced without interfering with each other.
 	 */
 	public LexReader fork() { // deliberately not named clone to not clash with java clone method
-		var other = new LexReader(input);
+		var other = new LexReader(source);
 		other.index = index;
 		other.lineCount = lineCount;
 		other.charCount = charCount;
@@ -77,16 +61,16 @@ public class LexReader {
 	 */
 	public String diff(LexReader other) {
 		// ensure both readers are operating on same string
-		Preconditions.checkArgument(input.equals(other.input), "readers do not share same input string");
+		Preconditions.checkArgument(source.equals(other.source), "readers do not share same input string");
 		
 		int first = Math.min(index, other.index);
 		int second = Math.max(index, other.index);
 		
-		return input.substring(first, second);
+		return source.getContent().substring(first, second);
 	}
 	
 	public SourcePosition position() {
-		return new SourcePosition(lineCount, charCount);
+		return new SourcePosition(index, lineCount, charCount);
 	}
 	
 	/**
@@ -117,7 +101,7 @@ public class LexReader {
 	
 	private String readUntil(IntPredicate predicate, boolean includeLastCodepoint, boolean allowEof) throws LexerException {
 		var sb = new StringBuilder();
-		var it = input.substring(index).codePoints().iterator();
+		var it = source.getContent().substring(index).codePoints().iterator();
 		while (true) {
 			var cp = it.nextInt();
 			
@@ -153,11 +137,11 @@ public class LexReader {
 	 * @throws LexerException If the needle could not be found within the remaining input string.
 	 */
 	public String readUntil(String needle, boolean includeNeedle) throws LexerException {
-		var match = input.indexOf(needle, index);
+		var match = source.getContent().indexOf(needle, index);
 		if (match == -1)
 			throw new LexerException("could not find needle '%s'".formatted(needle), this);
 		
-		var s = input.substring(index, match) + (includeNeedle ? needle : "");
+		var s = source.getContent().substring(index, match) + (includeNeedle ? needle : "");
 		advanceSourcePosition(s);
 		return s;
 	}
@@ -174,7 +158,7 @@ public class LexReader {
 	 * @throws LexerException If the reader is right in front of the end of input.
 	 */
 	public String readLine() throws LexerException {
-		var cpts = input.substring(index).codePoints().toArray();
+		var cpts = source.getContent().substring(index).codePoints().toArray();
 		
 		// capture entire line (including newline)
 		int i = 0;
@@ -182,7 +166,7 @@ public class LexReader {
 			var cp = cpts[i];
 			i++; // effectively marks cp as read
 			
-			if (cp == CODEPOINT_CARRIGE_RETURN) {
+			if (cp == CODEPOINT_CARRIAGE_RETURN) {
 				// check for additional \n in case we use windows line endings
 				if (i + 1 < cpts.length && cpts[i + 1] == CODEPOINT_LINE_FEED)
 					i++;
@@ -214,7 +198,7 @@ public class LexReader {
 	 */
 	public int peek() throws LexerException {
 		if (!isEndOfInput())
-			return input.codePointAt(index);
+			return source.getContent().codePointAt(index);
 		throw new LexerException("end of input reached", this);
 	}
 	
@@ -226,7 +210,7 @@ public class LexReader {
 	 * @throws LexerException If the remaining input does not contain the required amount of codepoints.
 	 */
 	public String peek(int n) throws LexerException {
-		var cpts = input.substring(index).codePoints().limit(n).toArray();
+		var cpts = source.getContent().substring(index).codePoints().limit(n).toArray();
 		if (cpts.length < n) {
 			var overrun = n - cpts.length;
 			throw new LexerException("peek exceeded end of input by " + overrun + " codepoints", this);
@@ -241,7 +225,7 @@ public class LexReader {
 	 * @throws LexerException If the given needle did not match the upcoming input stream.
 	 */
 	public void expect(String needle) throws LexerException {
-		var i = input.indexOf(needle, index) - index;
+		var i = source.getContent().indexOf(needle, index) - index;
 		if (i != 0) // needle must be at current cursor position
 			throw new LexerException("did not match '%s'".formatted(needle), this);
 		advanceSourcePosition(needle);
@@ -251,7 +235,7 @@ public class LexReader {
 	 * @return {@code true} if the reader is right in front of the end of input.
 	 */
 	public boolean isEndOfInput() {
-		return input.length() <= index;
+		return source.getContent().length() <= index;
 	}
 	
 	/**
@@ -265,7 +249,7 @@ public class LexReader {
 		var cpts = str.codePoints().toArray();
 		for (int i = 0; i < cpts.length; i++) {
 			var cp = cpts[i];
-			if (cp == CODEPOINT_CARRIGE_RETURN) {
+			if (cp == CODEPOINT_CARRIAGE_RETURN) {
 				// check for additional \n in case we use windows
 				if (i + 1 < cpts.length && cpts[i + 1] == CODEPOINT_LINE_FEED)
 					i++;

@@ -1,9 +1,9 @@
 package com.github.firmwehr.gentle.lexer.tokens;
 
-import com.github.firmwehr.gentle.SourcePosition;
 import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
+import com.github.firmwehr.gentle.source.SourcePosition;
 
 public record TokenComment(SourcePosition position, String text, CommentType type) implements Token {
 	

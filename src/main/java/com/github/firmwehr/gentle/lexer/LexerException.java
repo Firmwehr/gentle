@@ -16,6 +16,6 @@ public class LexerException extends Exception {
 	
 	@Override
 	public String getMessage() {
-		return reader.printPosition(super.getMessage());
+		return reader.getSource().formatErrorAtPosition(reader.position(), "Error", super.getMessage());
 	}
 }
