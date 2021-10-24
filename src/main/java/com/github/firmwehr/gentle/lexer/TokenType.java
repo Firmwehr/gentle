@@ -17,7 +17,7 @@ public enum TokenType {
 	EOF(TokenEndOfFile::create),
 	WHITESPACE(TokenWhitespace::create),
 	COMMENT(TokenComment::create),
-	
+
 	// Keywords
 	ABSTRACT("abstract"),
 	ASSERT("assert"),
@@ -72,7 +72,7 @@ public enum TokenType {
 	VOID("void"),
 	VOLATILE("volatile"),
 	WHILE("while"),
-	
+
 	// Symbols
 	NOT_EQUALS("!="),
 	LOGICAL_NOT("!"),
@@ -120,28 +120,29 @@ public enum TokenType {
 	ASSIGN_BITWISE_OR("|="),
 	LOGICAL_OR("||"),
 	BITWISE_OR("|"),
-	
+
 	INTEGER_LITERAL(TokenIntegerLiteral::create),
 	IDENTIFIER(TokenIdentifier::create);
-	
+
 	private static final Logger LOGGER = LoggerFactory.getLogger(TokenType.class);
-	
+
 	private final ParserBinding parser;
-	
+
 	TokenType(TokenFactory factory) {
 		parser = (reader, tokenType) -> factory.attemptParse(reader);
 	}
-	
+
 	// special handling for keywords since these are already bound to their type by their factory
 	TokenType(String keyword) {
 		parser = (reader, tokenType) -> TokenKeyword.create(reader, tokenType, keyword);
 	}
-	
+
 	private Optional<Token> attemptParse(LexReader reader) {
 		try {
 			var token = parser.callParser(reader, this);
 			if (token.tokenType() != this) {
-				throw new Error("Descriptor for %s created token of wrong tokenType, please check enum definition".formatted(this));
+				throw new Error("Descriptor for %s created token of wrong tokenType, please check enum definition".formatted(
+					this));
 			}
 			return Optional.of(token);
 		} catch (LexerException e) {
@@ -149,37 +150,43 @@ public enum TokenType {
 			return Optional.empty();
 		}
 	}
-	
+
 	public static ParsedToken parseNextToken(LexReader reader) throws LexerException {
-		
+
 		// try all known tokens until first one matches current input
 		for (var tokenType : values()) {
-			
+
 			// copy reader for each attempt
 			var childReader = reader.fork();
 			var maybeToken = tokenType.attemptParse(childReader);
-			
+
 			if (maybeToken.isEmpty()) // no match
+			{
 				continue;
-			
+			}
+
 			var token = maybeToken.get();
 			return new ParsedToken(token, childReader);
 		}
-		
+
 		throw new LexerException("unable to find suitable token", reader);
 	}
-	
-	public record ParsedToken(Token token, LexReader reader) {}
-	
+
+	public record ParsedToken(
+		Token token,
+		LexReader reader
+	) {
+	}
+
 	@FunctionalInterface
 	public interface TokenFactory {
-		
+
 		Token attemptParse(LexReader reader) throws LexerException;
 	}
-	
+
 	@FunctionalInterface
 	private interface ParserBinding {
-		
+
 		Token callParser(LexReader reader, TokenType tokenType) throws LexerException;
 	}
 }

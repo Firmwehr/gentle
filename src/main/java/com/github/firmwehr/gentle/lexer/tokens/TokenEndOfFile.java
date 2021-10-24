@@ -6,7 +6,7 @@ import com.github.firmwehr.gentle.lexer.TokenType;
 import com.github.firmwehr.gentle.source.SourcePosition;
 
 public record TokenEndOfFile(SourcePosition position) implements Token {
-	
+
 	public static TokenEndOfFile create(LexReader reader) throws LexerException {
 		var position = reader.position();
 		if (!reader.isEndOfInput()) {
@@ -14,7 +14,7 @@ public record TokenEndOfFile(SourcePosition position) implements Token {
 		}
 		return new TokenEndOfFile(position);
 	}
-	
+
 	@Override
 	public TokenType tokenType() {
 		return TokenType.EOF;

@@ -9,9 +9,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
 
 public class BuildGentle implements BeforeAllCallback, ExtensionContext.Store.CloseableResource {
-	
+
 	private static boolean started = false;
-	
+
 	@Override
 	public void beforeAll(ExtensionContext context) throws IOException, InterruptedException {
 		if (!started) {
@@ -22,7 +22,7 @@ public class BuildGentle implements BeforeAllCallback, ExtensionContext.Store.Cl
 			assertThat(exitCode).isZero();
 		}
 	}
-	
+
 	@Override
 	public void close() {
 	}
