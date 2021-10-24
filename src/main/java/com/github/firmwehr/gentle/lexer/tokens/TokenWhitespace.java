@@ -5,21 +5,7 @@ import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 
-import java.text.MessageFormat;
-
-public final class TokenWhitespace extends Token {
-	
-	public final String whitespaces;
-	
-	private TokenWhitespace(SourcePosition position, String whitespaces) {
-		super(TokenType.WHITESPACE, position);
-		this.whitespaces = whitespaces;
-	}
-	
-	@Override
-	public String toString() {
-		return MessageFormat.format("TokenWhitespace'{'length={0}'}'", whitespaces.length());
-	}
+public record TokenWhitespace(SourcePosition position, String whitespaces) implements Token {
 	
 	public static TokenWhitespace create(LexReader reader) throws LexerException {
 		var position = reader.position();
@@ -27,5 +13,10 @@ public final class TokenWhitespace extends Token {
 			throw new LexerException("not a whitespace", reader);
 		return new TokenWhitespace(position, reader.readUntilOrEndOfFile(
 				cp -> !Character.isWhitespace(cp) || reader.isEndOfInput(), false));
+	}
+	
+	@Override
+	public TokenType tokenType() {
+		return TokenType.WHITESPACE;
 	}
 }

@@ -5,16 +5,7 @@ import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 
-public final class TokenEndOfFile extends Token {
-	
-	private TokenEndOfFile(SourcePosition position) {
-		super(TokenType.EOF, position);
-	}
-	
-	@Override
-	public String toString() {
-		return "TokenEndOfFile";
-	}
+public record TokenEndOfFile(SourcePosition position) implements Token {
 	
 	public static TokenEndOfFile create(LexReader reader) throws LexerException {
 		var position = reader.position();
@@ -22,5 +13,10 @@ public final class TokenEndOfFile extends Token {
 			throw new LexerException("no at end of input", reader);
 		}
 		return new TokenEndOfFile(position);
+	}
+	
+	@Override
+	public TokenType tokenType() {
+		return TokenType.EOF;
 	}
 }

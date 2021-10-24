@@ -5,16 +5,7 @@ import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 
-public final class TokenKeyword extends Token {
-	
-	private TokenKeyword(TokenType tokenType, SourcePosition position) {
-		super(tokenType, position);
-	}
-	
-	@Override
-	public String toString() {
-		return "KeywordToken{type=%s}".formatted(tokenType());
-	}
+public record TokenKeyword(TokenType tokenType, SourcePosition position) implements Token {
 	
 	public static TokenKeyword create(LexReader reader, TokenType tokenType, String keyword) throws LexerException {
 		var position = reader.position();

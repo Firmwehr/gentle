@@ -5,21 +5,7 @@ import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 
-public final class TokenIntegerLiteral extends Token {
-	
-	public final int number;
-	
-	private TokenIntegerLiteral(SourcePosition position, int number) {
-		super(TokenType.INTEGER_LITERAL, position);
-		this.number = number;
-	}
-	
-	@Override
-	public String toString() {
-		return "TokenIntegerLiteral{" +
-				"number=" + number +
-				'}';
-	}
+public record TokenIntegerLiteral(SourcePosition position, int number) implements Token {
 	
 	public static TokenIntegerLiteral create(LexReader reader) throws LexerException {
 		try {
@@ -32,5 +18,10 @@ public final class TokenIntegerLiteral extends Token {
 		} catch (NumberFormatException e) {
 			throw new LexerException("not a number", reader, e);
 		}
+	}
+	
+	@Override
+	public TokenType tokenType() {
+		return TokenType.INTEGER_LITERAL;
 	}
 }
