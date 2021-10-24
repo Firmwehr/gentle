@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
 
 public class BuildGentle implements BeforeAllCallback, ExtensionContext.Store.CloseableResource {
 
-	private static boolean started = false;
+	private static boolean started;
 
 	@Override
 	public void beforeAll(ExtensionContext context) throws IOException, InterruptedException {
