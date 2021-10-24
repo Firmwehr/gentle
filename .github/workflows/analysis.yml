@@ -25,7 +25,7 @@ jobs:
       - name: Print problems
         run: cat qodana/report/results/result-allProblems.json | jq
       - name: Format comment
-        run: cat qodana/report/results/result-allProblems.json | python abc/commenter.py
+        run: cat qodana/report/results/result-allProblems.json | python tooling/commenter.py
         id: commenter
       - name: Find Comment # only works on PRs, not on pushes (merges)
         if: ${{ github.event_name == 'pull_request' }}
