@@ -14,13 +14,6 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 17
-      - uses: actions/cache@v2
-        with:
-          path: ~/work/_temp/_github_home/qodana-cache
-          key: ${{ runner.os }}-qodana-${{ github.ref }}
-          restore-keys: |
-            ${{ runner.os }}-qodana-${{ github.ref }}
-            ${{ runner.os }}-qodana-
       - run: ./gradlew build
       - uses: JetBrains/qodana-action@v3.1.1
         with:
@@ -31,6 +24,25 @@ jobs:
           path: ${{ github.workspace }}/qodana
       - name: Print problems
         run: cat qodana/report/results/result-allProblems.json | jq
+      - name: Format comment
+        run: cat qodana/report/results/result-allProblems.json | python abc/commenter.py
+        id: commenter
+      - name: Find Comment # only works on PRs, not on pushes (merges)
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: peter-evans/find-comment@v1
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: "Qodana"
+      - name: Create or Update Comment
+        if: ${{ github.event_name == 'pull_request' && (steps.fc.outputs.comment-id || steps.commenter.outputs.has-problems) }}
+        uses: peter-evans/create-or-update-comment@v1.4.5
+        with:
+          edit-mode: replace
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: ${{ steps.commenter.outputs.body }}
       - name: Fail on problems
         run: |
           VIOLATIONS=$(jq ".listProblem | length" qodana/report/results/result-allProblems.json)
