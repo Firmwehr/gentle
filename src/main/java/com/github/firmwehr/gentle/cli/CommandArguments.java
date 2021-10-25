@@ -2,18 +2,24 @@ package com.github.firmwehr.gentle.cli;
 
 import net.jbock.Command;
 import net.jbock.Option;
+import net.jbock.Parameter;
 import net.jbock.util.StringConverter;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 
 @Command(name = "gentle", description = "A small MiniJava compiler.", publicParser = true)
 public interface CommandArguments {
 
-	@Option(names = {"--echo"}, converter = ExistingFileConverter.class,
+	@Option(names = "--echo", description = "Reads a file (relative to the executable) and outputs its contents.")
+	boolean echo();
+
+	@Option(names = "--lextest", description = "Reads a file (relative to the executable) and outputs its contents.")
+	boolean lextest();
+
+	@Parameter(index = 0, converter = ExistingFileConverter.class,
 		description = "Reads a file (relative to the executable) and outputs its contents.", paramLabel = "PATH")
-	Optional<Path> path();
+	Path path();
 
 	class ExistingFileConverter extends StringConverter<Path> {
 

@@ -25,6 +25,11 @@ public record TokenIntegerLiteral(
 	}
 
 	@Override
+	public String format() {
+		return "integer literal " + number;
+	}
+
+	@Override
 	public TokenType tokenType() {
 		return TokenType.INTEGER_LITERAL;
 	}

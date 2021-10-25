@@ -4,11 +4,16 @@ import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 import com.github.firmwehr.gentle.source.SourcePosition;
+import com.google.common.base.Preconditions;
 
 public record TokenKeyword(
 	TokenType tokenType,
 	SourcePosition position
 ) implements Token {
+
+	public TokenKeyword {
+		Preconditions.checkArgument(tokenType.isKeyword());
+	}
 
 	public static TokenKeyword create(LexReader reader, TokenType tokenType, String keyword) throws LexerException {
 		var position = reader.position();
@@ -32,5 +37,11 @@ public record TokenKeyword(
 		}
 
 		return new TokenKeyword(tokenType, position);
+	}
+
+	@Override
+	public String format() {
+		return tokenType.keyword()
+			.orElseThrow(() -> new AssertionError("Trying to get keyword from non keyword token"));
 	}
 }

@@ -14,7 +14,7 @@ repositories {
 
 application {
 	mainClass.set("com.github.firmwehr.gentle.GentleCompiler")
-	applicationDefaultJvmArgs = listOf("--enable-preview")
+	applicationDefaultJvmArgs = listOf("--enable-preview", "-Dspeedcenter.true")
 }
 
 buildDir = File("_build")

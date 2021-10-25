@@ -18,9 +18,6 @@ import java.util.function.IntPredicate;
  */
 public class LexReader {
 
-	private static final int PRINT_POSITION_BEFORE = 20;
-	private static final int PRINT_POSITION_AFTER = 20;
-
 	private static final int CODEPOINT_LINE_FEED = "\n".codePointAt(0);
 	private static final int CODEPOINT_CARRIAGE_RETURN = "\r".codePointAt(0);
 
