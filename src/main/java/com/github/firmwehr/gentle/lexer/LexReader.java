@@ -24,8 +24,9 @@ public class LexReader {
 	private final Source source;
 	private int index;
 
-	private int lineCount;
-	private int charCount;
+	// using 1 based indexing leads to less issues, please don't change this without warning
+	private int lineCount = 1;
+	private int charCount = 1;
 
 	public LexReader(Source source) {
 		this.source = source;
@@ -215,6 +216,18 @@ public class LexReader {
 	}
 
 	/**
+	 * Consumes the current codepoint and advances the reader by it.
+	 *
+	 * @throws LexerException If end of input is reached.
+	 */
+	public void consume() throws LexerException {
+		var cp = peek();
+		int[] cpts = {cp};
+		var s = new String(cpts, 0, 1);
+		advanceSourcePosition(s);
+	}
+
+	/**
 	 * Peeks at the next codepoint without advancing the reader.
 	 *
 	 * @return The next codepoint.
@@ -287,10 +300,10 @@ public class LexReader {
 					i++;
 				}
 				lineCount++;
-				charCount = 0;
+				charCount = 1;
 			} else if (cp == CODEPOINT_LINE_FEED) {
 				lineCount++;
-				charCount = 0;
+				charCount = 1;
 			} else {
 				// just a regular character
 				charCount++;

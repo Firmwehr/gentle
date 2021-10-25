@@ -82,7 +82,7 @@ public class Lexer {
 	}
 
 	private Token nextTokenInternal() throws LexerException {
-		var parse = TokenType.parseNextToken(reader);
+		var parse = TokenType.parseNextToken(reader.fork());
 		var childReader = parse.reader();
 		var token = parse.token();
 		var diff = reader.diff(childReader);
@@ -91,7 +91,7 @@ public class Lexer {
 			throw new Error("parsed token from empty string, this is an error in the code");
 		}
 
-		LOGGER.trace("emitting token {} from string slice @ {}: '{}'", token, reader.position().format(), diff);
+		LOGGER.trace("emitting token {} from string slice @ {}: '{}'", token, token.position().format(), diff);
 		reader = childReader;
 		return token;
 	}

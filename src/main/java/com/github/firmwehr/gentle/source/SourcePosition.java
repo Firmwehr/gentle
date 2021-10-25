@@ -1,5 +1,7 @@
 package com.github.firmwehr.gentle.source;
 
+import com.google.common.base.Preconditions;
+
 /**
  * The position of a single character in the source code file.
  *
@@ -14,19 +16,14 @@ public record SourcePosition(
 	int column
 ) {
 
+	// we use 1-based indexing
 	public SourcePosition {
-		if (offset < 0) {
-			throw new IllegalArgumentException("offset must not be negative");
-		}
-		if (line < 0) {
-			throw new IllegalArgumentException("line must not be negative");
-		}
-		if (column < 0) {
-			throw new IllegalArgumentException("column must not be negative");
-		}
+		Preconditions.checkArgument(offset > 0, "offset must not be negative");
+		Preconditions.checkArgument(line > 0, "line must not be smaller than 1");
+		Preconditions.checkArgument(column > 0, "column must not be smaller than 1");
 	}
 
 	public String format() {
-		return "%d:%d".formatted(line + 1, column + 1);
+		return "%d:%d".formatted(line, column);
 	}
 }
