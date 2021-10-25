@@ -141,8 +141,8 @@ public enum TokenType {
 		try {
 			var token = parser.callParser(reader, this);
 			if (token.tokenType() != this) {
-				throw new Error("Descriptor for %s created token of wrong tokenType, please check enum definition".formatted(
-					this));
+				throw new Error(
+					"Descriptor for %s created token of wrong tokenType, please check enum definition".formatted(this));
 			}
 			return Optional.of(token);
 		} catch (LexerException e) {

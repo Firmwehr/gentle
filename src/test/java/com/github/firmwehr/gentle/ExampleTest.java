@@ -13,10 +13,7 @@ public class ExampleTest {
 	public void testExample() throws IOException {
 		var content = IOUtils.toString(getClass().getResource("/example-test.txt"), StandardCharsets.UTF_8);
 
-		Assertions.assertEquals(
-			"This is text read from a textfile.",
-			content.strip(),
-			"Read String does not match expected string"
-		);
+		Assertions.assertEquals("This is text read from a textfile.", content.strip(),
+			"Read String does not match expected string");
 	}
 }
