@@ -127,6 +127,8 @@ public enum TokenType {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TokenType.class);
 
 	private final ParserBinding parser;
+
+	@SuppressWarnings("OptionalUsedAsFieldOrParameterType") // was agreed upon during design of lextest command
 	private final Optional<String> keyword;
 
 	TokenType(TokenFactory factory) {
