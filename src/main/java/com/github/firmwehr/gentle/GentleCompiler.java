@@ -19,6 +19,8 @@ import java.nio.file.Path;
 
 public class GentleCompiler {
 
+	public static final boolean IS_SPEEDCENTER;
+
 	// DO NOT MOVE BELOW LOGGER DECLARATION
 	static {
 		// check for speedcenter run and change logging format
@@ -39,6 +41,10 @@ public class GentleCompiler {
 				System.err.println("Detected speedcenter but were unable to load speedcenter configuration");
 				System.exit(1);
 			}
+
+			IS_SPEEDCENTER = true;
+		} else {
+			IS_SPEEDCENTER = false;
 		}
 
 		System.setProperty("log4j.shutdownCallbackRegistry", "com.djdch.log4j.StaticShutdownCallbackRegistry");
