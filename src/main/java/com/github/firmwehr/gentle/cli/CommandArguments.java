@@ -11,7 +11,7 @@ import java.nio.file.Path;
 @Command(name = "gentle", description = "A small MiniJava compiler.", publicParser = true)
 public interface CommandArguments {
 
-	@Option(names = "--echo", description = "Read the given file and will output it as it is.")
+	@Option(names = "--echo", description = "Reads the given file and will output it as it is.")
 	boolean echo();
 
 	@Option(names = "--lextest", description = "Reads the given file and prints all tokens or aborts on first error")
