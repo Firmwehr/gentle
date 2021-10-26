@@ -82,62 +82,51 @@ public sealed interface Token extends HasSourceSpan
 				// Operators
 				case NOT_EQUALS -> new OperatorToken(keyword.position().span(), Operator.NOT_EQUAL);
 				case LOGICAL_NOT -> new OperatorToken(keyword.position().span(), Operator.LOGICAL_NOT);
-				case LEFT_PAREN -> new OperatorToken(keyword.position().span(), Operator.OPENING_PARENTHESIS);
-				case RIGHT_PAREN -> new OperatorToken(keyword.position().span(), Operator.CLOSING_PARENTHESIS);
-				case ASSIGN_MULTIPLY -> new OperatorToken(keyword.position().span(), Operator.MULTIPLY_AND_ASSIGN);
+				case LEFT_PAREN -> new OperatorToken(keyword.position().span(), Operator.LEFT_PAREN);
+				case RIGHT_PAREN -> new OperatorToken(keyword.position().span(), Operator.RIGHT_PAREN);
+				case ASSIGN_MULTIPLY -> new OperatorToken(keyword.position().span(), Operator.ASSIGN_MULTIPLY);
 				case MULTIPLY -> new OperatorToken(keyword.position().span(), Operator.MULTIPLY);
-				case POSTFIX_INCREMENT -> new OperatorToken(keyword.position().span(), Operator.INCREASE_BY_ONE);
-				case ASSIGN_ADD -> new OperatorToken(keyword.position().span(), Operator.AND_AND_ASSIGN);
+				case POSTFIX_INCREMENT -> new OperatorToken(keyword.position().span(), Operator.INCREMENT);
+				case ASSIGN_ADD -> new OperatorToken(keyword.position().span(), Operator.ADD_AND_ASSIGN);
 				case ADD -> new OperatorToken(keyword.position().span(), Operator.PLUS);
 				case COMMA -> new OperatorToken(keyword.position().span(), Operator.COMMA);
-				case ASSIGN_SUBTRACT -> new OperatorToken(keyword.position().span(), Operator.SUBTRACT_AND_ASSIGN);
-				case POSTFIX_DECREMENT -> new OperatorToken(keyword.position().span(), Operator.DECREASE_BY_ONE);
+				case ASSIGN_SUBTRACT -> new OperatorToken(keyword.position().span(), Operator.ASSIGN_SUBTRACT);
+				case POSTFIX_DECREMENT -> new OperatorToken(keyword.position().span(), Operator.DECREMENT);
 				case SUBTRACT -> new OperatorToken(keyword.position().span(), Operator.MINUS);
-				case DOT -> new OperatorToken(keyword.position().span(), Operator.PERIOD);
-				case ASSIGN_DIVIDE -> new OperatorToken(keyword.position().span(), Operator.DIVIDE_AND_ASSIGN);
+				case DOT -> new OperatorToken(keyword.position().span(), Operator.DOT);
+				case ASSIGN_DIVIDE -> new OperatorToken(keyword.position().span(), Operator.ASSIGN_DIVIDE);
 				case DIVIDE -> new OperatorToken(keyword.position().span(), Operator.DIVIDE);
 				case COLON -> new OperatorToken(keyword.position().span(), Operator.COLON);
 				case SEMICOLON -> new OperatorToken(keyword.position().span(), Operator.SEMICOLON);
-				case ASSIGN_BITSHIFT_LEFT -> new OperatorToken(keyword.position().span(),
-					Operator.LEFT_SHIFT_AND_ASSIGN
-				);
+				case ASSIGN_BITSHIFT_LEFT -> new OperatorToken(keyword.position().span(), Operator.ASSIGN_LEFT_SHIFT);
 				case BITSHIFT_LEFT -> new OperatorToken(keyword.position().span(), Operator.LEFT_SHIFT);
-				case LESS_THAN_EQUALS -> new OperatorToken(keyword.position().span(), Operator.LESS_THAN_OR_EQUAL);
+				case LESS_THAN_EQUALS -> new OperatorToken(keyword.position().span(), Operator.LESS_OR_EQUAL);
 				case LESS_THAN -> new OperatorToken(keyword.position().span(), Operator.LESS_THAN);
 				case EQUALS -> new OperatorToken(keyword.position().span(), Operator.EQUAL);
 				case ASSIGN -> new OperatorToken(keyword.position().span(), Operator.ASSIGN);
-				case GREATER_THAN_EQUALS -> new OperatorToken(keyword.position().span(),
-					Operator.GREATER_THAN_OR_EQUAL
-				);
+				case GREATER_THAN_EQUALS -> new OperatorToken(keyword.position().span(), Operator.GREATER_OR_EQUAL);
 				case ASSIGN_BITSHIFT_RIGHT -> new OperatorToken(keyword.position().span(),
-					Operator.SIGNED_RIGHT_SHIFT_AND_ASSIGN
-				);
+					Operator.ASSIGN_SIGNED_RIGHT_SHIFT);
 				case ASSIGN_BITSHIFT_RIGHT_ZEROFILL -> new OperatorToken(keyword.position().span(),
-					Operator.UNSIGNED_RIGHT_SHIFT_AND_ASSIGN
-				);
+					Operator.ASSIGN_UNSIGNED_RIGHT_SHIFT);
 				case BITSHIFT_RIGHT_ZEROFILL -> new OperatorToken(keyword.position().span(),
-					Operator.UNSIGNED_RIGHT_SHIFT
-				);
+					Operator.UNSIGNED_RIGHT_SHIFT);
 				case BITSHIFT_RIGHT -> new OperatorToken(keyword.position().span(), Operator.SIGNED_RIGHT_SHIFT);
 				case GREATER_THAN -> new OperatorToken(keyword.position().span(), Operator.GREATER_THAN);
 				case QUESTION_MARK -> new OperatorToken(keyword.position().span(), Operator.QUESTION_MARK);
-				case ASSIGN_MODULO -> new OperatorToken(keyword.position().span(), Operator.MODULO_AND_ASSIGN);
+				case ASSIGN_MODULO -> new OperatorToken(keyword.position().span(), Operator.ASSIGN_MODULO);
 				case MODULO -> new OperatorToken(keyword.position().span(), Operator.MODULO);
-				case ASSIGN_BITWISE_AND -> new OperatorToken(keyword.position().span(),
-					Operator.BITWISE_AND_AND_ASSIGN
-				);
+				case ASSIGN_BITWISE_AND -> new OperatorToken(keyword.position().span(), Operator.ASSIGN_BITWISE_AND);
 				case LOGICAL_AND -> new OperatorToken(keyword.position().span(), Operator.LOGICAL_AND);
 				case BITWISE_AND -> new OperatorToken(keyword.position().span(), Operator.BITWISE_AND);
-				case LEFT_BRACKET -> new OperatorToken(keyword.position().span(), Operator.OPENING_BRACKET);
-				case RIGHT_BRACKET -> new OperatorToken(keyword.position().span(), Operator.CLOSING_BRACKET);
-				case ASSIGN_BITWISE_XOR -> new OperatorToken(keyword.position().span(),
-					Operator.BITWISE_XOR_AND_ASSIGN
-				);
+				case LEFT_BRACKET -> new OperatorToken(keyword.position().span(), Operator.LEFT_BRACKET);
+				case RIGHT_BRACKET -> new OperatorToken(keyword.position().span(), Operator.RIGHT_BRACKET);
+				case ASSIGN_BITWISE_XOR -> new OperatorToken(keyword.position().span(), Operator.ASSIGN_BITWISE_XOR);
 				case BITWISE_XOR -> new OperatorToken(keyword.position().span(), Operator.BITWISE_XOR);
-				case LEFT_BRACE -> new OperatorToken(keyword.position().span(), Operator.OPENING_BRACE);
-				case RIGHT_BRACE -> new OperatorToken(keyword.position().span(), Operator.CLOSING_BRACE);
+				case LEFT_BRACE -> new OperatorToken(keyword.position().span(), Operator.LEFT_BRACE);
+				case RIGHT_BRACE -> new OperatorToken(keyword.position().span(), Operator.RIGHT_BRACE);
 				case BITWISE_NOT -> new OperatorToken(keyword.position().span(), Operator.BITWISE_NOT);
-				case ASSIGN_BITWISE_OR -> new OperatorToken(keyword.position().span(), Operator.BITWISE_OR_AND_ASSIGN);
+				case ASSIGN_BITWISE_OR -> new OperatorToken(keyword.position().span(), Operator.ASSIGN_BITWISE_OR);
 				case LOGICAL_OR -> new OperatorToken(keyword.position().span(), Operator.LOGICAL_OR);
 				case BITWISE_OR -> new OperatorToken(keyword.position().span(), Operator.BITWISE_OR);
 				// Other stuff
