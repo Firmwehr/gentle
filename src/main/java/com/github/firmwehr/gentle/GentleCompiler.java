@@ -69,6 +69,7 @@ public class GentleCompiler {
 		}
 
 		StaticShutdownCallbackRegistry.invoke();
+		System.exit(0);
 	}
 
 	private static void echoCommand(Path path) {
@@ -79,6 +80,7 @@ public class GentleCompiler {
 			System.out.flush();
 		} catch (IOException e) {
 			LOGGER.error("Could not echo file '{}': {}", path, e.getMessage());
+			System.exit(1);
 		}
 	}
 
@@ -97,8 +99,10 @@ public class GentleCompiler {
 			}
 		} catch (IOException e) {
 			LOGGER.error("Could not read for lextest file '{}': {}", path, e.getMessage());
+			System.exit(1);
 		} catch (LexerException e) {
 			LOGGER.error("lextest failed", e);
+			System.exit(1);
 		}
 	}
 }
