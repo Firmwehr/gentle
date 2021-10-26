@@ -6,6 +6,7 @@ import com.github.firmwehr.gentle.cli.CommandArgumentsParser;
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
+import com.github.firmwehr.gentle.parser.Parser;
 import com.github.firmwehr.gentle.source.Source;
 import org.apache.logging.log4j.core.config.ConfigurationSource;
 import org.apache.logging.log4j.core.config.Configurator;
@@ -56,16 +57,15 @@ public class GentleCompiler {
 		LOGGER.info("Hello World, please be gentle UwU");
 		CommandArguments arguments = new CommandArgumentsParser().parseOrExit(args);
 
-		boolean validFlags = arguments.echo() ^ arguments.lextest();
-		if (!validFlags) {
-			LOGGER.error("Conflicting flags given (none or too many)");
+		if (arguments.echo() && arguments.lextest()) {
+			LOGGER.error("Conflicting flags");
 			System.exit(1);
-		}
-
-		if (arguments.echo()) {
+		} else if (arguments.echo()) {
 			echoCommand(arguments.path());
 		} else if (arguments.lextest()) {
 			lexTestCommand(arguments.path());
+		} else {
+			runCommand(arguments.path());
 		}
 
 		StaticShutdownCallbackRegistry.invoke();
@@ -102,6 +102,21 @@ public class GentleCompiler {
 			System.exit(1);
 		} catch (LexerException e) {
 			LOGGER.error("lextest failed", e);
+			System.exit(1);
+		}
+	}
+
+	private static void runCommand(Path path) {
+		try {
+			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			Lexer lexer = new Lexer(source, tokenType -> true);
+			Parser parser = Parser.fromLexer(lexer);
+			LOGGER.info("Parse result:\n{}", parser.parse());
+		} catch (IOException e) {
+			LOGGER.error("Could not read file '{}': {}", path, e.getMessage());
+			System.exit(1);
+		} catch (LexerException e) {
+			LOGGER.error("Lexing failed", e);
 			System.exit(1);
 		}
 	}
