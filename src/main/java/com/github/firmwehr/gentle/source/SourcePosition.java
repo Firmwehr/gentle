@@ -5,9 +5,9 @@ import com.google.common.base.Preconditions;
 /**
  * The position of a single character in the source code file.
  *
- * @param offset total offset in characters from the start of the file (the first character has offset 0)
- * @param line line the character is in (starting with 0)
- * @param column column the character is in (starting with 0). Newlines and carriage returns are counted as the last
+ * @param offset total offset in characters from the start of the file (the first character has offset 1!)
+ * @param line line the character is in (starting with 1!)
+ * @param column column the character is in (starting with 1!). Newlines and carriage returns are counted as the last
  * 	characters of their previous line.
  */
 public record SourcePosition(
