@@ -4,6 +4,11 @@ import com.github.firmwehr.gentle.source.SourceSpan;
 
 public record CommentToken(
 	SourceSpan sourceSpan,
-	boolean isBlockComment
+	CommentType type,
+	String text
 ) implements Token {
+	public enum CommentType {
+		LINE,
+		BLOCK
+	}
 }
