@@ -14,7 +14,7 @@ public record TokenIdentifier(
 		if (!Character.isJavaIdentifierStart(reader.peek())) {
 			throw new LexerException("does not start with identifier codepoint", reader);
 		}
-		var id = reader.readUntil(cp -> !Character.isJavaIdentifierPart(cp), false);
+		var id = reader.readUntilOrEndOfFile(cp -> !Character.isJavaIdentifierPart(cp), false);
 		return new TokenIdentifier(reader.position(), id);
 	}
 
