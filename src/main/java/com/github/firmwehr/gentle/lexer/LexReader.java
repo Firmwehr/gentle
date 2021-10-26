@@ -221,9 +221,7 @@ public class LexReader {
 	 * @throws LexerException If end of input is reached.
 	 */
 	public void consume() throws LexerException {
-		var cp = peek();
-		int[] cpts = {cp};
-		var s = new String(cpts, 0, 1);
+		var s = Character.toString(peek());
 		advanceSourcePosition(s);
 	}
 

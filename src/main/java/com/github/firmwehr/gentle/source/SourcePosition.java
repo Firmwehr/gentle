@@ -24,6 +24,6 @@ public record SourcePosition(
 	}
 
 	public String format() {
-		return "%d:%d".formatted(line, column);
+		return line + ":" + column;
 	}
 }
