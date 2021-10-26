@@ -6,8 +6,7 @@ import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Predicate;
 
 /**
@@ -44,8 +43,9 @@ public class Lexer {
 	 */
 	public Lexer(Source source, Predicate<TokenType> tokenTypePredicate) {
 		// filtering eof token will cause nextToken() to enter endless loop on reaching end of input
+		// note that this is just an optimistic check since predicates could be statefull
 		Preconditions.checkArgument(tokenTypePredicate.test(TokenType.EOF),
-			"tokenTypePredicate is now allowed to drop EOF token");
+			"tokenTypePredicate is not allowed to drop EOF token");
 		this.source = source;
 		this.tokenFilter = tokenTypePredicate;
 		this.reader = new LexReader(source);
@@ -59,7 +59,7 @@ public class Lexer {
 	 * @return Predicate that will drop the given list of tokens.
 	 */
 	public static Predicate<TokenType> tokenFilter(TokenType... tokenTypes) {
-		var set = new HashSet<>(Arrays.asList(tokenTypes));
+		var set = Set.of(tokenTypes);
 		return (tokenType) -> !set.contains(tokenType);
 	}
 
@@ -75,6 +75,8 @@ public class Lexer {
 			var token = nextTokenInternal();
 			if (tokenFilter.test(token.tokenType())) {
 				return token;
+			} else if (token.tokenType() == TokenType.EOF) {
+				throw new AssertionError("lexer predicate just dropped EOF. This is a bug");
 			}
 		}
 	}
