@@ -128,7 +128,6 @@ public enum TokenType {
 
 	private final ParserBinding parser;
 
-	@SuppressWarnings("OptionalUsedAsFieldOrParameterType") // was agreed upon during design of lextest command
 	private final Optional<String> keyword;
 
 	TokenType(TokenFactory factory) {
