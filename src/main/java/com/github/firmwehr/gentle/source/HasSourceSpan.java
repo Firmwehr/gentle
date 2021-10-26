@@ -1,6 +1,5 @@
-package com.github.firmwehr.gentle.parser.source;
+package com.github.firmwehr.gentle.source;
 
 public interface HasSourceSpan {
-
 	SourceSpan sourceSpan();
 }
