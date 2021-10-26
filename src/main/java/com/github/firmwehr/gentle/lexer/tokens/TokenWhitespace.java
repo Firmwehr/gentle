@@ -20,6 +20,11 @@ public record TokenWhitespace(
 	}
 
 	@Override
+	public String format() {
+		return "whitespace";
+	}
+
+	@Override
 	public TokenType tokenType() {
 		return TokenType.WHITESPACE;
 	}

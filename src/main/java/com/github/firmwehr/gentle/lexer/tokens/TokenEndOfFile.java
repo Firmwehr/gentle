@@ -16,6 +16,11 @@ public record TokenEndOfFile(SourcePosition position) implements Token {
 	}
 
 	@Override
+	public String format() {
+		return "EOF";
+	}
+
+	@Override
 	public TokenType tokenType() {
 		return TokenType.EOF;
 	}

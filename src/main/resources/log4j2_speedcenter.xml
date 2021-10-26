@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" shutdownHook="disable">
+    <Appenders>
+        <Console name="SpeedcenterConsoleLogger" target="SYSTEM_ERR">
+            <PatternLayout alwaysWriteExceptions="false"
+                           pattern="%highlight{[%p{length=5, lowerCase=true}] %m%notEmpty{ :: %ex{short.message}}%n}{FATAL=black, ERROR=red, WARN=yellow, INFO=green, DEBUG=blue, TRACE=white}"
+                           disableAnsi="false"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="ERROR">
+            <AppenderRef ref="SpeedcenterConsoleLogger"/>
+        </Root>
+    </Loggers>
+</Configuration>

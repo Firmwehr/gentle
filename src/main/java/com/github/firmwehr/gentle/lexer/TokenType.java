@@ -128,13 +128,41 @@ public enum TokenType {
 
 	private final ParserBinding parser;
 
+	private final Optional<String> keyword;
+
 	TokenType(TokenFactory factory) {
+		this.keyword = Optional.empty();
 		parser = (reader, tokenType) -> factory.attemptParse(reader);
 	}
 
 	// special handling for keywords since these are already bound to their type by their factory
 	TokenType(String keyword) {
+		this.keyword = Optional.of(keyword);
 		parser = (reader, tokenType) -> TokenKeyword.create(reader, tokenType, keyword);
+	}
+
+	public static ParsedToken parseNextToken(LexReader reader) throws LexerException {
+
+		// try all known tokens until first one matches current input
+		for (var tokenType : values()) {
+
+			// copy reader for each attempt
+			var childReader = reader.fork();
+			var maybeToken = tokenType.attemptParse(childReader);
+
+			if (maybeToken.isEmpty()) {  // no match
+				continue;
+			}
+
+			var token = maybeToken.get();
+			return new ParsedToken(token, childReader);
+		}
+
+		throw new LexerException("unable to find suitable token", reader);
+	}
+
+	public boolean isKeyword() {
+		return keyword.isPresent();
 	}
 
 	private Optional<Token> attemptParse(LexReader reader) {
@@ -151,25 +179,8 @@ public enum TokenType {
 		}
 	}
 
-	public static ParsedToken parseNextToken(LexReader reader) throws LexerException {
-
-		// try all known tokens until first one matches current input
-		for (var tokenType : values()) {
-
-			// copy reader for each attempt
-			var childReader = reader.fork();
-			var maybeToken = tokenType.attemptParse(childReader);
-
-			if (maybeToken.isEmpty()) // no match
-			{
-				continue;
-			}
-
-			var token = maybeToken.get();
-			return new ParsedToken(token, childReader);
-		}
-
-		throw new LexerException("unable to find suitable token", reader);
+	public Optional<String> keyword() {
+		return keyword;
 	}
 
 	public record ParsedToken(

@@ -19,6 +19,11 @@ public record TokenIdentifier(
 	}
 
 	@Override
+	public String format() {
+		return "identifier " + id;
+	}
+
+	@Override
 	public TokenType tokenType() {
 		return TokenType.IDENTIFIER;
 	}

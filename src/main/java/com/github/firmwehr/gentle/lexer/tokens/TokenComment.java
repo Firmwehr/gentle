@@ -30,6 +30,14 @@ public record TokenComment(
 	}
 
 	@Override
+	public String format() {
+		return switch (type) {
+			case STAR -> "/*" + text + "*/";
+			case SINGLE_LINE -> "//" + text;
+		};
+	}
+
+	@Override
 	public TokenType tokenType() {
 		return TokenType.COMMENT;
 	}
