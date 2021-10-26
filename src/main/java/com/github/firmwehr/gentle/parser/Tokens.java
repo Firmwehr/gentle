@@ -38,6 +38,10 @@ public class Tokens {
 		}
 	}
 
+	public <T> T error(String description) throws ParseException {
+		throw new ParseException(source, peek(), description);
+	}
+
 	public void take(int n) {
 		if (n < 1) {
 			throw new IllegalArgumentException("n must be greater than 0");
@@ -68,31 +72,28 @@ public class Tokens {
 	}
 
 	public void expectKeyword(Keyword keyword) throws ParseException {
-		Token token = peek();
-		if (token.isKeyword(keyword)) {
+		if (peek().isKeyword(keyword)) {
 			take();
 		} else {
-			throw new ParseException(source, token, "Expected keyword " + keyword.getName());
+			error("Expected keyword " + keyword.getName());
 		}
 	}
 
 	public void expectOperator(Operator operator) throws ParseException {
-		Token token = peek();
-		if (token.isOperator(operator)) {
+		if (peek().isOperator(operator)) {
 			take();
 		} else {
-			throw new ParseException(source, token, "Expected operator " + operator.getName());
+			error("Expected operator " + operator.getName());
 		}
 	}
 
 	public IdentToken expectIdent() throws ParseException {
-		Token token = peek();
-		Optional<IdentToken> identToken = token.asIdentToken();
+		Optional<IdentToken> identToken = peek().asIdentToken();
 		if (identToken.isPresent()) {
 			take();
 			return identToken.get();
 		} else {
-			throw new ParseException(source, token, "Expected identifier");
+			return error("Expected identifier");
 		}
 	}
 }
