@@ -3,28 +3,35 @@ package com.github.firmwehr.gentle.parser;
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.parser.tokens.EofToken;
+import com.github.firmwehr.gentle.parser.tokens.IdentToken;
+import com.github.firmwehr.gentle.parser.tokens.Keyword;
+import com.github.firmwehr.gentle.parser.tokens.Operator;
 import com.github.firmwehr.gentle.parser.tokens.Token;
+import com.github.firmwehr.gentle.source.Source;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class Tokens {
+	private final Source source;
 	private final List<Token> tokens;
 	private final EofToken lastToken;
 	private int index;
 
-	public Tokens(List<Token> tokens, EofToken lastToken) {
+	public Tokens(Source source, List<Token> tokens, EofToken lastToken) {
+		this.source = source;
 		this.tokens = tokens;
 		this.lastToken = lastToken;
 		this.index = 0;
 	}
 
-	public static Tokens fromLexer(Lexer lexer) throws LexerException {
+	public static Tokens fromLexer(Source source, Lexer lexer) throws LexerException {
 		List<Token> tokens = new ArrayList<>();
 		while (true) {
 			Token token = Token.fromLexerToken(lexer.nextToken());
 			if (token instanceof EofToken eof) {
-				return new Tokens(tokens, eof);
+				return new Tokens(source, tokens, eof);
 			} else {
 				tokens.add(token);
 			}
@@ -58,5 +65,34 @@ public class Tokens {
 
 	public Token peek() {
 		return peek(0);
+	}
+
+	public void expectKeyword(Keyword keyword) throws ParseException {
+		Token token = peek();
+		if (token.isKeyword(keyword)) {
+			take();
+		} else {
+			throw new ParseException(source, token, "Expected keyword " + keyword.getName());
+		}
+	}
+
+	public void expectOperator(Operator operator) throws ParseException {
+		Token token = peek();
+		if (token.isOperator(operator)) {
+			take();
+		} else {
+			throw new ParseException(source, token, "Expected operator " + operator.getName());
+		}
+	}
+
+	public IdentToken expectIdent() throws ParseException {
+		Token token = peek();
+		Optional<IdentToken> identToken = token.asIdentToken();
+		if (identToken.isPresent()) {
+			take();
+			return identToken.get();
+		} else {
+			throw new ParseException(source, token, "Expected identifier");
+		}
 	}
 }

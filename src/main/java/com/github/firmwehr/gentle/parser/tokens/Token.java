@@ -8,6 +8,8 @@ import com.github.firmwehr.gentle.lexer.tokens.TokenKeyword;
 import com.github.firmwehr.gentle.lexer.tokens.TokenWhitespace;
 import com.github.firmwehr.gentle.source.HasSourceSpan;
 
+import java.util.Optional;
+
 public sealed interface Token extends HasSourceSpan
 	permits WhitespaceToken, CommentToken, KeywordToken, OperatorToken, IdentToken, IntegerLiteralToken, EofToken {
 
@@ -133,5 +135,21 @@ public sealed interface Token extends HasSourceSpan
 				default -> throw new IllegalArgumentException("Invalid keyword token type " + keyword.tokenType());
 			};
 		};
+	}
+
+	default boolean isKeyword(Keyword keyword) {
+		return this instanceof KeywordToken t && t.keyword() == keyword;
+	}
+
+	default boolean isOperator(Operator operator) {
+		return this instanceof OperatorToken t && t.operator() == operator;
+	}
+
+	default Optional<IdentToken> asIdentToken() {
+		if (this instanceof IdentToken ident) {
+			return Optional.of(ident);
+		} else {
+			return Optional.empty();
+		}
 	}
 }
