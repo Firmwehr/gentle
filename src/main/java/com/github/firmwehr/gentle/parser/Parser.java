@@ -3,16 +3,30 @@ package com.github.firmwehr.gentle.parser;
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.parser.ast.ClassDeclaration;
+import com.github.firmwehr.gentle.parser.ast.Field;
 import com.github.firmwehr.gentle.parser.ast.Ident;
+import com.github.firmwehr.gentle.parser.ast.MainMethod;
+import com.github.firmwehr.gentle.parser.ast.Method;
+import com.github.firmwehr.gentle.parser.ast.Parameter;
 import com.github.firmwehr.gentle.parser.ast.Program;
+import com.github.firmwehr.gentle.parser.ast.statement.Block;
+import com.github.firmwehr.gentle.parser.ast.type.ArrayType;
+import com.github.firmwehr.gentle.parser.ast.type.BooleanType;
+import com.github.firmwehr.gentle.parser.ast.type.IdentType;
+import com.github.firmwehr.gentle.parser.ast.type.IntType;
+import com.github.firmwehr.gentle.parser.ast.type.Type;
+import com.github.firmwehr.gentle.parser.ast.type.VoidType;
+import com.github.firmwehr.gentle.parser.tokens.IdentToken;
 import com.github.firmwehr.gentle.parser.tokens.Keyword;
 import com.github.firmwehr.gentle.parser.tokens.Operator;
+import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.source.Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class Parser {
 	private static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
@@ -37,15 +51,138 @@ public class Parser {
 		return new Program(classDeclarations);
 	}
 
+
 	private ClassDeclaration parseClassDeclaration() throws ParseException {
 		tokens.expectKeyword(Keyword.CLASS);
 
-		Ident name = Ident.fromToken(tokens.expectIdent());
+		Ident name = parseIdent();
 
 		tokens.expectOperator(Operator.LEFT_BRACE);
-		// FIXME Parse class contents
+
+		List<Field> fields = new ArrayList<>();
+		List<Method> methods = new ArrayList<>();
+		List<MainMethod> mainMethods = new ArrayList<>();
+		while (tokens.peek().isKeyword(Keyword.PUBLIC)) {
+			parseClassMember(fields, methods, mainMethods);
+		}
+
 		tokens.expectOperator(Operator.RIGHT_BRACE);
 
-		return new ClassDeclaration(name, List.of(), List.of(), List.of());
+		return new ClassDeclaration(name, fields, methods, mainMethods);
 	}
+
+	private void parseClassMember(List<Field> fields, List<Method> methods, List<MainMethod> mainMethods)
+		throws ParseException {
+
+		tokens.expectKeyword(Keyword.PUBLIC);
+
+		if (tokens.peek().isKeyword(Keyword.STATIC)) {
+			mainMethods.add(parseMainMethod());
+		} else {
+			// This can either be a field or a method, and we don't know until after the ident
+			Type type = parseType();
+			Ident ident = parseIdent();
+
+			if (tokens.peek().isOperator(Operator.SEMICOLON)) {
+				tokens.take();
+				fields.add(new Field(type, ident));
+			} else if (tokens.peek().isOperator(Operator.LEFT_PAREN)) {
+				methods.add(parseMethod(type, ident));
+			} else {
+				tokens.error("Expected ';' or '('");
+			}
+		}
+
+	}
+
+	private MainMethod parseMainMethod() throws ParseException {
+		tokens.expectKeyword(Keyword.STATIC);
+		tokens.expectKeyword(Keyword.VOID);
+
+		Ident name = parseIdent();
+
+		tokens.expectOperator(Operator.LEFT_PAREN);
+
+		Type parameterType = parseType();
+		Ident parameterName = parseIdent();
+
+		tokens.expectOperator(Operator.RIGHT_PAREN);
+		parseOptionalMethodRest();
+
+		Block block = parseBlock();
+
+		return new MainMethod(name, parameterType, parameterName, block);
+	}
+
+	private Method parseMethod(Type type, Ident ident) throws ParseException {
+		tokens.expectOperator(Operator.LEFT_PAREN);
+
+		List<Parameter> parameters = new ArrayList<>();
+		if (!tokens.peek().isOperator(Operator.RIGHT_PAREN)) {
+			parameters.add(parseParameter());
+		}
+		while (tokens.peek().isOperator(Operator.COMMA)) {
+			tokens.take();
+			parameters.add(parseParameter());
+		}
+
+		tokens.expectOperator(Operator.RIGHT_PAREN);
+		parseOptionalMethodRest();
+
+		Block block = parseBlock();
+
+		return new Method(type, ident, parameters, block);
+	}
+
+	private Parameter parseParameter() throws ParseException {
+		Type type = parseType();
+		Ident ident = parseIdent();
+		return new Parameter(type, ident);
+	}
+
+	private void parseOptionalMethodRest() throws ParseException {
+		if (tokens.peek().isKeyword(Keyword.THROWS)) {
+			tokens.take();
+			tokens.expectIdent();
+		}
+	}
+
+	private Block parseBlock() throws ParseException {
+		// FIXME Implement properly
+		tokens.expectOperator(Operator.LEFT_BRACE);
+		tokens.expectOperator(Operator.RIGHT_BRACE);
+		return new Block(List.of());
+	}
+
+	private Type parseType() throws ParseException {
+		Token typeToken = tokens.peek();
+		Optional<IdentToken> typeIdentToken = typeToken.asIdentToken();
+
+		Type type;
+		if (typeIdentToken.isPresent()) {
+			type = new IdentType(Ident.fromToken(typeIdentToken.get()));
+		} else if (typeToken.isKeyword(Keyword.INT)) {
+			type = new IntType();
+		} else if (typeToken.isKeyword(Keyword.BOOLEAN)) {
+			type = new BooleanType();
+		} else if (typeToken.isKeyword(Keyword.VOID)) {
+			type = new VoidType();
+		} else {
+			type = tokens.error("Expected identifier, 'int', 'boolean', or 'void'");
+		}
+		tokens.take();
+
+		while (tokens.peek().isOperator(Operator.LEFT_BRACKET)) {
+			tokens.expectOperator(Operator.LEFT_BRACKET);
+			tokens.expectOperator(Operator.RIGHT_BRACKET);
+			type = new ArrayType(type);
+		}
+
+		return type;
+	}
+
+	private Ident parseIdent() throws ParseException {
+		return Ident.fromToken(tokens.expectIdent());
+	}
+
 }
