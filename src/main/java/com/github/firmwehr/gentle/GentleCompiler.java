@@ -80,6 +80,7 @@ public class GentleCompiler {
 			System.out.flush();
 		} catch (IOException e) {
 			LOGGER.error("Could not echo file '{}': {}", path, e.getMessage());
+			System.exit(1);
 		}
 	}
 
