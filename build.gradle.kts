@@ -89,8 +89,10 @@ tasks.withType<JavaCompile> {
 
 tasks.getByName<Test>("test") {
 	useJUnitPlatform()
+	jvmArgs("--enable-preview")
 }
 
 tasks.getByName<Test>("integrationTest") {
 	useJUnitPlatform()
+	jvmArgs("--enable-preview")
 }
