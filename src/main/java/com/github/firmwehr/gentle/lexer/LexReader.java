@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.lexer;
 
 import com.github.firmwehr.gentle.source.Source;
 import com.github.firmwehr.gentle.source.SourcePosition;
+import com.github.firmwehr.gentle.source.SourceSpan;
 import com.google.common.base.Preconditions;
 
 import java.util.function.IntPredicate;
@@ -76,6 +77,17 @@ public class LexReader {
 
 	public SourcePosition position() {
 		return new SourcePosition(index, lineCount, charCount);
+	}
+
+	/**
+	 * Builds a {@link SourceSpan} from the given start to the current position.
+	 *
+	 * @param start the start position of the source span.
+	 *
+	 * @return a source span from {@code start} to the current {@link #position()}.
+	 */
+	public SourceSpan span(SourcePosition start) {
+		return new SourceSpan(start, position());
 	}
 
 	/**

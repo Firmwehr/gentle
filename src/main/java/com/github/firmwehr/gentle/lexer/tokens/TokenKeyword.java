@@ -4,11 +4,12 @@ import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 import com.github.firmwehr.gentle.source.SourcePosition;
+import com.github.firmwehr.gentle.source.SourceSpan;
 import com.google.common.base.Preconditions;
 
 public record TokenKeyword(
 	TokenType tokenType,
-	SourcePosition position
+	SourceSpan sourceSpan
 ) implements Token {
 
 	public TokenKeyword {
@@ -16,7 +17,7 @@ public record TokenKeyword(
 	}
 
 	public static TokenKeyword create(LexReader reader, TokenType tokenType, String keyword) throws LexerException {
-		var position = reader.position();
+		var startPos = reader.position();
 
 		// this is cursed, but it works
 		// checks if keyword contains characters that are part of an identifier (this is the if the first codepoint is
@@ -36,7 +37,7 @@ public record TokenKeyword(
 			}
 		}
 
-		return new TokenKeyword(tokenType, position);
+		return new TokenKeyword(tokenType, reader.span(startPos));
 	}
 
 	@Override

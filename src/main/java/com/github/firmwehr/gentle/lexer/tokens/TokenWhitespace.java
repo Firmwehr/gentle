@@ -3,20 +3,20 @@ package com.github.firmwehr.gentle.lexer.tokens;
 import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
-import com.github.firmwehr.gentle.source.SourcePosition;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
 public record TokenWhitespace(
-	SourcePosition position,
+	SourceSpan sourceSpan,
 	String whitespaces
 ) implements Token {
 
 	public static TokenWhitespace create(LexReader reader) throws LexerException {
-		var position = reader.position();
+		var startPos = reader.position();
 		if (!Character.isWhitespace(reader.peek())) {
 			throw new LexerException("not a whitespace", reader);
 		}
-		return new TokenWhitespace(position,
-			reader.readUntilOrEndOfFile(cp -> !Character.isWhitespace(cp) || reader.isEndOfInput(), false));
+		var w = reader.readUntilOrEndOfFile(cp -> !Character.isWhitespace(cp) || reader.isEndOfInput(), false);
+		return new TokenWhitespace(reader.span(startPos), w);
 	}
 
 	@Override
