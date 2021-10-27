@@ -1,4 +1,7 @@
 package com.github.firmwehr.gentle.parser.ast.expression;
 
-public sealed interface Expression permits BinaryOperatorExpression, UnaryOperatorExpression, PostfixExpression {
+import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
+
+public sealed interface Expression extends PrettyPrint
+	permits BinaryOperatorExpression, UnaryOperatorExpression, PostfixExpression {
 }

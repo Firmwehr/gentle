@@ -137,15 +137,14 @@ public class Parser {
 
 		tokens.expectOperator(Operator.LEFT_PAREN);
 
-		Type parameterType = parseType();
-		Ident parameterName = parseIdent();
+		Parameter parameter = parseParameter();
 
 		tokens.expectOperator(Operator.RIGHT_PAREN);
 		parseOptionalMethodRest();
 
 		Block block = parseBlock();
 
-		return new MainMethod(name, parameterType, parameterName, block);
+		return new MainMethod(name, parameter, block);
 	}
 
 	private Method parseMethodRest(Type type, Ident ident) throws ParseException {

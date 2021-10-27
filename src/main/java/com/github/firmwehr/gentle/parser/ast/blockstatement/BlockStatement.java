@@ -1,4 +1,6 @@
 package com.github.firmwehr.gentle.parser.ast.blockstatement;
 
-public sealed interface BlockStatement permits JustAStatement, LocalVariableDeclarationStatement {
+import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
+
+public sealed interface BlockStatement extends PrettyPrint permits JustAStatement, LocalVariableDeclarationStatement {
 }
