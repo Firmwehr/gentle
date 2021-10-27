@@ -313,7 +313,7 @@ public class LexReader {
 				endPositionOfRead = endPositionOfRead.incrementColumn(); // count carriage return + line feed
 				currentPosition = currentPosition.lineBreak();
 			} else if (cp == CODEPOINT_CARRIAGE_RETURN || cp == CODEPOINT_LINE_FEED) {
-				currentPosition = new NoIndexSourcePosition(currentPosition.line() + 1, 1);
+				currentPosition = currentPosition.lineBreak();
 			} else {
 				// just a regular character
 				currentPosition = currentPosition.incrementColumn();
