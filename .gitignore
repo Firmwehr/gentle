@@ -10,3 +10,6 @@
 
 # application stuff
 *.log
+
+# OS Stuff
+*.DS_Store
