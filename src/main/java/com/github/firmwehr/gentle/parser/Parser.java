@@ -12,6 +12,8 @@ import com.github.firmwehr.gentle.parser.ast.Program;
 import com.github.firmwehr.gentle.parser.ast.blockstatement.BlockStatement;
 import com.github.firmwehr.gentle.parser.ast.blockstatement.JustAStatement;
 import com.github.firmwehr.gentle.parser.ast.blockstatement.LocalVariableDeclarationStatement;
+import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
+import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperatorExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.Expression;
 import com.github.firmwehr.gentle.parser.ast.expression.PostfixExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperator;
@@ -47,6 +49,7 @@ import com.github.firmwehr.gentle.parser.tokens.IdentToken;
 import com.github.firmwehr.gentle.parser.tokens.IntegerLiteralToken;
 import com.github.firmwehr.gentle.parser.tokens.Keyword;
 import com.github.firmwehr.gentle.parser.tokens.Operator;
+import com.github.firmwehr.gentle.parser.tokens.OperatorToken;
 import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.source.Source;
 import org.slf4j.Logger;
@@ -322,8 +325,45 @@ public class Parser {
 	}
 
 	private Expression parseExpression() throws ParseException {
-		// FIXME Implement
-		return tokens.error();
+		return parseExpressionWithPrecedence(0);
+	}
+
+	private Expression parseExpressionWithPrecedence(int precedence) throws ParseException {
+		Expression expression = parseUnaryExpression();
+
+		while (true) {
+			Optional<BinaryOperator> operator = peekOptionalBinaryOperator();
+			if (operator.isEmpty()) {
+				break;
+			}
+
+			int opPrec = operator.get().getPrecedence();
+			if (opPrec > precedence) {
+				break;
+			}
+
+			tokens.take();
+
+			BinaryOperator.Associativity opAssoc = operator.get().getAssociativity();
+			int newPrecedence = switch (opAssoc) {
+				case LEFT -> precedence + 1;
+				case RIGHT -> precedence;
+			};
+			Expression rhs = parseExpressionWithPrecedence(newPrecedence);
+
+			expression = new BinaryOperatorExpression(expression, rhs, operator.get());
+		}
+
+		return expression;
+	}
+
+	private Optional<BinaryOperator> peekOptionalBinaryOperator() {
+		Token token = tokens.expecting("binary operator").peek();
+		if (token instanceof OperatorToken operatorToken) {
+			return BinaryOperator.fromOperator(operatorToken.operator());
+		} else {
+			return Optional.empty();
+		}
 	}
 
 	private Expression parseUnaryExpression() throws ParseException {
