@@ -48,6 +48,10 @@ public class Parser {
 			classDeclarations.add(parseClassDeclaration());
 		}
 
+		if (!tokens.peek().isEof()) {
+			tokens.error("Expected 'class' or EOF");
+		}
+
 		return new Program(classDeclarations);
 	}
 

@@ -137,6 +137,10 @@ public sealed interface Token extends HasSourceSpan
 		};
 	}
 
+	default boolean isEof() {
+		return this instanceof EofToken;
+	}
+
 	default boolean isKeyword(Keyword keyword) {
 		return this instanceof KeywordToken t && t.keyword() == keyword;
 	}
