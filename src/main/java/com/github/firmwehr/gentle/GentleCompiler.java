@@ -8,6 +8,7 @@ import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 import com.github.firmwehr.gentle.parser.ParseException;
 import com.github.firmwehr.gentle.parser.Parser;
+import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 import com.github.firmwehr.gentle.source.Source;
 import org.apache.logging.log4j.core.config.ConfigurationSource;
 import org.apache.logging.log4j.core.config.Configurator;
@@ -112,7 +113,7 @@ public class GentleCompiler {
 			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
 			Lexer lexer = new Lexer(source, Lexer.tokenFilter(TokenType.WHITESPACE, TokenType.COMMENT));
 			Parser parser = Parser.fromLexer(source, lexer);
-			LOGGER.info("Parse result:\n{}", parser.parse());
+			LOGGER.info("Parse result:\n{}", PrettyPrinter.format(parser.parse()));
 		} catch (IOException e) {
 			LOGGER.error("Could not read file '{}': {}", path, e.getMessage());
 			System.exit(1);
