@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+@SuppressWarnings("ClassCanBeRecord")
 public class Parser {
 	private static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
 
