@@ -79,7 +79,7 @@ public class Parser {
 		tokens.expectKeyword(Keyword.PUBLIC);
 
 		if (tokens.expectingKeyword(Keyword.STATIC).peek().isKeyword(Keyword.STATIC)) {
-			mainMethods.add(parseMainMethod());
+			mainMethods.add(parseMainMethodRest());
 		} else {
 			// This can either be a field or a method, and we don't know until after the ident
 			Type type = parseType();
@@ -89,7 +89,7 @@ public class Parser {
 				tokens.take();
 				fields.add(new Field(type, ident));
 			} else if (tokens.peek().isOperator(Operator.LEFT_PAREN)) {
-				methods.add(parseMethod(type, ident));
+				methods.add(parseMethodRest(type, ident));
 			} else {
 				tokens.error();
 			}
@@ -97,7 +97,7 @@ public class Parser {
 
 	}
 
-	private MainMethod parseMainMethod() throws ParseException {
+	private MainMethod parseMainMethodRest() throws ParseException {
 		tokens.expectKeyword(Keyword.STATIC);
 		tokens.expectKeyword(Keyword.VOID);
 
@@ -116,7 +116,7 @@ public class Parser {
 		return new MainMethod(name, parameterType, parameterName, block);
 	}
 
-	private Method parseMethod(Type type, Ident ident) throws ParseException {
+	private Method parseMethodRest(Type type, Ident ident) throws ParseException {
 		tokens.expectOperator(Operator.LEFT_PAREN);
 
 		List<Parameter> parameters = new ArrayList<>();
