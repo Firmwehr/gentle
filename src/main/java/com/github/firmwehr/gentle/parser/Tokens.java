@@ -108,6 +108,10 @@ public class Tokens {
 		return expecting("identifier");
 	}
 
+	public Tokens expectingIntegerLiteral() {
+		return expecting("integer literal");
+	}
+
 	public Tokens expectingEof() {
 		return expecting("EOF");
 	}

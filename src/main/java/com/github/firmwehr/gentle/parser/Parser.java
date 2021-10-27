@@ -9,7 +9,17 @@ import com.github.firmwehr.gentle.parser.ast.MainMethod;
 import com.github.firmwehr.gentle.parser.ast.Method;
 import com.github.firmwehr.gentle.parser.ast.Parameter;
 import com.github.firmwehr.gentle.parser.ast.Program;
+import com.github.firmwehr.gentle.parser.ast.blockstatement.BlockStatement;
+import com.github.firmwehr.gentle.parser.ast.blockstatement.JustAStatement;
+import com.github.firmwehr.gentle.parser.ast.blockstatement.LocalVariableDeclarationStatement;
+import com.github.firmwehr.gentle.parser.ast.expression.Expression;
 import com.github.firmwehr.gentle.parser.ast.statement.Block;
+import com.github.firmwehr.gentle.parser.ast.statement.EmptyStatement;
+import com.github.firmwehr.gentle.parser.ast.statement.ExpressionStatement;
+import com.github.firmwehr.gentle.parser.ast.statement.IfStatement;
+import com.github.firmwehr.gentle.parser.ast.statement.ReturnStatement;
+import com.github.firmwehr.gentle.parser.ast.statement.Statement;
+import com.github.firmwehr.gentle.parser.ast.statement.WhileStatement;
 import com.github.firmwehr.gentle.parser.ast.type.ArrayType;
 import com.github.firmwehr.gentle.parser.ast.type.BooleanType;
 import com.github.firmwehr.gentle.parser.ast.type.IdentType;
@@ -151,14 +161,130 @@ public class Parser {
 	}
 
 	private Block parseBlock() throws ParseException {
-		// FIXME Implement properly
 		tokens.expectOperator(Operator.LEFT_BRACE);
+
+		List<BlockStatement> statements = new ArrayList<>();
+		while (!tokens.expectingOperator(Operator.RIGHT_BRACE).peek().isOperator(Operator.RIGHT_BRACE)) {
+			statements.add(parseBlockStatement());
+		}
+
 		tokens.expectOperator(Operator.RIGHT_BRACE);
-		return new Block(List.of());
+
+		return new Block(statements);
+	}
+
+	private BlockStatement parseBlockStatement() throws ParseException {
+		expectingType(); // Local variable declaration statement
+		expectingStatement();
+
+		Token token = tokens.peek();
+
+		// We have a local variable declaration statement exactly if we have...
+		// - a basic type (int, boolean, void)
+		// - an ident followed by another ident
+		// - an ident followed by '[' and ']'
+		boolean basicType =
+			token.isKeyword(Keyword.INT) || token.isKeyword(Keyword.BOOLEAN) || token.isKeyword(Keyword.VOID);
+		boolean doubleIdents = token.isIdent() && tokens.peek(1).isIdent();
+		boolean arrayType = token.isIdent() && tokens.peek(1).isOperator(Operator.LEFT_BRACKET) &&
+			tokens.peek(2).isOperator(Operator.RIGHT_BRACKET);
+
+		if (basicType || doubleIdents || arrayType) {
+			return parseLocalVariableDeclarationStatement();
+		} else {
+			return new JustAStatement(parseStatement());
+		}
+	}
+
+	private LocalVariableDeclarationStatement parseLocalVariableDeclarationStatement() throws ParseException {
+		Type type = parseType();
+		Ident name = parseIdent();
+
+		Optional<Expression> value;
+		if (tokens.expectingOperator(Operator.ASSIGN).peek().isOperator(Operator.ASSIGN)) {
+			tokens.take();
+			value = Optional.of(parseExpression());
+		} else {
+			value = Optional.empty();
+		}
+
+		tokens.expectOperator(Operator.SEMICOLON);
+
+		return new LocalVariableDeclarationStatement(type, name, value);
+	}
+
+	private void expectingStatement() {
+		tokens.expectingOperator(Operator.LEFT_BRACE)
+			.expectingOperator(Operator.SEMICOLON)
+			.expectingKeyword(Keyword.IF)
+			.expectingKeyword(Keyword.WHILE)
+			.expectingKeyword(Keyword.RETURN);
+		expectingExpression();
+	}
+
+	private Statement parseStatement() throws ParseException {
+		expectingStatement();
+
+		Token token = tokens.peek();
+		if (token.isOperator(Operator.LEFT_BRACE)) {
+			return parseBlock();
+		} else if (token.isOperator(Operator.SEMICOLON)) {
+			return new EmptyStatement();
+		} else if (token.isKeyword(Keyword.IF)) {
+			return parseIfStatement();
+		} else if (token.isKeyword(Keyword.WHILE)) {
+			return parseWhileStatement();
+		} else if (token.isKeyword(Keyword.RETURN)) {
+			return parseReturnStatement();
+		} else {
+			return parseExpressionStatement();
+		}
+	}
+
+	private IfStatement parseIfStatement() throws ParseException {
+		// FIXME Implement
+		return tokens.error();
+	}
+
+	private WhileStatement parseWhileStatement() throws ParseException {
+		// FIXME Implement
+		return tokens.error();
+	}
+
+	private ReturnStatement parseReturnStatement() throws ParseException {
+		// FIXME Implement
+		return tokens.error();
+	}
+
+	private ExpressionStatement parseExpressionStatement() throws ParseException {
+		// FIXME Implement
+		return tokens.error();
+	}
+
+	private void expectingExpression() {
+		tokens.expectingKeyword(Keyword.NULL)
+			.expecting("boolean literal")
+			.expectingIntegerLiteral()
+			.expectingIdent()
+			.expectingKeyword(Keyword.THIS)
+			.expectingOperator(Operator.LEFT_PAREN)
+			.expectingKeyword(Keyword.NEW)
+			.expectingOperator(Operator.LOGICAL_NOT)
+			.expectingOperator(Operator.MINUS);
+	}
+
+	private Expression parseExpression() throws ParseException {
+		// FIXME Implement
+		return tokens.error();
+	}
+
+	private void expectingType() {
+		tokens.expectingIdent().expecting("basic type");
 	}
 
 	private Type parseType() throws ParseException {
-		Token typeToken = tokens.expectingIdent().expecting("basic type").peek();
+		expectingType();
+		Token typeToken = tokens.peek();
 		Optional<IdentToken> typeIdentToken = typeToken.asIdentToken();
 
 		Type type;
@@ -187,5 +313,4 @@ public class Parser {
 	private Ident parseIdent() throws ParseException {
 		return Ident.fromToken(tokens.expectIdent());
 	}
-
 }

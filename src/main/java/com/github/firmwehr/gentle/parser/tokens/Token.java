@@ -158,4 +158,8 @@ public sealed interface Token extends HasSourceSpan
 			return Optional.empty();
 		}
 	}
+
+	default boolean isIdent() {
+		return asIdentToken().isPresent();
+	}
 }
