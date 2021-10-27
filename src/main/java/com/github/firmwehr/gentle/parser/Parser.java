@@ -327,6 +327,7 @@ public class Parser {
 		return parseExpressionWithPrecedence(0);
 	}
 
+	@SuppressWarnings("InfiniteRecursion")
 	private Expression parseExpressionWithPrecedence(int precedence) throws ParseException {
 		Expression expression = parseUnaryExpression();
 
@@ -337,7 +338,7 @@ public class Parser {
 			}
 
 			int opPrec = operator.get().getPrecedence();
-			if (opPrec > precedence) {
+			if (opPrec < precedence) {
 				break;
 			}
 
@@ -345,8 +346,8 @@ public class Parser {
 
 			BinaryOperator.Associativity opAssoc = operator.get().getAssociativity();
 			int newPrecedence = switch (opAssoc) {
-				case LEFT -> precedence + 1;
-				case RIGHT -> precedence;
+				case LEFT -> opPrec + 1;
+				case RIGHT -> opPrec;
 			};
 			Expression rhs = parseExpressionWithPrecedence(newPrecedence);
 
