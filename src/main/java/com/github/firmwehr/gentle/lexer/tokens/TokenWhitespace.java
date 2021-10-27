@@ -16,7 +16,7 @@ public record TokenWhitespace(
 			throw new LexerException("not a whitespace", reader);
 		}
 		var w = reader.readUntilOrEndOfFile(cp -> !Character.isWhitespace(cp) || reader.isEndOfInput(), false);
-		return new TokenWhitespace(reader.span(startPos), w);
+		return new TokenWhitespace(new SourceSpan(startPos, reader.endPositionOfRead()), w);
 	}
 
 	@Override

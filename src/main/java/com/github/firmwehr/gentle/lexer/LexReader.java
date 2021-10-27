@@ -2,7 +2,6 @@ package com.github.firmwehr.gentle.lexer;
 
 import com.github.firmwehr.gentle.source.Source;
 import com.github.firmwehr.gentle.source.SourcePosition;
-import com.github.firmwehr.gentle.source.SourceSpan;
 import com.google.common.base.Preconditions;
 
 import java.util.function.IntPredicate;
@@ -25,14 +24,21 @@ public class LexReader {
 	private final Source source;
 	private int index;
 
-	// using 1 based indexing leads to less issues, please don't change this without warning
-	private int lineCount = 1;
-	private int charCount = 1;
-	private int previousLineCount = 1;
-	private int previousCharCount = 1;
+	private NoIndexSourcePosition currentPosition;
+	private NoIndexSourcePosition endPositionOfRead;
 
 	public LexReader(Source source) {
+		// using 1 based indexing leads to less issues, please don't change this without warning
+		this(source, new NoIndexSourcePosition(1, 1), new NoIndexSourcePosition(0, 0), 0);
+	}
+
+	private LexReader(
+		Source source, NoIndexSourcePosition currentPosition, NoIndexSourcePosition endPositionOfRead, int index
+	) {
 		this.source = source;
+		this.currentPosition = currentPosition;
+		this.endPositionOfRead = endPositionOfRead;
+		this.index = index;
 	}
 
 	public Source getSource() {
@@ -41,7 +47,7 @@ public class LexReader {
 
 	@Override
 	public String toString() {
-		return "LexReader{index=%d, lineCount=%d, charCount=%d, current='%s'}".formatted(index, lineCount, charCount,
+		return "LexReader{index=%d, currentPosition=%s, current='%s'}".formatted(index, currentPosition,
 			source.getContent().substring(index));
 	}
 
@@ -52,11 +58,7 @@ public class LexReader {
 	 * 	with each other.
 	 */
 	public LexReader fork() { // deliberately not named clone to not clash with java clone method
-		var other = new LexReader(source);
-		other.index = index;
-		other.lineCount = lineCount;
-		other.charCount = charCount;
-		return other;
+		return new LexReader(source, currentPosition, endPositionOfRead, index);
 	}
 
 	/**
@@ -78,18 +80,16 @@ public class LexReader {
 	}
 
 	public SourcePosition position() {
-		return new SourcePosition(index, lineCount, charCount);
+		return currentPosition.withOffset(index);
 	}
 
 	/**
-	 * Builds a {@link SourceSpan} from the given start to the current position.
+	 * Returns the position where the previous read ended.
 	 *
-	 * @param start the start position of the source span.
-	 *
-	 * @return a source span from {@code start} to the current {@link #position()}.
+	 * @return the end position of the previous read.
 	 */
-	public SourceSpan span(SourcePosition start) {
-		return new SourceSpan(start, endPositionOfToken());
+	public SourcePosition endPositionOfRead() {
+		return endPositionOfRead.withOffset(index - 1);
 	}
 
 	/**
@@ -305,21 +305,18 @@ public class LexReader {
 
 		var cpts = str.codePoints().toArray();
 		for (int i = 0; i < cpts.length; i++) {
-			previousLineCount = lineCount;
-			previousCharCount = charCount;
+			endPositionOfRead = currentPosition;
 			var cp = cpts[i];
 			if (cp == CODEPOINT_CARRIAGE_RETURN && i + 1 < cpts.length && cpts[i + 1] == CODEPOINT_LINE_FEED) {
 				// check for additional \n in case we use windows
 				i++;
-				previousCharCount++; // count carriage return + line feed
-				lineCount++;
-				charCount = 1;
+				endPositionOfRead = endPositionOfRead.incrementColumn(); // count carriage return + line feed
+				currentPosition = currentPosition.lineBreak();
 			} else if (cp == CODEPOINT_CARRIAGE_RETURN || cp == CODEPOINT_LINE_FEED) {
-				lineCount++;
-				charCount = 1;
+				currentPosition = new NoIndexSourcePosition(currentPosition.line() + 1, 1);
 			} else {
 				// just a regular character
-				charCount++;
+				currentPosition = currentPosition.incrementColumn();
 			}
 		}
 
@@ -327,8 +324,21 @@ public class LexReader {
 		index += str.length();
 	}
 
-	private SourcePosition endPositionOfToken() {
-		return new SourcePosition(index - 1, previousLineCount, previousCharCount);
+	private record NoIndexSourcePosition(
+		int line,
+		int column
+	) {
+		public SourcePosition withOffset(int offset) {
+			return new SourcePosition(offset, line(), column());
+		}
+
+		public NoIndexSourcePosition lineBreak() {
+			return new NoIndexSourcePosition(line() + 1, 1);
+		}
+
+		public NoIndexSourcePosition incrementColumn() {
+			return new NoIndexSourcePosition(line(), column() + 1);
+		}
 	}
 
 }

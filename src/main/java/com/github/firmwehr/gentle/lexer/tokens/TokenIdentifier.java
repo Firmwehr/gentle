@@ -3,7 +3,6 @@ package com.github.firmwehr.gentle.lexer.tokens;
 import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
-import com.github.firmwehr.gentle.source.SourcePosition;
 import com.github.firmwehr.gentle.source.SourceSpan;
 
 public record TokenIdentifier(
@@ -17,7 +16,7 @@ public record TokenIdentifier(
 		}
 		var startPos = reader.position();
 		var id = reader.readUntilOrEndOfFile(cp -> !Character.isJavaIdentifierPart(cp), false);
-		return new TokenIdentifier(reader.span(startPos), id);
+		return new TokenIdentifier(new SourceSpan(startPos, reader.endPositionOfRead()), id);
 	}
 
 	@Override

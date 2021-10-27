@@ -3,7 +3,6 @@ package com.github.firmwehr.gentle.lexer.tokens;
 import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
-import com.github.firmwehr.gentle.source.SourcePosition;
 import com.github.firmwehr.gentle.source.SourceSpan;
 import com.google.common.base.Preconditions;
 
@@ -37,7 +36,7 @@ public record TokenKeyword(
 			}
 		}
 
-		return new TokenKeyword(tokenType, reader.span(startPos));
+		return new TokenKeyword(tokenType, new SourceSpan(startPos, reader.endPositionOfRead()));
 	}
 
 	@Override

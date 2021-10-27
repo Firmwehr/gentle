@@ -3,7 +3,6 @@ package com.github.firmwehr.gentle.lexer.tokens;
 import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
-import com.github.firmwehr.gentle.source.SourcePosition;
 import com.github.firmwehr.gentle.source.SourceSpan;
 
 public record TokenIntegerLiteral(
@@ -20,7 +19,7 @@ public record TokenIntegerLiteral(
 			}
 
 			int number = Integer.parseInt(str);
-			return new TokenIntegerLiteral(reader.span(startPos), number);
+			return new TokenIntegerLiteral(new SourceSpan(startPos, reader.endPositionOfRead()), number);
 		} catch (NumberFormatException e) {
 			throw new LexerException("not a number", reader, e);
 		}
