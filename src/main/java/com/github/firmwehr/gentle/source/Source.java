@@ -20,8 +20,8 @@ public class Source {
 
 	public String formatErrorAtPosition(SourcePosition position, String message, String description) {
 		String line;
-		if (position.line() < lines.size()) {
-			line = lines.get(position.line());
+		if (position.line() - 1 < lines.size()) {
+			line = lines.get(position.line() - 1);
 		} else {
 			line = "";
 		}
@@ -35,7 +35,7 @@ public class Source {
 			.append(line)
 			.append("\n# ");
 
-		line.chars().limit(position.column()).map(it -> {
+		line.chars().limit(position.column() - 1).map(it -> {
 			if (it == ' ' || it == '\t') {
 				return it;
 			} else {
