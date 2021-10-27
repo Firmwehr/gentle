@@ -225,7 +225,7 @@ public class LexReader {
 		}
 
 		// assemble captured codepoints
-		var s = source.getContent().substring(index, i);
+		var s = source.getContent().substring(index, index + i);
 		advanceSourcePosition(s);
 		return s;
 	}
