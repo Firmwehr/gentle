@@ -242,23 +242,60 @@ public class Parser {
 	}
 
 	private IfStatement parseIfStatement() throws ParseException {
-		// FIXME Implement
-		return tokens.error();
+		tokens.expectKeyword(Keyword.IF);
+		tokens.expectOperator(Operator.LEFT_PAREN);
+
+		Expression condition = parseExpression();
+
+		tokens.expectOperator(Operator.RIGHT_PAREN);
+
+		Statement body = parseStatement();
+
+		Optional<Statement> elseBody;
+		if (tokens.expectingKeyword(Keyword.ELSE).peek().isKeyword(Keyword.ELSE)) {
+			tokens.take();
+			elseBody = Optional.of(parseStatement());
+		} else {
+			elseBody = Optional.empty();
+		}
+
+		return new IfStatement(condition, body, elseBody);
 	}
 
 	private WhileStatement parseWhileStatement() throws ParseException {
-		// FIXME Implement
-		return tokens.error();
+		tokens.expectKeyword(Keyword.WHILE);
+		tokens.expectOperator(Operator.LEFT_PAREN);
+
+		Expression condition = parseExpression();
+
+		tokens.expectOperator(Operator.RIGHT_PAREN);
+
+		Statement body = parseStatement();
+
+		return new WhileStatement(condition, body);
 	}
 
 	private ReturnStatement parseReturnStatement() throws ParseException {
-		// FIXME Implement
-		return tokens.error();
+		tokens.expectKeyword(Keyword.RETURN);
+
+		Optional<Expression> returnValue;
+		if (!tokens.expectingOperator(Operator.SEMICOLON).peek().isOperator(Operator.SEMICOLON)) {
+			returnValue = Optional.of(parseExpression());
+		} else {
+			returnValue = Optional.empty();
+		}
+
+		tokens.expectOperator(Operator.SEMICOLON);
+
+		return new ReturnStatement(returnValue);
 	}
 
 	private ExpressionStatement parseExpressionStatement() throws ParseException {
-		// FIXME Implement
-		return tokens.error();
+		Expression expression = parseExpression();
+
+		tokens.expectOperator(Operator.SEMICOLON);
+
+		return new ExpressionStatement(expression);
 	}
 
 	private void expectingExpression() {
