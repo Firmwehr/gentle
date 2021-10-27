@@ -7,16 +7,16 @@ import com.github.firmwehr.gentle.lexer.tokens.TokenIdentifier;
 import com.github.firmwehr.gentle.lexer.tokens.TokenIntegerLiteral;
 import com.github.firmwehr.gentle.lexer.tokens.TokenKeyword;
 import com.github.firmwehr.gentle.lexer.tokens.TokenWhitespace;
+import com.github.firmwehr.gentle.util.TokenTrie;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 
 public enum TokenType {
-	EOF(TokenEndOfFile::create),
-	WHITESPACE(TokenWhitespace::create),
-	COMMENT(TokenComment::create),
 
 	// Keywords
 	ABSTRACT("abstract"),
@@ -121,8 +121,21 @@ public enum TokenType {
 	LOGICAL_OR("||"),
 	BITWISE_OR("|"),
 
+	EOF(TokenEndOfFile::create),
+	WHITESPACE(TokenWhitespace::create),
+	COMMENT(TokenComment::create),
 	INTEGER_LITERAL(TokenIntegerLiteral::create),
 	IDENTIFIER(TokenIdentifier::create);
+
+	private static final TokenTrie<TokenType> KEYWORD_TRIE = new TokenTrie<>();
+	private static final List<TokenType> NON_KEYWORD_LIST = new ArrayList<>();
+
+	static {
+		for (var tokenType : values()) {
+			tokenType.keyword.ifPresentOrElse(s -> KEYWORD_TRIE.put(s, tokenType),
+				() -> NON_KEYWORD_LIST.add(tokenType));
+		}
+	}
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(TokenType.class);
 
@@ -143,9 +156,49 @@ public enum TokenType {
 
 	public static ParsedToken parseNextToken(LexReader reader) throws LexerException {
 
-		// try all known tokens until first one matches current input
-		for (var tokenType : values()) {
+		// check trie for keywords first
+		var keywordReader = reader.fork(); // fork reader in case next token is not keyword
+		var traversal = KEYWORD_TRIE.startTraversal();
+		Optional<TokenType> maybeTokenType = Optional.empty();
+		while (true) {
+			// end of input means aborting traversal (might still be valid token)
+			if (keywordReader.isEndOfInput()) {
+				break;
+			}
 
+			// try to continue traversal with current codepoint
+			int cp = keywordReader.peek();
+			if (!traversal.advance(cp)) {
+				break;
+			}
+
+			// traversal successfull, advance reader and store current element in case next round ends traversal
+			maybeTokenType = traversal.current();
+			keywordReader.consume();
+		}
+
+		// if no valid token type is found during traversal, this might still be empty
+		if (maybeTokenType.isPresent()) {
+			// found matching keyword, parse it
+			var tokenType = maybeTokenType.get();
+			var token =
+				tokenType.attemptParse(reader); // use original reader since keyword reader is already behind keyword
+
+			/* you might believe that parsing the token is optional at this point but actually just because we have
+			 * succesfully identified a keyword does not mean that it will also parse successfully.
+			 *
+			 * Take the identifier "charisma" for example. It starts with "char" and does not complete into any other
+			 * keyword. But it's not a keyword. So we still have to call the keyword specific parse logic to check.
+			 *
+			 * If parsing the token fails then we still have to advance to the non keyword list.
+			 */
+			if (token.isPresent()) {
+				return new ParsedToken(token.get(), reader);
+			}
+		}
+
+		// if trie traversal did not yield token, input must be non-keyword (or invalid)
+		for (var tokenType : NON_KEYWORD_LIST) {
 			// copy reader for each attempt
 			var childReader = reader.fork();
 			var maybeToken = tokenType.attemptParse(childReader);
