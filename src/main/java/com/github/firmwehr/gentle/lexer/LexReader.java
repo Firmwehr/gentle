@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.lexer;
 
 import com.github.firmwehr.gentle.source.Source;
 import com.github.firmwehr.gentle.source.SourcePosition;
+import com.github.firmwehr.gentle.util.CodePointIterator;
 import com.google.common.base.Preconditions;
 
 import java.util.function.IntPredicate;
@@ -128,7 +129,7 @@ public class LexReader {
 	private String readUntil(IntPredicate predicate, boolean includeLastCodepoint, boolean allowEof)
 		throws LexerException {
 		var sb = new StringBuilder();
-		var it = source.getContent().substring(index).codePoints().iterator();
+		var it = CodePointIterator.iterate(source.getContent(), index);
 		while (true) {
 			var cp = it.nextInt();
 
@@ -194,17 +195,17 @@ public class LexReader {
 	 * @throws LexerException If the reader is right in front of the end of input.
 	 */
 	public String readLine() throws LexerException {
-		var cpts = source.getContent().substring(index).codePoints().toArray();
+		var it = CodePointIterator.iterate(source.getContent(), index);
 
 		// capture entire line (including newline)
 		int i = 0;
-		while (i < cpts.length) {
-			var cp = cpts[i];
+		while (it.hasNext()) {
+			var cp = it.nextInt();
 			i++; // effectively marks cp as read
 
 			if (cp == CODEPOINT_CARRIAGE_RETURN) {
 				// check for additional \n in case we use windows line endings
-				if (i + 1 < cpts.length && cpts[i + 1] == CODEPOINT_LINE_FEED) {
+				if (it.hasNext() && it.peekNext() == CODEPOINT_LINE_FEED) {
 					i++;
 				}
 				break;
@@ -224,7 +225,7 @@ public class LexReader {
 		}
 
 		// assemble captured codepoints
-		var s = new String(cpts, 0, i);
+		var s = source.getContent().substring(index, i);
 		advanceSourcePosition(s);
 		return s;
 	}
@@ -263,12 +264,11 @@ public class LexReader {
 	 * @throws LexerException If the remaining input does not contain the required amount of codepoints.
 	 */
 	public String peek(int n) throws LexerException {
-		var cpts = source.getContent().substring(index).codePoints().limit(n).toArray();
-		if (cpts.length < n) {
-			var overrun = n - cpts.length;
+		if (this.source.getContent().length() < this.index + n) {
+			var overrun = this.index + n - this.source.getContent().length();
 			throw new LexerException("peek exceeded end of input by " + overrun + " codepoints", this);
 		}
-		return new String(cpts, 0, cpts.length);
+		return this.source.getContent().substring(this.index, this.index + n);
 	}
 
 	/**
@@ -279,9 +279,7 @@ public class LexReader {
 	 * @throws LexerException If the given needle did not match the upcoming input stream.
 	 */
 	public void expect(String needle) throws LexerException {
-		var i = source.getContent().indexOf(needle, index) - index;
-		if (i != 0) // needle must be at current cursor position
-		{
+		if (!source.getContent().startsWith(needle, index)) { // needle must be at current cursor position
 			throw new LexerException("did not match '%s'".formatted(needle), this);
 		}
 		advanceSourcePosition(needle);
@@ -300,16 +298,15 @@ public class LexReader {
 	 *
 	 * @param str A substring of the current reader state by which we advanced.
 	 */
-	@SuppressWarnings("AssignmentToForLoopParameter")
 	private void advanceSourcePosition(String str) {
 
-		var cpts = str.codePoints().toArray();
-		for (int i = 0; i < cpts.length; i++) {
+		var it = CodePointIterator.iterate(str);
+		while (it.hasNext()) {
 			endPositionOfRead = currentPosition;
-			var cp = cpts[i];
-			if (cp == CODEPOINT_CARRIAGE_RETURN && i + 1 < cpts.length && cpts[i + 1] == CODEPOINT_LINE_FEED) {
+			var cp = it.nextInt();
+			if (cp == CODEPOINT_CARRIAGE_RETURN && it.hasNext() && it.peekNext() == CODEPOINT_LINE_FEED) {
 				// check for additional \n in case we use windows
-				i++;
+				it.nextInt(); // read the codepoint we just peeked
 				endPositionOfRead = endPositionOfRead.incrementColumn(); // count carriage return + line feed
 				currentPosition = currentPosition.lineBreak();
 			} else if (cp == CODEPOINT_CARRIAGE_RETURN || cp == CODEPOINT_LINE_FEED) {

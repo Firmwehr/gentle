@@ -18,7 +18,7 @@ public class TokenTrie<V> {
 	private final Node<V> root = new Node<>();
 
 	public void put(String key, V value) {
-		root.put(key.codePoints().iterator(), value, key);
+		root.put(CodePointIterator.iterate(key), value, key);
 	}
 
 	/**
