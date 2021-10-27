@@ -86,10 +86,10 @@ public class Parser {
 			Type type = parseType();
 			Ident ident = parseIdent();
 
-			if (tokens.peek().isOperator(Operator.SEMICOLON)) {
+			if (tokens.expectingOperator(Operator.SEMICOLON).peek().isOperator(Operator.SEMICOLON)) {
 				tokens.take();
 				fields.add(new Field(type, ident));
-			} else if (tokens.peek().isOperator(Operator.LEFT_PAREN)) {
+			} else if (tokens.expectingOperator(Operator.LEFT_PAREN).peek().isOperator(Operator.LEFT_PAREN)) {
 				methods.add(parseMethodRest(type, ident));
 			} else {
 				tokens.error();
