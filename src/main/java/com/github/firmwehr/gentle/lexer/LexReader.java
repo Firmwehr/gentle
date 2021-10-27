@@ -28,6 +28,8 @@ public class LexReader {
 	// using 1 based indexing leads to less issues, please don't change this without warning
 	private int lineCount = 1;
 	private int charCount = 1;
+	private int previousLineCount = 1;
+	private int previousCharCount = 1;
 
 	public LexReader(Source source) {
 		this.source = source;
@@ -87,7 +89,7 @@ public class LexReader {
 	 * @return a source span from {@code start} to the current {@link #position()}.
 	 */
 	public SourceSpan span(SourcePosition start) {
-		return new SourceSpan(start, position());
+		return new SourceSpan(start, endPositionOfToken());
 	}
 
 	/**
@@ -303,15 +305,16 @@ public class LexReader {
 
 		var cpts = str.codePoints().toArray();
 		for (int i = 0; i < cpts.length; i++) {
+			previousLineCount = lineCount;
+			previousCharCount = charCount;
 			var cp = cpts[i];
-			if (cp == CODEPOINT_CARRIAGE_RETURN) {
+			if (cp == CODEPOINT_CARRIAGE_RETURN && i + 1 < cpts.length && cpts[i + 1] == CODEPOINT_LINE_FEED) {
 				// check for additional \n in case we use windows
-				if (i + 1 < cpts.length && cpts[i + 1] == CODEPOINT_LINE_FEED) {
-					i++;
-				}
+				i++;
+				previousCharCount++; // count carriage return + line feed
 				lineCount++;
 				charCount = 1;
-			} else if (cp == CODEPOINT_LINE_FEED) {
+			} else if (cp == CODEPOINT_CARRIAGE_RETURN || cp == CODEPOINT_LINE_FEED) {
 				lineCount++;
 				charCount = 1;
 			} else {
@@ -322,6 +325,10 @@ public class LexReader {
 
 		// also increment index
 		index += str.length();
+	}
+
+	private SourcePosition endPositionOfToken() {
+		return new SourcePosition(index - 1, previousLineCount, previousCharCount);
 	}
 
 }
