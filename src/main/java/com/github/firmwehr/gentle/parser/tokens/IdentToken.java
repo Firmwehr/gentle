@@ -6,4 +6,8 @@ public record IdentToken(
 	SourceSpan sourceSpan,
 	String ident
 ) implements Token {
+	@Override
+	public String format() {
+		return "identifier '" + ident + "'";
+	}
 }

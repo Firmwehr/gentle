@@ -9,6 +9,11 @@ public record CommentToken(
 ) implements Token {
 	public enum CommentType {
 		LINE,
-		BLOCK
+		BLOCK;
+	}
+
+	@Override
+	public String format() {
+		return "comment";
 	}
 }

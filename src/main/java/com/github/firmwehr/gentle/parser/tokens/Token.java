@@ -13,6 +13,8 @@ import java.util.Optional;
 public sealed interface Token extends HasSourceSpan
 	permits WhitespaceToken, CommentToken, KeywordToken, OperatorToken, IdentToken, IntegerLiteralToken, EofToken {
 
+	String format();
+
 	static Token fromLexerToken(com.github.firmwehr.gentle.lexer.tokens.Token token) {
 		return switch (token) {
 			case TokenComment comment -> {

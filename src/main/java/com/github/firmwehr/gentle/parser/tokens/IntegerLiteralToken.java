@@ -6,4 +6,8 @@ public record IntegerLiteralToken(
 	SourceSpan sourceSpan,
 	int value
 ) implements Token {
+	@Override
+	public String format() {
+		return "integer literal " + value;
+	}
 }

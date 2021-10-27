@@ -6,4 +6,8 @@ public record OperatorToken(
 	SourceSpan sourceSpan,
 	Operator operator
 ) implements Token {
+	@Override
+	public String format() {
+		return "'" + operator.getName() + "'";
+	}
 }
