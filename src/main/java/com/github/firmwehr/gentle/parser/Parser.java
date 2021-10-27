@@ -547,9 +547,12 @@ public class Parser {
 
 	private Type parseBasicType() throws ParseException {
 		Token token = tokens.expecting("basic type").peek();
+		Optional<IdentToken> identToken = token.asIdentToken();
 
 		Type type;
-		if (token.isKeyword(Keyword.INT)) {
+		if (identToken.isPresent()) {
+			type = new IdentType(Ident.fromToken(identToken.get()));
+		} else if (token.isKeyword(Keyword.INT)) {
 			type = new IntType();
 		} else if (token.isKeyword(Keyword.BOOLEAN)) {
 			type = new BooleanType();
