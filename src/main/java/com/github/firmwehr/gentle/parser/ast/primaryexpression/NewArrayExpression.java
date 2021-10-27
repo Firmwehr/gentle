@@ -5,6 +5,6 @@ import com.github.firmwehr.gentle.parser.ast.type.Type;
 
 public record NewArrayExpression(
 	Type type,
-	Expression index
+	Expression size
 ) implements PrimaryExpression {
 }

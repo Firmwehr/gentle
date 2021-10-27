@@ -25,6 +25,8 @@ import com.github.firmwehr.gentle.parser.ast.primaryexpression.IdentExpression;
 import com.github.firmwehr.gentle.parser.ast.primaryexpression.IntegerLiteralExpression;
 import com.github.firmwehr.gentle.parser.ast.primaryexpression.JustAnExpression;
 import com.github.firmwehr.gentle.parser.ast.primaryexpression.LocalMethodCallExpression;
+import com.github.firmwehr.gentle.parser.ast.primaryexpression.NewArrayExpression;
+import com.github.firmwehr.gentle.parser.ast.primaryexpression.NewObjectExpression;
 import com.github.firmwehr.gentle.parser.ast.primaryexpression.NullExpression;
 import com.github.firmwehr.gentle.parser.ast.primaryexpression.PrimaryExpression;
 import com.github.firmwehr.gentle.parser.ast.primaryexpression.ThisExpression;
@@ -443,8 +445,31 @@ public class Parser {
 	}
 
 	private PrimaryExpression parseNewObjectExpressionOrNewArrayExpression() throws ParseException {
-		// FIXME: implement :)
-		return tokens.error();
+		tokens.expectKeyword(Keyword.NEW);
+
+		Token token = tokens.expectingIdent().expecting("basic type").peek();
+		Optional<IdentToken> identToken = token.asIdentToken();
+
+		if (identToken.isPresent() && tokens.peek(1).isOperator(Operator.LEFT_PAREN)) {
+			tokens.take();
+			Ident name = Ident.fromToken(identToken.get());
+			tokens.expectOperator(Operator.LEFT_PAREN);
+			tokens.expectOperator(Operator.RIGHT_PAREN);
+			return new NewObjectExpression(name);
+		} else {
+			Type type = new ArrayType(parseBasicType());
+			tokens.expectOperator(Operator.LEFT_BRACKET);
+			Expression size = parseExpression();
+			tokens.expectOperator(Operator.RIGHT_BRACKET);
+
+			while (tokens.expectingOperator(Operator.LEFT_BRACKET).peek().isOperator(Operator.LEFT_BRACKET)) {
+				tokens.take();
+				tokens.expectOperator(Operator.RIGHT_BRACKET);
+				type = new ArrayType(type);
+			}
+
+			return new NewArrayExpression(type, size);
+		}
 	}
 
 	private void expectingType() {
@@ -475,6 +500,24 @@ public class Parser {
 			tokens.expectOperator(Operator.RIGHT_BRACKET);
 			type = new ArrayType(type);
 		}
+
+		return type;
+	}
+
+	private Type parseBasicType() throws ParseException {
+		Token token = tokens.expecting("basic type").peek();
+
+		Type type;
+		if (token.isKeyword(Keyword.INT)) {
+			type = new IntType();
+		} else if (token.isKeyword(Keyword.BOOLEAN)) {
+			type = new BooleanType();
+		} else if (token.isKeyword(Keyword.VOID)) {
+			type = new VoidType();
+		} else {
+			type = tokens.error();
+		}
+		tokens.take();
 
 		return type;
 	}
