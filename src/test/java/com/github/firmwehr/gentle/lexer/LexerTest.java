@@ -16,11 +16,11 @@ class LexerTest {
 		String tokens = "Hello\r\nWorld";
 		Lexer lexer = new Lexer(new Source(tokens));
 		assertThat(lexer.nextToken()).isEqualTo(
-			new TokenIdentifier(new SourceSpan(new SourcePosition(0, 1, 1), new SourcePosition(5, 1, 5)), "Hello"));
+			new TokenIdentifier(new SourceSpan(new SourcePosition(0, 1, 1), new SourcePosition(5, 1, 6)), "Hello"));
 		assertThat(lexer.nextToken()).isEqualTo(
-			new TokenWhitespace(new SourceSpan(new SourcePosition(6, 1, 6), new SourcePosition(8, 1, 8)), "\r\n"));
+			new TokenWhitespace(new SourceSpan(new SourcePosition(6, 1, 7), new SourcePosition(8, 1, 9)), "\r\n"));
 		assertThat(lexer.nextToken()).isEqualTo(
-			new TokenIdentifier(new SourceSpan(new SourcePosition(9, 2, 1), new SourcePosition(14, 2, 5)), "World"));
+			new TokenIdentifier(new SourceSpan(new SourcePosition(9, 2, 1), new SourcePosition(14, 2, 6)), "World"));
 	}
 
 }
