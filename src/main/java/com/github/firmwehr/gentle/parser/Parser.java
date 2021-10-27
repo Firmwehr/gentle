@@ -249,6 +249,7 @@ public class Parser {
 		if (token.isOperator(Operator.LEFT_BRACE)) {
 			return parseBlock();
 		} else if (token.isOperator(Operator.SEMICOLON)) {
+			tokens.take();
 			return new EmptyStatement();
 		} else if (token.isKeyword(Keyword.IF)) {
 			return parseIfStatement();
