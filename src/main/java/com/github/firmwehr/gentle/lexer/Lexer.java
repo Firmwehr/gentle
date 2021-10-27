@@ -91,7 +91,7 @@ public class Lexer {
 			throw new Error("parsed token from empty string, this is an error in the code");
 		}
 
-		LOGGER.trace("emitting token {} from string slice @ {}: '{}'", token, token.position().format(), diff);
+		LOGGER.trace("emitting token {} from string slice @ {}: '{}'", token, token.sourceSpan().format(), diff);
 		reader = childReader;
 		return token;
 	}

@@ -3,14 +3,15 @@ package com.github.firmwehr.gentle.lexer.tokens;
 import com.github.firmwehr.gentle.lexer.LexReader;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
-import com.github.firmwehr.gentle.source.SourcePosition;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
 public record TokenIntegerLiteral(
-	SourcePosition position,
+	SourceSpan sourceSpan,
 	int number
 ) implements Token {
 
 	public static TokenIntegerLiteral create(LexReader reader) throws LexerException {
+		var startPos = reader.position();
 		try {
 			var str = reader.readUntilOrEndOfFile(v -> !Character.isDigit(v), false);
 			if (str.startsWith("0") && str.length() > 1) {
@@ -18,7 +19,7 @@ public record TokenIntegerLiteral(
 			}
 
 			int number = Integer.parseInt(str);
-			return new TokenIntegerLiteral(reader.position(), number);
+			return new TokenIntegerLiteral(new SourceSpan(startPos, reader.endPositionOfRead()), number);
 		} catch (NumberFormatException e) {
 			throw new LexerException("not a number", reader, e);
 		}

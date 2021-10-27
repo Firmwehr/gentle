@@ -1,7 +1,7 @@
 package com.github.firmwehr.gentle.lexer.tokens;
 
 import com.github.firmwehr.gentle.lexer.TokenType;
-import com.github.firmwehr.gentle.source.SourcePosition;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
 public sealed interface Token
 	permits TokenComment, TokenEndOfFile, TokenIdentifier, TokenIntegerLiteral, TokenKeyword, TokenWhitespace {
@@ -17,5 +17,5 @@ public sealed interface Token
 
 	TokenType tokenType();
 
-	SourcePosition position();
+	SourceSpan sourceSpan();
 }

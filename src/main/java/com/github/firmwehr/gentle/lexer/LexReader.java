@@ -24,12 +24,21 @@ public class LexReader {
 	private final Source source;
 	private int index;
 
-	// using 1 based indexing leads to less issues, please don't change this without warning
-	private int lineCount = 1;
-	private int charCount = 1;
+	private NoIndexSourcePosition currentPosition;
+	private NoIndexSourcePosition endPositionOfRead;
 
 	public LexReader(Source source) {
+		// using 1 based indexing leads to less issues, please don't change this without warning
+		this(source, new NoIndexSourcePosition(1, 1), new NoIndexSourcePosition(0, 0), 0);
+	}
+
+	private LexReader(
+		Source source, NoIndexSourcePosition currentPosition, NoIndexSourcePosition endPositionOfRead, int index
+	) {
 		this.source = source;
+		this.currentPosition = currentPosition;
+		this.endPositionOfRead = endPositionOfRead;
+		this.index = index;
 	}
 
 	public Source getSource() {
@@ -38,7 +47,7 @@ public class LexReader {
 
 	@Override
 	public String toString() {
-		return "LexReader{index=%d, lineCount=%d, charCount=%d, current='%s'}".formatted(index, lineCount, charCount,
+		return "LexReader{index=%d, currentPosition=%s, current='%s'}".formatted(index, currentPosition,
 			source.getContent().substring(index));
 	}
 
@@ -49,11 +58,7 @@ public class LexReader {
 	 * 	with each other.
 	 */
 	public LexReader fork() { // deliberately not named clone to not clash with java clone method
-		var other = new LexReader(source);
-		other.index = index;
-		other.lineCount = lineCount;
-		other.charCount = charCount;
-		return other;
+		return new LexReader(source, currentPosition, endPositionOfRead, index);
 	}
 
 	/**
@@ -75,7 +80,16 @@ public class LexReader {
 	}
 
 	public SourcePosition position() {
-		return new SourcePosition(index, lineCount, charCount);
+		return currentPosition.withOffset(index);
+	}
+
+	/**
+	 * Returns the position where the previous read ended.
+	 *
+	 * @return the end position of the previous read.
+	 */
+	public SourcePosition endPositionOfRead() {
+		return endPositionOfRead.withOffset(index - 1);
 	}
 
 	/**
@@ -291,25 +305,40 @@ public class LexReader {
 
 		var cpts = str.codePoints().toArray();
 		for (int i = 0; i < cpts.length; i++) {
+			endPositionOfRead = currentPosition;
 			var cp = cpts[i];
-			if (cp == CODEPOINT_CARRIAGE_RETURN) {
+			if (cp == CODEPOINT_CARRIAGE_RETURN && i + 1 < cpts.length && cpts[i + 1] == CODEPOINT_LINE_FEED) {
 				// check for additional \n in case we use windows
-				if (i + 1 < cpts.length && cpts[i + 1] == CODEPOINT_LINE_FEED) {
-					i++;
-				}
-				lineCount++;
-				charCount = 1;
-			} else if (cp == CODEPOINT_LINE_FEED) {
-				lineCount++;
-				charCount = 1;
+				i++;
+				endPositionOfRead = endPositionOfRead.incrementColumn(); // count carriage return + line feed
+				currentPosition = currentPosition.lineBreak();
+			} else if (cp == CODEPOINT_CARRIAGE_RETURN || cp == CODEPOINT_LINE_FEED) {
+				currentPosition = currentPosition.lineBreak();
 			} else {
 				// just a regular character
-				charCount++;
+				currentPosition = currentPosition.incrementColumn();
 			}
 		}
 
 		// also increment index
 		index += str.length();
+	}
+
+	private record NoIndexSourcePosition(
+		int line,
+		int column
+	) {
+		public SourcePosition withOffset(int offset) {
+			return new SourcePosition(offset, line(), column());
+		}
+
+		public NoIndexSourcePosition lineBreak() {
+			return new NoIndexSourcePosition(line() + 1, 1);
+		}
+
+		public NoIndexSourcePosition incrementColumn() {
+			return new NoIndexSourcePosition(line(), column() + 1);
+		}
 	}
 
 }
