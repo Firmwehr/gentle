@@ -110,7 +110,7 @@ public class GentleCompiler {
 	private static void runCommand(Path path) {
 		try {
 			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
-			Lexer lexer = new Lexer(source, tokenType -> true);
+			Lexer lexer = new Lexer(source, Lexer.tokenFilter(TokenType.WHITESPACE, TokenType.COMMENT));
 			Parser parser = Parser.fromLexer(source, lexer);
 			LOGGER.info("Parse result:\n{}", parser.parse());
 		} catch (IOException e) {

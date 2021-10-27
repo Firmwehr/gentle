@@ -10,20 +10,27 @@ import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.source.Source;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class Tokens {
 	private final Source source;
 	private final List<Token> tokens;
 	private final EofToken lastToken;
+
 	private int index;
+	private Set<String> expectedTokensAtIndex;
 
 	public Tokens(Source source, List<Token> tokens, EofToken lastToken) {
 		this.source = source;
 		this.tokens = tokens;
 		this.lastToken = lastToken;
-		this.index = 0;
+
+		index = 0;
+		expectedTokensAtIndex = new HashSet<>();
 	}
 
 	public static Tokens fromLexer(Source source, Lexer lexer) throws LexerException {
@@ -38,7 +45,19 @@ public class Tokens {
 		}
 	}
 
-	public <T> T error(String description) throws ParseException {
+	public <T> T error() throws ParseException {
+		List<String> expectedTokens = expectedTokensAtIndex.stream().sorted().collect(Collectors.toList());
+
+		String description;
+		if (expectedTokens.size() == 0) {
+			description = "Something went wrong";
+		} else if (expectedTokens.size() == 1) {
+			description = "Expected " + expectedTokens.get(0);
+		} else {
+			description = "Expected " +
+				expectedTokens.stream().limit(expectedTokens.size() - 1).collect(Collectors.joining(", ")) + " or " +
+				expectedTokens.get(expectedTokens.size() - 1);
+		}
 		throw new ParseException(source, peek(), description);
 	}
 
@@ -48,6 +67,7 @@ public class Tokens {
 		}
 
 		index = Math.min(tokens.size(), index + n);
+		expectedTokensAtIndex.clear();
 	}
 
 	public void take() {
@@ -71,29 +91,58 @@ public class Tokens {
 		return peek(0);
 	}
 
+	public Tokens expecting(String token) {
+		expectedTokensAtIndex.add(token);
+		return this;
+	}
+
+	public Tokens expectingKeyword(Keyword keyword) {
+		return expecting("'" + keyword.getName() + "'");
+	}
+
+	public Tokens expectingOperator(Operator operator) {
+		return expecting("'" + operator.getName() + "'");
+	}
+
+	public Tokens expectingIdent() {
+		return expecting("identifier");
+	}
+
+	public Tokens expectingEof() {
+		return expecting("EOF");
+	}
+
 	public void expectKeyword(Keyword keyword) throws ParseException {
-		if (peek().isKeyword(keyword)) {
+		Token token = expectingKeyword(keyword).peek();
+		if (token.isKeyword(keyword)) {
 			take();
 		} else {
-			error("Expected keyword " + keyword.getName());
+			error();
 		}
 	}
 
 	public void expectOperator(Operator operator) throws ParseException {
-		if (peek().isOperator(operator)) {
+		Token token = expectingOperator(operator).peek();
+		if (token.isOperator(operator)) {
 			take();
 		} else {
-			error("Expected operator " + operator.getName());
+			error();
 		}
 	}
 
 	public IdentToken expectIdent() throws ParseException {
-		Optional<IdentToken> identToken = peek().asIdentToken();
+		Optional<IdentToken> identToken = expecting("identifier").peek().asIdentToken();
 		if (identToken.isPresent()) {
 			take();
 			return identToken.get();
 		} else {
-			return error("Expected identifier");
+			return error();
+		}
+	}
+
+	public void expectEof() throws ParseException {
+		if (!expectingEof().peek().isEof()) {
+			error();
 		}
 	}
 }

@@ -44,13 +44,11 @@ public class Parser {
 	public Program parse() throws ParseException {
 		List<ClassDeclaration> classDeclarations = new ArrayList<>();
 
-		while (tokens.peek().isKeyword(Keyword.CLASS)) {
+		while (tokens.expectingKeyword(Keyword.CLASS).peek().isKeyword(Keyword.CLASS)) {
 			classDeclarations.add(parseClassDeclaration());
 		}
 
-		if (!tokens.peek().isEof()) {
-			tokens.error("Expected 'class' or EOF");
-		}
+		tokens.expectEof();
 
 		return new Program(classDeclarations);
 	}
@@ -66,7 +64,7 @@ public class Parser {
 		List<Field> fields = new ArrayList<>();
 		List<Method> methods = new ArrayList<>();
 		List<MainMethod> mainMethods = new ArrayList<>();
-		while (tokens.peek().isKeyword(Keyword.PUBLIC)) {
+		while (tokens.expectingKeyword(Keyword.PUBLIC).peek().isKeyword(Keyword.PUBLIC)) {
 			parseClassMember(fields, methods, mainMethods);
 		}
 
@@ -80,7 +78,7 @@ public class Parser {
 
 		tokens.expectKeyword(Keyword.PUBLIC);
 
-		if (tokens.peek().isKeyword(Keyword.STATIC)) {
+		if (tokens.expectingKeyword(Keyword.STATIC).peek().isKeyword(Keyword.STATIC)) {
 			mainMethods.add(parseMainMethod());
 		} else {
 			// This can either be a field or a method, and we don't know until after the ident
@@ -93,7 +91,7 @@ public class Parser {
 			} else if (tokens.peek().isOperator(Operator.LEFT_PAREN)) {
 				methods.add(parseMethod(type, ident));
 			} else {
-				tokens.error("Expected ';' or '('");
+				tokens.error();
 			}
 		}
 
@@ -122,10 +120,10 @@ public class Parser {
 		tokens.expectOperator(Operator.LEFT_PAREN);
 
 		List<Parameter> parameters = new ArrayList<>();
-		if (!tokens.peek().isOperator(Operator.RIGHT_PAREN)) {
+		if (!tokens.expectingOperator(Operator.RIGHT_PAREN).peek().isOperator(Operator.RIGHT_PAREN)) {
 			parameters.add(parseParameter());
 		}
-		while (tokens.peek().isOperator(Operator.COMMA)) {
+		while (tokens.expectingOperator(Operator.COMMA).peek().isOperator(Operator.COMMA)) {
 			tokens.take();
 			parameters.add(parseParameter());
 		}
@@ -145,7 +143,7 @@ public class Parser {
 	}
 
 	private void parseOptionalMethodRest() throws ParseException {
-		if (tokens.peek().isKeyword(Keyword.THROWS)) {
+		if (tokens.expectingKeyword(Keyword.THROWS).peek().isKeyword(Keyword.THROWS)) {
 			tokens.take();
 			tokens.expectIdent();
 		}
@@ -159,7 +157,7 @@ public class Parser {
 	}
 
 	private Type parseType() throws ParseException {
-		Token typeToken = tokens.peek();
+		Token typeToken = tokens.expectingIdent().expecting("basic type").peek();
 		Optional<IdentToken> typeIdentToken = typeToken.asIdentToken();
 
 		Type type;
@@ -172,11 +170,11 @@ public class Parser {
 		} else if (typeToken.isKeyword(Keyword.VOID)) {
 			type = new VoidType();
 		} else {
-			type = tokens.error("Expected identifier, 'int', 'boolean', or 'void'");
+			type = tokens.error();
 		}
 		tokens.take();
 
-		while (tokens.peek().isOperator(Operator.LEFT_BRACKET)) {
+		while (tokens.expectingOperator(Operator.LEFT_BRACKET).peek().isOperator(Operator.LEFT_BRACKET)) {
 			tokens.expectOperator(Operator.LEFT_BRACKET);
 			tokens.expectOperator(Operator.RIGHT_BRACKET);
 			type = new ArrayType(type);
