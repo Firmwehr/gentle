@@ -13,6 +13,21 @@ import com.github.firmwehr.gentle.parser.ast.blockstatement.BlockStatement;
 import com.github.firmwehr.gentle.parser.ast.blockstatement.JustAStatement;
 import com.github.firmwehr.gentle.parser.ast.blockstatement.LocalVariableDeclarationStatement;
 import com.github.firmwehr.gentle.parser.ast.expression.Expression;
+import com.github.firmwehr.gentle.parser.ast.expression.PostfixExpression;
+import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperator;
+import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperatorExpression;
+import com.github.firmwehr.gentle.parser.ast.expression.postfixop.ArrayAccessOp;
+import com.github.firmwehr.gentle.parser.ast.expression.postfixop.FieldAccessOp;
+import com.github.firmwehr.gentle.parser.ast.expression.postfixop.MethodInvocationOp;
+import com.github.firmwehr.gentle.parser.ast.expression.postfixop.PostfixOp;
+import com.github.firmwehr.gentle.parser.ast.primaryexpression.BooleanLiteralExpression;
+import com.github.firmwehr.gentle.parser.ast.primaryexpression.IdentExpression;
+import com.github.firmwehr.gentle.parser.ast.primaryexpression.IntegerLiteralExpression;
+import com.github.firmwehr.gentle.parser.ast.primaryexpression.JustAnExpression;
+import com.github.firmwehr.gentle.parser.ast.primaryexpression.LocalMethodCallExpression;
+import com.github.firmwehr.gentle.parser.ast.primaryexpression.NullExpression;
+import com.github.firmwehr.gentle.parser.ast.primaryexpression.PrimaryExpression;
+import com.github.firmwehr.gentle.parser.ast.primaryexpression.ThisExpression;
 import com.github.firmwehr.gentle.parser.ast.statement.Block;
 import com.github.firmwehr.gentle.parser.ast.statement.EmptyStatement;
 import com.github.firmwehr.gentle.parser.ast.statement.ExpressionStatement;
@@ -27,6 +42,7 @@ import com.github.firmwehr.gentle.parser.ast.type.IntType;
 import com.github.firmwehr.gentle.parser.ast.type.Type;
 import com.github.firmwehr.gentle.parser.ast.type.VoidType;
 import com.github.firmwehr.gentle.parser.tokens.IdentToken;
+import com.github.firmwehr.gentle.parser.tokens.IntegerLiteralToken;
 import com.github.firmwehr.gentle.parser.tokens.Keyword;
 import com.github.firmwehr.gentle.parser.tokens.Operator;
 import com.github.firmwehr.gentle.parser.tokens.Token;
@@ -299,19 +315,135 @@ public class Parser {
 	}
 
 	private void expectingExpression() {
+		expectingPrimaryExpression();
+		tokens.expectingOperator(Operator.LOGICAL_NOT).expectingOperator(Operator.MINUS);
+	}
+
+	private Expression parseExpression() throws ParseException {
+		// FIXME Implement
+		return tokens.error();
+	}
+
+	private Expression parseUnaryExpression() throws ParseException {
+		expectingExpression();
+		if (tokens.peek().isOperator(Operator.LOGICAL_NOT)) {
+			tokens.take();
+			return new UnaryOperatorExpression(UnaryOperator.LOGICAL_NOT, parseUnaryExpression());
+		} else if (tokens.peek().isOperator(Operator.MINUS)) {
+			tokens.take();
+			return new UnaryOperatorExpression(UnaryOperator.NEGATION, parseUnaryExpression());
+		} else {
+			return parsePostfixExpression();
+		}
+	}
+
+	private PostfixExpression parsePostfixExpression() throws ParseException {
+		PrimaryExpression expression = parsePrimaryExpression();
+		List<PostfixOp> postfixOps = new ArrayList<>();
+
+		while (true) {
+			Optional<PostfixOp> op = parseOptionalPostfixOp();
+			if (op.isPresent()) {
+				postfixOps.add(op.get());
+			} else {
+				break;
+			}
+		}
+
+		return new PostfixExpression(expression, postfixOps);
+	}
+
+	private Optional<PostfixOp> parseOptionalPostfixOp() throws ParseException {
+		Token token = tokens.expectingOperator(Operator.DOT).expectingOperator(Operator.LEFT_BRACKET).peek();
+
+		if (token.isOperator(Operator.DOT)) {
+			tokens.take();
+			Ident name = parseIdent();
+			if (tokens.expectingOperator(Operator.LEFT_PAREN).peek().isOperator(Operator.LEFT_PAREN)) {
+				return Optional.of(new MethodInvocationOp(name, parseParenthesisedArguments()));
+			} else {
+				return Optional.of(new FieldAccessOp(name));
+			}
+		} else if (token.isOperator(Operator.LEFT_BRACKET)) {
+			tokens.take();
+			Expression index = parseExpression();
+			tokens.expectOperator(Operator.RIGHT_BRACKET);
+			return Optional.of(new ArrayAccessOp(index));
+		} else {
+			return Optional.empty();
+		}
+	}
+
+	private List<Expression> parseParenthesisedArguments() throws ParseException {
+		tokens.expectOperator(Operator.LEFT_PAREN);
+
+		List<Expression> arguments = new ArrayList<>();
+		if (!tokens.expectingOperator(Operator.RIGHT_PAREN).peek().isOperator(Operator.RIGHT_PAREN)) {
+			arguments.add(parseExpression());
+
+			while (tokens.expectingOperator(Operator.COMMA).peek().isOperator(Operator.COMMA)) {
+				tokens.take();
+				arguments.add(parseExpression());
+			}
+		}
+
+		tokens.expectOperator(Operator.RIGHT_PAREN);
+
+		return arguments;
+	}
+
+	private void expectingPrimaryExpression() {
 		tokens.expectingKeyword(Keyword.NULL)
 			.expecting("boolean literal")
 			.expectingIntegerLiteral()
 			.expectingIdent()
 			.expectingKeyword(Keyword.THIS)
 			.expectingOperator(Operator.LEFT_PAREN)
-			.expectingKeyword(Keyword.NEW)
-			.expectingOperator(Operator.LOGICAL_NOT)
-			.expectingOperator(Operator.MINUS);
+			.expectingKeyword(Keyword.NEW);
 	}
 
-	private Expression parseExpression() throws ParseException {
-		// FIXME Implement
+	private PrimaryExpression parsePrimaryExpression() throws ParseException {
+		expectingPrimaryExpression();
+		Token token = tokens.peek();
+		Optional<IntegerLiteralToken> integerLiteralToken = token.asIntegerLiteralToken();
+		Optional<IdentToken> identToken = token.asIdentToken();
+
+		if (token.isKeyword(Keyword.NULL)) {
+			tokens.take();
+			return new NullExpression();
+		} else if (token.isKeyword(Keyword.TRUE)) {
+			tokens.take();
+			return new BooleanLiteralExpression(true);
+		} else if (token.isKeyword(Keyword.FALSE)) {
+			tokens.take();
+			return new BooleanLiteralExpression(false);
+		} else if (integerLiteralToken.isPresent()) {
+			tokens.take();
+			return new IntegerLiteralExpression(integerLiteralToken.get().value());
+		} else if (identToken.isPresent()) {
+			tokens.take();
+			if (tokens.expectingOperator(Operator.LEFT_PAREN).peek().isOperator(Operator.LEFT_PAREN)) {
+				return new LocalMethodCallExpression(Ident.fromToken(identToken.get()), parseParenthesisedArguments());
+			} else {
+				return new IdentExpression(Ident.fromToken(identToken.get()));
+			}
+		} else if (token.isKeyword(Keyword.THIS)) {
+			tokens.take();
+			return new ThisExpression();
+		} else if (token.isOperator(Operator.LEFT_PAREN)) {
+			tokens.take();
+			Expression expression = parseExpression();
+			tokens.expectOperator(Operator.RIGHT_PAREN);
+			return new JustAnExpression(expression);
+		} else if (token.isKeyword(Keyword.NEW)) {
+			return parseNewObjectExpressionOrNewArrayExpression();
+		} else {
+			return tokens.error();
+		}
+	}
+
+	private PrimaryExpression parseNewObjectExpressionOrNewArrayExpression() throws ParseException {
+		// FIXME: implement :)
 		return tokens.error();
 	}
 

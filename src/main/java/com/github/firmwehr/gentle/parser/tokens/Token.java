@@ -162,4 +162,16 @@ public sealed interface Token extends HasSourceSpan
 	default boolean isIdent() {
 		return asIdentToken().isPresent();
 	}
+
+	default Optional<IntegerLiteralToken> asIntegerLiteralToken() {
+		if (this instanceof IntegerLiteralToken integerLiteral) {
+			return Optional.of(integerLiteral);
+		} else {
+			return Optional.empty();
+		}
+	}
+
+	default boolean isIntegerLiteral() {
+		return asIntegerLiteralToken().isPresent();
+	}
 }
