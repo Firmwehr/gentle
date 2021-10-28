@@ -183,6 +183,45 @@ class ParserTest {
 	}
 
 	@Test
+	void parenthesisedExpression() throws LexerException, ParseException {
+		Parser parser = fromText("""
+			class Foo {
+				public void bar() {
+					((2 + 3) * ((4) + 5));
+				}
+			}
+			""");
+
+		// @formatter:off
+		Program output = parser.parse();
+		Program target = new Program()
+			.withDecl(new ClassDeclaration("Foo")
+				.withMethod(new Method("bar")
+					.withBody(Statement.newBlock()
+
+						.thenExpr(Expression.newBinOp(
+							Expression.newBinOp(
+								Expression.newInt(2),
+								Expression.newInt(3),
+								BinaryOperator.ADDITION
+							),
+							Expression.newBinOp(
+								Expression.newInt(4),
+								Expression.newInt(5),
+								BinaryOperator.ADDITION
+							),
+							BinaryOperator.MULTIPLICATION
+						)))));
+		// @formatter:on
+
+		System.out.println(PrettyPrinter.format(output));
+		System.out.println();
+		System.out.println(PrettyPrinter.format(target));
+
+		assertThat(output).isEqualTo(target);
+	}
+
+	@Test
 	void complexExpression() throws LexerException, ParseException {
 		Parser parser = fromText("""
 			class Foo {
