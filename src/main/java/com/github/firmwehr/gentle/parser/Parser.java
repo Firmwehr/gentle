@@ -15,24 +15,22 @@ import com.github.firmwehr.gentle.parser.ast.basictype.BooleanType;
 import com.github.firmwehr.gentle.parser.ast.basictype.IdentType;
 import com.github.firmwehr.gentle.parser.ast.basictype.IntType;
 import com.github.firmwehr.gentle.parser.ast.basictype.VoidType;
+import com.github.firmwehr.gentle.parser.ast.expression.ArrayAccessExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperatorExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.BooleanLiteralExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.Expression;
+import com.github.firmwehr.gentle.parser.ast.expression.FieldAccessExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.IdentExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.IntegerLiteralExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.LocalMethodCallExpression;
+import com.github.firmwehr.gentle.parser.ast.expression.MethodInvocationExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.NewArrayExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.NewObjectExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.NullExpression;
-import com.github.firmwehr.gentle.parser.ast.expression.PostfixExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.ThisExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperator;
 import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperatorExpression;
-import com.github.firmwehr.gentle.parser.ast.expression.postfixop.ArrayAccessOp;
-import com.github.firmwehr.gentle.parser.ast.expression.postfixop.FieldAccessOp;
-import com.github.firmwehr.gentle.parser.ast.expression.postfixop.MethodInvocationOp;
-import com.github.firmwehr.gentle.parser.ast.expression.postfixop.PostfixOp;
 import com.github.firmwehr.gentle.parser.ast.statement.Block;
 import com.github.firmwehr.gentle.parser.ast.statement.BlockStatement;
 import com.github.firmwehr.gentle.parser.ast.statement.EmptyStatement;
@@ -381,9 +379,9 @@ public class Parser {
 		Expression expression = parsePrimaryExpression();
 
 		while (true) {
-			Optional<PostfixOp> op = parseOptionalPostfixOp();
-			if (op.isPresent()) {
-				expression = new PostfixExpression(expression, op.get());
+			Optional<Expression> postfixedExpression = parseOptionalPostfixOp(expression);
+			if (postfixedExpression.isPresent()) {
+				expression = postfixedExpression.get();
 			} else {
 				break;
 			}
@@ -392,22 +390,22 @@ public class Parser {
 		return expression;
 	}
 
-	private Optional<PostfixOp> parseOptionalPostfixOp() throws ParseException {
+	private Optional<Expression> parseOptionalPostfixOp(Expression expression) throws ParseException {
 		Token token = tokens.expectingOperator(Operator.DOT).expectingOperator(Operator.LEFT_BRACKET).peek();
 
 		if (token.isOperator(Operator.DOT)) {
 			tokens.take();
 			Ident name = parseIdent();
 			if (tokens.expectingOperator(Operator.LEFT_PAREN).peek().isOperator(Operator.LEFT_PAREN)) {
-				return Optional.of(new MethodInvocationOp(name, parseParenthesisedArguments()));
+				return Optional.of(new MethodInvocationExpression(expression, name, parseParenthesisedArguments()));
 			} else {
-				return Optional.of(new FieldAccessOp(name));
+				return Optional.of(new FieldAccessExpression(expression, name));
 			}
 		} else if (token.isOperator(Operator.LEFT_BRACKET)) {
 			tokens.take();
 			Expression index = parseExpression();
 			tokens.expectOperator(Operator.RIGHT_BRACKET);
-			return Optional.of(new ArrayAccessOp(index));
+			return Optional.of(new ArrayAccessExpression(expression, index));
 		} else {
 			return Optional.empty();
 		}

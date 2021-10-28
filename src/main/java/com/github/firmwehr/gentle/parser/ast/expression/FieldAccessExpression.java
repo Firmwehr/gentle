@@ -1,14 +1,14 @@
 package com.github.firmwehr.gentle.parser.ast.expression;
 
-import com.github.firmwehr.gentle.parser.ast.expression.postfixop.PostfixOp;
+import com.github.firmwehr.gentle.parser.ast.Ident;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 
-public record PostfixExpression(
+public record FieldAccessExpression(
 	Expression expression,
-	PostfixOp postfixOp
+	Ident name
 ) implements Expression {
 	@Override
 	public void prettyPrint(PrettyPrinter p) {
-		p.add(expression).add(postfixOp);
+		p.add(expression).add(".").add(name);
 	}
 }

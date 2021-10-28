@@ -2,18 +2,14 @@ package com.github.firmwehr.gentle.parser.ast.expression;
 
 import com.github.firmwehr.gentle.parser.ast.Ident;
 import com.github.firmwehr.gentle.parser.ast.Type;
-import com.github.firmwehr.gentle.parser.ast.expression.postfixop.ArrayAccessOp;
-import com.github.firmwehr.gentle.parser.ast.expression.postfixop.FieldAccessOp;
-import com.github.firmwehr.gentle.parser.ast.expression.postfixop.MethodInvocationOp;
-import com.github.firmwehr.gentle.parser.ast.expression.postfixop.PostfixOp;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
 
 import java.util.Arrays;
 
 public sealed interface Expression extends PrettyPrint
-	permits BinaryOperatorExpression, BooleanLiteralExpression, IdentExpression, IntegerLiteralExpression,
-	        LocalMethodCallExpression, NewArrayExpression, NewObjectExpression, NullExpression, PostfixExpression,
-	        ThisExpression, UnaryOperatorExpression {
+	permits ArrayAccessExpression, BinaryOperatorExpression, BooleanLiteralExpression, FieldAccessExpression,
+	        IdentExpression, IntegerLiteralExpression, LocalMethodCallExpression, MethodInvocationExpression,
+	        NewArrayExpression, NewObjectExpression, NullExpression, ThisExpression, UnaryOperatorExpression {
 
 	static BinaryOperatorExpression newBinOp(Expression lhs, Expression rhs, BinaryOperator operator) {
 		return new BinaryOperatorExpression(lhs, rhs, operator);
@@ -55,19 +51,15 @@ public sealed interface Expression extends PrettyPrint
 		return new UnaryOperatorExpression(operator, this);
 	}
 
-	default PostfixExpression withPostfix(PostfixOp operator) {
-		return new PostfixExpression(this, operator);
+	default MethodInvocationExpression withCall(String name, Expression... arguments) {
+		return new MethodInvocationExpression(this, new Ident(name), Arrays.asList(arguments));
 	}
 
-	default PostfixExpression withCall(String name, Expression... arguments) {
-		return withPostfix(new MethodInvocationOp(new Ident(name), Arrays.asList(arguments)));
+	default ArrayAccessExpression withArrayAccess(Expression index) {
+		return new ArrayAccessExpression(this, index);
 	}
 
-	default PostfixExpression withArrayAccess(Expression index) {
-		return withPostfix(new ArrayAccessOp(index));
-	}
-
-	default PostfixExpression withFieldAccess(String name) {
-		return withPostfix(new FieldAccessOp(new Ident(name)));
+	default FieldAccessExpression withFieldAccess(String name) {
+		return new FieldAccessExpression(this, new Ident(name));
 	}
 }
