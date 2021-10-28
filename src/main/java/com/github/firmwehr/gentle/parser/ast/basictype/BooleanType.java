@@ -1,10 +1,10 @@
-package com.github.firmwehr.gentle.parser.ast.type;
+package com.github.firmwehr.gentle.parser.ast.basictype;
 
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 
-public record IntType() implements Type {
+public record BooleanType() implements BasicType {
 	@Override
 	public void prettyPrint(PrettyPrinter p) {
-		p.add("int");
+		p.add("boolean");
 	}
 }

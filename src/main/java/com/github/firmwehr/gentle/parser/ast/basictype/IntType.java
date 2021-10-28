@@ -1,10 +1,10 @@
-package com.github.firmwehr.gentle.parser.ast.type;
+package com.github.firmwehr.gentle.parser.ast.basictype;
 
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 
-public record VoidType() implements Type {
+public record IntType() implements BasicType {
 	@Override
 	public void prettyPrint(PrettyPrinter p) {
-		p.add("void");
+		p.add("int");
 	}
 }

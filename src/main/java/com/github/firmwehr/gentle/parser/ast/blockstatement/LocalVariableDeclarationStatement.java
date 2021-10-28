@@ -1,8 +1,8 @@
 package com.github.firmwehr.gentle.parser.ast.blockstatement;
 
 import com.github.firmwehr.gentle.parser.ast.Ident;
+import com.github.firmwehr.gentle.parser.ast.Type;
 import com.github.firmwehr.gentle.parser.ast.expression.Expression;
-import com.github.firmwehr.gentle.parser.ast.type.Type;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 
 import java.util.Optional;
