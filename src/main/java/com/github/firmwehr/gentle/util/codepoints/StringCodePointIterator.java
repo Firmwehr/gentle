@@ -45,7 +45,7 @@ class StringCodePointIterator implements CodePointIterator {
 			if (hasNext()) {
 				char lower = this.string.charAt(index);
 				if (increment) {
-					this.nextIndex = index + 1; // increment by 2
+					this.nextIndex += 2; // skip both chars as they form the single codepoint we read
 				}
 				return Character.toCodePoint(first, lower);
 			}
