@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.util;
 
+import com.github.firmwehr.gentle.util.codepoints.CodePointIterator;
 import com.google.common.base.Preconditions;
 
 import java.util.HashMap;
@@ -18,7 +19,7 @@ public class TokenTrie<V> {
 	private final Node<V> root = new Node<>();
 
 	public void put(String key, V value) {
-		root.put(key.codePoints().iterator(), value, key);
+		root.put(CodePointIterator.iterate(key), value, key);
 	}
 
 	/**
