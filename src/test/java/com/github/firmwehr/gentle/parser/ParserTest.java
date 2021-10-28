@@ -10,6 +10,7 @@ import com.github.firmwehr.gentle.parser.ast.Program;
 import com.github.firmwehr.gentle.parser.ast.Type;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
 import com.github.firmwehr.gentle.parser.ast.expression.Expression;
+import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperator;
 import com.github.firmwehr.gentle.parser.ast.statement.Statement;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 import com.github.firmwehr.gentle.source.Source;
@@ -301,6 +302,210 @@ class ParserTest {
 						.thenExpr(Expression.newIdent("System")
 							.withFieldAccess("out")
 							.withCall("println", Expression.newIdent("n"))))));
+		// @formatter:on
+
+		System.out.println(PrettyPrinter.format(output));
+		System.out.println();
+		System.out.println(PrettyPrinter.format(target));
+
+		assertThat(output).isEqualTo(target);
+	}
+
+	@Test
+	void ifAndWhile() throws LexerException, ParseException {
+		Parser parser = fromText("""
+			class Math {
+				public int clamp(int n, int min, int max) {
+					if (n < min)
+						return min;
+					else if (n > max)
+						return max;
+					else
+						return n;
+				}
+				
+				public int sign(int n) {
+					return clamp(n, -1, 1);
+				}
+				
+				public int sum(int n) {
+					int total = 0;
+					int i = 1;
+					while (i <= n) {
+						total = total + i;
+						i = i + 1;
+					}
+					return total;
+				}
+			}
+			""");
+
+		// @formatter:off
+		Program output = parser.parse();
+		Program target = new Program()
+			.withDecl(new ClassDeclaration("Math")
+				.withMethod(new Method("clamp")
+					.returning(Type.newInt())
+					.withParam(Type.newInt(), "n")
+					.withParam(Type.newInt(), "min")
+					.withParam(Type.newInt(), "max")
+					.withBody(Statement.newBlock()
+						.thenIf(
+							Expression.newBinOp(
+								Expression.newIdent("n"),
+								Expression.newIdent("min"),
+								BinaryOperator.LESS_THAN
+							),
+							Statement.newReturn(Expression.newIdent("min")),
+							Statement.newIf(
+								Expression.newBinOp(
+									Expression.newIdent("n"),
+									Expression.newIdent("max"),
+									BinaryOperator.GREATER_THAN
+								),
+								Statement.newReturn(Expression.newIdent("max")),
+								Statement.newReturn(Expression.newIdent("n"))
+							)
+						)))
+				.withMethod(new Method("sign")
+					.returning(Type.newInt())
+					.withParam(Type.newInt(), "n")
+					.withBody(Statement.newBlock()
+						.thenReturn(Expression.newCall(
+							"clamp",
+							Expression.newIdent("n"),
+							Expression.newUnOp(UnaryOperator.NEGATION, Expression.newInt(1)),
+							Expression.newInt(1)
+						))))
+				.withMethod(new Method("sum")
+					.returning(Type.newInt())
+					.withParam(Type.newInt(), "n")
+					.withBody(Statement.newBlock()
+						.thenLocalVar(Type.newInt(), "total", Expression.newInt(0))
+						.thenLocalVar(Type.newInt(), "i", Expression.newInt(1))
+						.thenWhile(
+							Expression.newBinOp(
+								Expression.newIdent("i"),
+								Expression.newIdent("n"),
+								BinaryOperator.LESS_THAN_OR_EQUAL
+							),
+							Statement.newBlock()
+								.thenExpr(Expression.newBinOp(
+									Expression.newIdent("total"),
+									Expression.newBinOp(
+										Expression.newIdent("total"),
+										Expression.newIdent("i"),
+										BinaryOperator.ADDITION
+									),
+									BinaryOperator.ASSIGNMENT
+								))
+								.thenExpr(Expression.newBinOp(
+									Expression.newIdent("i"),
+									Expression.newBinOp(
+										Expression.newIdent("i"),
+										Expression.newInt(1),
+										BinaryOperator.ADDITION
+									),
+									BinaryOperator.ASSIGNMENT
+								))
+						)
+						.thenReturn(Expression.newIdent("total")))));
+		// @formatter:on
+
+		System.out.println(PrettyPrinter.format(output));
+		System.out.println();
+		System.out.println(PrettyPrinter.format(target));
+
+		assertThat(output).isEqualTo(target);
+	}
+
+	@Test
+	void nestedBlockStatements() throws LexerException, ParseException {
+		Parser parser = fromText("""
+			class Foo {
+				public void bar() {
+					int a;
+					{
+						int b;
+						{
+							return a + b;
+						}
+					}
+				}
+			}
+			""");
+
+		// @formatter:off
+		Program output = parser.parse();
+		Program target = new Program()
+			.withDecl(new ClassDeclaration("Foo")
+				.withMethod(new Method("bar")
+					.withBody(Statement.newBlock()
+						.thenLocalVar(Type.newInt(), "a")
+						.thenBlock(Statement.newBlock()
+							.thenLocalVar(Type.newInt(), "b")
+							.thenBlock(Statement.newBlock()
+								.thenReturn(Expression.newBinOp(
+									Expression.newIdent("a"),
+									Expression.newIdent("b"),
+									BinaryOperator.ADDITION
+								)))))));
+		// @formatter:on
+
+		System.out.println(PrettyPrinter.format(output));
+		System.out.println();
+		System.out.println(PrettyPrinter.format(target));
+
+		assertThat(output).isEqualTo(target);
+	}
+
+	@Test
+	void moarSemicolons() throws LexerException, ParseException {
+		Parser parser = fromText("""
+			class Foo {
+				public void bar() {
+					;int a = 3;;
+					;while (false);;
+					;if (true);;
+					;if (false);else;;
+					;return;;
+				}
+				
+				public void smile() {
+					  ;;  ;;
+					
+					;;      ;;
+					  ;;;;;;
+				}
+			}
+			""");
+
+		// @formatter:off
+		Program output = parser.parse();
+		Program target = new Program()
+			.withDecl(new ClassDeclaration("Foo")
+				.withMethod(new Method("bar")
+					.withBody(Statement.newBlock()
+						.thenEmpty()
+						.thenLocalVar(Type.newInt(), "a", Expression.newInt(3))
+						.thenEmpty()
+						.thenEmpty()
+						.thenWhile(Expression.newBool(false), Statement.newEmpty())
+						.thenEmpty()
+						.thenEmpty()
+						.thenIf(Expression.newBool(true), Statement.newEmpty())
+						.thenEmpty()
+						.thenEmpty()
+						.thenIf(Expression.newBool(false), Statement.newEmpty(), Statement.newEmpty())
+						.thenEmpty()
+						.thenEmpty()
+						.thenReturn()
+						.thenEmpty()))
+				.withMethod(new Method("smile")
+					.withBody(Statement.newBlock()
+						.thenEmpty().thenEmpty().thenEmpty().thenEmpty()
+						.thenEmpty().thenEmpty().thenEmpty().thenEmpty()
+						.thenEmpty().thenEmpty().thenEmpty().thenEmpty().thenEmpty().thenEmpty())));
 		// @formatter:on
 
 		System.out.println(PrettyPrinter.format(output));
