@@ -1,10 +1,10 @@
 package com.github.firmwehr.gentle.parser.ast;
 
+import com.github.firmwehr.gentle.parser.Util;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 
 import java.util.List;
-import java.util.stream.Stream;
 
 public record ClassDeclaration(
 	Ident name,
@@ -17,19 +17,17 @@ public record ClassDeclaration(
 	}
 
 	public ClassDeclaration withField(Type type, String name) {
-		List<Field> newFields = Stream.concat(fields.stream(), Stream.of(new Field(type, new Ident(name)))).toList();
-		return new ClassDeclaration(this.name, newFields, methods, mainMethods);
+		Field field = new Field(type, new Ident(name));
+		return new ClassDeclaration(this.name, Util.copyAndAppend(fields, field), methods, mainMethods);
 	}
 
 	public ClassDeclaration withMethod(Method method) {
-		List<Method> newMethods = Stream.concat(methods.stream(), Stream.of(method)).toList();
-		return new ClassDeclaration(name, fields, newMethods, mainMethods);
+		return new ClassDeclaration(name, fields, Util.copyAndAppend(methods, method), mainMethods);
 	}
 
 
 	public ClassDeclaration withMainMethod(MainMethod mainMethod) {
-		List<MainMethod> newMainMethods = Stream.concat(mainMethods.stream(), Stream.of(mainMethod)).toList();
-		return new ClassDeclaration(name, fields, methods, newMainMethods);
+		return new ClassDeclaration(name, fields, methods, Util.copyAndAppend(mainMethods, mainMethod));
 	}
 
 	@Override

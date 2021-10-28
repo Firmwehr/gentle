@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.parser.ast.statement;
 
+import com.github.firmwehr.gentle.parser.Util;
 import com.github.firmwehr.gentle.parser.ast.Ident;
 import com.github.firmwehr.gentle.parser.ast.Type;
 import com.github.firmwehr.gentle.parser.ast.expression.Expression;
@@ -7,12 +8,10 @@ import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 public record Block(List<BlockStatement> statements) implements Statement, BlockStatement {
 	public Block then(BlockStatement statement) {
-		List<BlockStatement> newStatements = Stream.concat(this.statements.stream(), Stream.of(statement)).toList();
-		return new Block(newStatements);
+		return new Block(Util.copyAndAppend(statements, statement));
 	}
 
 	public Block thenLocalVar(Type type, String name) {

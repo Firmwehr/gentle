@@ -1,12 +1,12 @@
 package com.github.firmwehr.gentle.parser.ast;
 
+import com.github.firmwehr.gentle.parser.Util;
 import com.github.firmwehr.gentle.parser.ast.statement.Block;
 import com.github.firmwehr.gentle.parser.ast.statement.Statement;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 
 import java.util.List;
-import java.util.stream.Stream;
 
 public record Method(
 	Type returnType,
@@ -23,9 +23,8 @@ public record Method(
 	}
 
 	public Method withParam(Type type, String name) {
-		List<Parameter> newParameters =
-			Stream.concat(parameters.stream(), Stream.of(new Parameter(type, new Ident(name)))).toList();
-		return new Method(returnType, this.name, newParameters, body);
+		Parameter parameter = new Parameter(type, new Ident(name));
+		return new Method(returnType, this.name, Util.copyAndAppend(parameters, parameter), body);
 	}
 
 	public Method withBody(Block body) {
