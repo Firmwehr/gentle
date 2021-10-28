@@ -133,7 +133,7 @@ class ParserTest {
 						.thenReturn(Expression.newBinOp(
 							Expression.newIdent("a"),
 							Expression.newIdent("b"),
-							BinaryOperator.ADDITION
+							BinaryOperator.ADD
 						)))));
 		// @formatter:on
 
@@ -166,12 +166,12 @@ class ParserTest {
 								Expression.newBinOp(
 									Expression.newInt(3),
 									Expression.newInt(4),
-									BinaryOperator.MULTIPLICATION
+									BinaryOperator.MULTIPLY
 								),
-								BinaryOperator.ADDITION
+								BinaryOperator.ADD
 							),
 							Expression.newInt(5),
-							BinaryOperator.ADDITION
+							BinaryOperator.ADD
 						)))));
 		// @formatter:on
 
@@ -203,14 +203,14 @@ class ParserTest {
 							Expression.newBinOp(
 								Expression.newInt(2),
 								Expression.newInt(3),
-								BinaryOperator.ADDITION
+								BinaryOperator.ADD
 							),
 							Expression.newBinOp(
 								Expression.newInt(4),
 								Expression.newInt(5),
-								BinaryOperator.ADDITION
+								BinaryOperator.ADD
 							),
-							BinaryOperator.MULTIPLICATION
+							BinaryOperator.MULTIPLY
 						)))));
 		// @formatter:on
 
@@ -242,10 +242,10 @@ class ParserTest {
 								Expression.newBinOp(
 									Expression.newInt(5),
 									Expression.newInt(8),
-									BinaryOperator.MULTIPLICATION
+									BinaryOperator.MULTIPLY
 								),
 								Expression.newInt(9),
-								BinaryOperator.GREATER_THAN_OR_EQUAL
+								BinaryOperator.GREATER_OR_EQUAL
 							),
 							Expression.newBinOp(
 								Expression.newBinOp(
@@ -253,22 +253,22 @@ class ParserTest {
 										Expression.newBinOp(
 											Expression.newInt(6),
 											Expression.newInt(8),
-											BinaryOperator.ADDITION
+											BinaryOperator.ADD
 										),
 										Expression.newInt(7),
-										BinaryOperator.SUBTRACTION
+										BinaryOperator.SUBTRACT
 									),
 									Expression.newBinOp(
 										Expression.newInt(9),
 										Expression.newInt(2),
-										BinaryOperator.MULTIPLICATION
+										BinaryOperator.MULTIPLY
 									),
-									BinaryOperator.ADDITION
+									BinaryOperator.ADD
 								),
 								Expression.newInt(8),
 								BinaryOperator.LESS_THAN
 							),
-							BinaryOperator.INEQUALITY
+							BinaryOperator.NOT_EQUAL
 						)))));
 		// @formatter:on
 
@@ -320,9 +320,9 @@ class ParserTest {
 							Expression.newCall("fac", Expression.newBinOp(
 								Expression.newIdent("n"),
 								Expression.newInt(1),
-								BinaryOperator.SUBTRACTION
+								BinaryOperator.SUBTRACT
 							)),
-							BinaryOperator.MULTIPLICATION
+							BinaryOperator.MULTIPLY
 						)))))
 			.withDecl(new ClassDeclaration("Prog3")
 				.withMainMethod(new MainMethod("main", Type.newIdent("String"), "args")
@@ -426,7 +426,7 @@ class ParserTest {
 							Expression.newBinOp(
 								Expression.newIdent("i"),
 								Expression.newIdent("n"),
-								BinaryOperator.LESS_THAN_OR_EQUAL
+								BinaryOperator.LESS_OR_EQUAL
 							),
 							Statement.newBlock()
 								.thenExpr(Expression.newBinOp(
@@ -434,18 +434,18 @@ class ParserTest {
 									Expression.newBinOp(
 										Expression.newIdent("total"),
 										Expression.newIdent("i"),
-										BinaryOperator.ADDITION
+										BinaryOperator.ADD
 									),
-									BinaryOperator.ASSIGNMENT
+									BinaryOperator.ASSIGN
 								))
 								.thenExpr(Expression.newBinOp(
 									Expression.newIdent("i"),
 									Expression.newBinOp(
 										Expression.newIdent("i"),
 										Expression.newInt(1),
-										BinaryOperator.ADDITION
+										BinaryOperator.ADD
 									),
-									BinaryOperator.ASSIGNMENT
+									BinaryOperator.ASSIGN
 								))
 						)
 						.thenReturn(Expression.newIdent("total")))));
@@ -523,7 +523,7 @@ class ParserTest {
 								.thenReturn(Expression.newBinOp(
 									Expression.newIdent("a"),
 									Expression.newIdent("b"),
-									BinaryOperator.ADDITION
+									BinaryOperator.ADD
 								)))))));
 		// @formatter:on
 
