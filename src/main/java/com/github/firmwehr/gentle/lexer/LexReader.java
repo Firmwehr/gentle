@@ -198,15 +198,13 @@ public class LexReader {
 		var it = CodePointIterator.iterate(source.getContent(), index);
 
 		// capture entire line (including newline)
-		int charCount = 0;
 		while (it.hasNext()) {
 			var cp = it.nextInt();
-			charCount += Character.charCount(cp); // effectively marks cp as read
 
 			if (cp == CODEPOINT_CARRIAGE_RETURN) {
 				// check for additional \n in case we use windows line endings
 				if (it.hasNext() && it.peekNext() == CODEPOINT_LINE_FEED) {
-					charCount++; // only one char, no charCount() needed
+					it.nextInt();
 				}
 				break;
 			}
@@ -220,12 +218,12 @@ public class LexReader {
 		 * creating an empty string would conflict with other invariats like being unable to read once isEndOfInput()
 		 * becomes true
 		 */
-		if (charCount == 0) {
+		if (it.nextIndex() == index) {
 			throw new LexerException("unable to read line, end of input reached", this);
 		}
 
 		// assemble captured codepoints
-		var s = source.getContent().substring(index, index + charCount);
+		var s = source.getContent().substring(index, it.nextIndex());
 		advanceSourcePosition(s);
 		return s;
 	}
@@ -264,11 +262,19 @@ public class LexReader {
 	 * @throws LexerException If the remaining input does not contain the required amount of codepoints.
 	 */
 	public String peek(int n) throws LexerException {
-		if (this.source.getContent().length() < this.index + n) {
-			var overrun = this.index + n - this.source.getContent().length();
-			throw new LexerException("peek exceeded end of input by " + overrun + " codepoints", this);
+		// we need to count manually as we're dealing with code points here
+		var it = CodePointIterator.iterate(source.getContent(), index);
+		int remainingCodePoints = n;
+		while (remainingCodePoints > 0 && it.hasNext()) {
+			it.nextInt();
+			remainingCodePoints--;
 		}
-		return this.source.getContent().substring(this.index, this.index + n);
+		// if we were able to peek n codepoints, we can return them
+		if (remainingCodePoints == 0) {
+			return source.getContent().substring(index, it.nextIndex());
+		}
+		// otherwise, we can't peek that much
+		throw new LexerException("peek exceeded end of input by " + remainingCodePoints + " codepoints", this);
 	}
 
 	/**

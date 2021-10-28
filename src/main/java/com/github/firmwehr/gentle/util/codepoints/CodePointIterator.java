@@ -18,4 +18,11 @@ public interface CodePointIterator extends PrimitiveIterator.OfInt {
 	 * @return the next code point.
 	 */
 	int peekNext();
+
+	/**
+	 * Returns the index of the next code point in the string.
+	 *
+	 * @return the next index.
+	 */
+	int nextIndex();
 }

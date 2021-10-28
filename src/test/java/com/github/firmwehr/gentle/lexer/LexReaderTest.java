@@ -5,6 +5,7 @@ import com.github.firmwehr.gentle.source.SourcePosition;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 
 public class LexReaderTest {
@@ -45,7 +46,7 @@ public class LexReaderTest {
 	}
 
 	@Test
-	void testUnicodeInSingleLineComments() throws LexerException {
+	void testUnicodeInReadLine() throws LexerException {
 		String comment = "//This is a \uD83D\uDCA9\uD83D\uDCA9\uD83D\uDCA9 comment\nX";
 		var reader = new LexReader(new Source(comment));
 		var reader2 = reader.fork();
@@ -54,5 +55,32 @@ public class LexReaderTest {
 		var diff = reader2.diff(reader);
 		assertThat(line).isEqualTo("//This is a \uD83D\uDCA9\uD83D\uDCA9\uD83D\uDCA9 comment\n");
 		assertThat(line).isEqualTo(diff);
+	}
+
+	@Test
+	void testUnicodeInPeekN() throws LexerException {
+		String input = "\uD83D\uDCA9\uD83D\uDCA9\uD83D\uDCA9\uD83D\uDCA9";
+		var reader = new LexReader(new Source(input));
+
+		var line = reader.peek(2);
+		assertThat(line).isEqualTo("\uD83D\uDCA9\uD83D\uDCA9");
+	}
+
+	@Test
+	void testUnicodeInPeekNExactLength() throws LexerException {
+		String input = "\uD83D\uDCA9\uD83D\uDCA9\uD83D\uDCA9\uD83D\uDCA9";
+		var reader = new LexReader(new Source(input));
+
+		var line = reader.peek(4);
+		assertThat(line).isEqualTo(input);
+	}
+
+	@Test
+	void testUnicodeInPeekNTooMuch() {
+		String input = "\uD83D\uDCA9\uD83D\uDCA9\uD83D\uDCA9\uD83D\uDCA9";
+		var reader = new LexReader(new Source(input));
+
+		assertThatThrownBy(() -> reader.peek(5)).isInstanceOf(LexerException.class)
+			.hasMessageContaining("1"); // peeking 1 codepoint too much should be described
 	}
 }

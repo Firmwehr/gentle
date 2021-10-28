@@ -37,4 +37,16 @@ class StringCodePointIteratorTest {
 		}
 	}
 
+	@Test
+	void correctReadCharactersCount() {
+		String text = "A\uD83C\uDF7BB";
+		var iterator = new StringCodePointIterator(text, 0);
+		iterator.nextInt();
+		assertThat(iterator.nextIndex()).isEqualTo(1);
+		iterator.nextInt();
+		assertThat(iterator.nextIndex()).isEqualTo(3);
+		iterator.nextInt();
+		assertThat(iterator.nextIndex()).isEqualTo(4);
+	}
+
 }
