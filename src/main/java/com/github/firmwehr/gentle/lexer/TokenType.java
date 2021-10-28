@@ -180,10 +180,9 @@ public enum TokenType {
 		// if no valid token type is found during traversal, this might still be empty
 		if (maybeTokenType.isPresent()) {
 			// found matching keyword, parse it
-			keywordReader = reader.fork();
+			keywordReader = reader.fork(); // we need a new fork since the old one had already advanced behind keyword
 			var tokenType = maybeTokenType.get();
-			var token = tokenType.attemptParse(
-				keywordReader); // use original reader since keyword reader is already behind keyword
+			var token = tokenType.attemptParse(keywordReader);
 
 			/* you might believe that parsing the token is optional at this point but actually just because we have
 			 * succesfully identified a keyword does not mean that it will also parse successfully.
