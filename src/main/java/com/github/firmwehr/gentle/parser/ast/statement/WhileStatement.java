@@ -6,7 +6,12 @@ import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 public record WhileStatement(
 	Expression condition,
 	Statement body
-) implements Statement {
+) implements Statement, BlockStatement {
+	@Override
+	public BlockStatement asBlockStatement() {
+		return this;
+	}
+
 	@Override
 	public void prettyPrint(PrettyPrinter p) {
 		p.add("while ").add(condition).add(" ").add(body);

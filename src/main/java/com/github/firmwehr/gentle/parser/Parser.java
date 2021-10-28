@@ -15,9 +15,6 @@ import com.github.firmwehr.gentle.parser.ast.basictype.BooleanType;
 import com.github.firmwehr.gentle.parser.ast.basictype.IdentType;
 import com.github.firmwehr.gentle.parser.ast.basictype.IntType;
 import com.github.firmwehr.gentle.parser.ast.basictype.VoidType;
-import com.github.firmwehr.gentle.parser.ast.blockstatement.BlockStatement;
-import com.github.firmwehr.gentle.parser.ast.blockstatement.JustAStatement;
-import com.github.firmwehr.gentle.parser.ast.blockstatement.LocalVariableDeclarationStatement;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperatorExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.Expression;
@@ -39,9 +36,11 @@ import com.github.firmwehr.gentle.parser.ast.primaryexpression.NullExpression;
 import com.github.firmwehr.gentle.parser.ast.primaryexpression.PrimaryExpression;
 import com.github.firmwehr.gentle.parser.ast.primaryexpression.ThisExpression;
 import com.github.firmwehr.gentle.parser.ast.statement.Block;
+import com.github.firmwehr.gentle.parser.ast.statement.BlockStatement;
 import com.github.firmwehr.gentle.parser.ast.statement.EmptyStatement;
 import com.github.firmwehr.gentle.parser.ast.statement.ExpressionStatement;
 import com.github.firmwehr.gentle.parser.ast.statement.IfStatement;
+import com.github.firmwehr.gentle.parser.ast.statement.LocalVariableDeclarationStatement;
 import com.github.firmwehr.gentle.parser.ast.statement.ReturnStatement;
 import com.github.firmwehr.gentle.parser.ast.statement.Statement;
 import com.github.firmwehr.gentle.parser.ast.statement.WhileStatement;
@@ -212,7 +211,7 @@ public class Parser {
 		if (basicType || doubleIdents || arrayType) {
 			return parseLocalVariableDeclarationStatement();
 		} else {
-			return new JustAStatement(parseStatement());
+			return parseStatement().asBlockStatement();
 		}
 	}
 

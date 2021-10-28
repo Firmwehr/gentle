@@ -40,4 +40,6 @@ public sealed interface Statement extends PrettyPrint
 	static WhileStatement newWhile(Expression condition, Statement body) {
 		return new WhileStatement(condition, body);
 	}
+
+	BlockStatement asBlockStatement();
 }

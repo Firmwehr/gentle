@@ -9,7 +9,12 @@ public record IfStatement(
 	Expression condition,
 	Statement body,
 	Optional<Statement> elseBody
-) implements Statement {
+) implements Statement, BlockStatement {
+	@Override
+	public BlockStatement asBlockStatement() {
+		return this;
+	}
+
 	@Override
 	public void prettyPrint(PrettyPrinter p) {
 		p.add("if ").add(condition).add(" ").add(body);

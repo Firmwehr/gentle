@@ -1,4 +1,4 @@
-package com.github.firmwehr.gentle.parser.ast.blockstatement;
+package com.github.firmwehr.gentle.parser.ast.statement;
 
 import com.github.firmwehr.gentle.parser.ast.Ident;
 import com.github.firmwehr.gentle.parser.ast.Type;
