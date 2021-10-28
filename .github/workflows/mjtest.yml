@@ -1,0 +1,25 @@
+name: mjtest
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+env:
+  JAVA_VERSION: 17
+
+jobs:
+  mjtest-tests-tests:
+    name: "Test against mjtest-tests"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: actions/checkout@v2
+      - name: Build using build script
+        run: ./build
+      - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
+      - run: "git -C mjtest/tests reset --hard origin/master"
+      - run: "./mjtest/mjt.py lexer ./run"
