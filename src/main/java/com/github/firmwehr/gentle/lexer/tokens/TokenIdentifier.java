@@ -23,7 +23,7 @@ public record TokenIdentifier(
 		}
 		var startPos = reader.position();
 		var id = reader.readUntilOrEndOfFile(cp -> !Character.isJavaIdentifierPart(cp), false);
-		if (GentleCompiler.arguments().disableUnicode() && !ASCII_IDENT_PREDICATE.test(id)) {
+		if (!GentleCompiler.unicodeEnabled() && !ASCII_IDENT_PREDICATE.test(id)) {
 			throw new LexerException("identifier does not follow requirements, please enable unicode support", reader);
 		}
 

@@ -52,11 +52,13 @@ public class GentleCompiler {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(GentleCompiler.class);
 
-	private static CommandArguments arguments;
+	private static boolean unicodeEnabled;
 
 	public static void main(String[] args) {
 		LOGGER.info("Hello World, please be gentle UwU");
-		arguments = new CommandArgumentsParser().parseOrExit(args);
+		CommandArguments arguments = new CommandArgumentsParser().parseOrExit(args);
+
+		unicodeEnabled = arguments.unicode();
 
 		boolean validFlags = arguments.echo() ^ arguments.lextest();
 		if (!validFlags) {
@@ -108,7 +110,7 @@ public class GentleCompiler {
 		}
 	}
 
-	public static CommandArguments arguments() {
-		return arguments;
+	public static boolean unicodeEnabled() {
+		return unicodeEnabled;
 	}
 }
