@@ -14,14 +14,7 @@ import com.github.firmwehr.gentle.parser.ast.Type;
 import com.github.firmwehr.gentle.parser.ast.blockstatement.JustAStatement;
 import com.github.firmwehr.gentle.parser.ast.blockstatement.LocalVariableDeclarationStatement;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
-import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperatorExpression;
-import com.github.firmwehr.gentle.parser.ast.expression.PostfixExpression;
-import com.github.firmwehr.gentle.parser.ast.expression.postfixop.FieldAccessOp;
-import com.github.firmwehr.gentle.parser.ast.expression.postfixop.MethodInvocationOp;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.IdentExpression;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.IntegerLiteralExpression;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.LocalMethodCallExpression;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.NewObjectExpression;
+import com.github.firmwehr.gentle.parser.ast.expression.Expression;
 import com.github.firmwehr.gentle.parser.ast.statement.Block;
 import com.github.firmwehr.gentle.parser.ast.statement.ExpressionStatement;
 import com.github.firmwehr.gentle.parser.ast.statement.IfStatement;
@@ -188,9 +181,9 @@ class ParserTest {
 				),
 				new Block(List.of(
 					new JustAStatement(new ReturnStatement(Optional.of(
-						new BinaryOperatorExpression(
-							new PostfixExpression(new IdentExpression(new Ident("a")), List.of()),
-							new PostfixExpression(new IdentExpression(new Ident("b")), List.of()),
+						Expression.newBinOp(
+							Expression.newIdent("a"),
+							Expression.newIdent("b"),
 							BinaryOperator.ADDITION
 						)
 					)))
@@ -223,17 +216,17 @@ class ParserTest {
 			new ClassDeclaration(new Ident("Foo"), List.of(), List.of(
 				new Method(Type.newVoid(), new Ident("bar"), List.of(), new Block(List.of(
 					new JustAStatement(new ExpressionStatement(
-						new BinaryOperatorExpression(
-							new BinaryOperatorExpression(
-								new PostfixExpression(new IntegerLiteralExpression(2), List.of()),
-								new BinaryOperatorExpression(
-									new PostfixExpression(new IntegerLiteralExpression(3), List.of()),
-									new PostfixExpression(new IntegerLiteralExpression(4), List.of()),
+						Expression.newBinOp(
+							Expression.newBinOp(
+								Expression.newInt(2),
+								Expression.newBinOp(
+									Expression.newInt(3),
+									Expression.newInt(4),
 									BinaryOperator.MULTIPLICATION
 								),
 								BinaryOperator.ADDITION
 							),
-							new PostfixExpression(new IntegerLiteralExpression(5), List.of()),
+							Expression.newInt(5),
 							BinaryOperator.ADDITION
 						)
 					))
@@ -265,35 +258,35 @@ class ParserTest {
 			new ClassDeclaration(new Ident("Foo"), List.of(), List.of(
 				new Method(Type.newVoid(), new Ident("bar"), List.of(), new Block(List.of(
 					new JustAStatement(new ExpressionStatement(
-						new BinaryOperatorExpression(
-							new BinaryOperatorExpression(
-								new BinaryOperatorExpression(
-									new PostfixExpression(new IntegerLiteralExpression(5), List.of()),
-									new PostfixExpression(new IntegerLiteralExpression(8), List.of()),
+						Expression.newBinOp(
+							Expression.newBinOp(
+								Expression.newBinOp(
+									Expression.newInt(5),
+									Expression.newInt(8),
 									BinaryOperator.MULTIPLICATION
 								),
-								new PostfixExpression(new IntegerLiteralExpression(9), List.of()),
+								Expression.newInt(9),
 								BinaryOperator.GREATER_THAN_OR_EQUAL
 							),
-							new BinaryOperatorExpression(
-								new BinaryOperatorExpression(
-									new BinaryOperatorExpression(
-										new BinaryOperatorExpression(
-											new PostfixExpression(new IntegerLiteralExpression(6), List.of()),
-											new PostfixExpression(new IntegerLiteralExpression(8), List.of()),
+							Expression.newBinOp(
+								Expression.newBinOp(
+									Expression.newBinOp(
+										Expression.newBinOp(
+											Expression.newInt(6),
+											Expression.newInt(8),
 											BinaryOperator.ADDITION
 										),
-										new PostfixExpression(new IntegerLiteralExpression(7), List.of()),
+										Expression.newInt(7),
 										BinaryOperator.SUBTRACTION
 									),
-									new BinaryOperatorExpression(
-										new PostfixExpression(new IntegerLiteralExpression(9), List.of()),
-										new PostfixExpression(new IntegerLiteralExpression(2), List.of()),
+									Expression.newBinOp(
+										Expression.newInt(9),
+										Expression.newInt(2),
 										BinaryOperator.MULTIPLICATION
 									),
 									BinaryOperator.ADDITION
 								),
-								new PostfixExpression(new IntegerLiteralExpression(8), List.of()),
+								Expression.newInt(8),
 								BinaryOperator.LESS_THAN
 							),
 							BinaryOperator.INEQUALITY
@@ -341,27 +334,22 @@ class ParserTest {
 					List.of(new Parameter(Type.newInt(), new Ident("n"))),
 					new Block(List.of(
 						new JustAStatement(new IfStatement(
-							new BinaryOperatorExpression(
-								new PostfixExpression(new IdentExpression(new Ident("n")), List.of()),
-								new PostfixExpression(new IntegerLiteralExpression(2), List.of()),
+							Expression.newBinOp(
+								Expression.newIdent("n"),
+								Expression.newInt(2),
 								BinaryOperator.LESS_THAN
 							),
-							new ReturnStatement(Optional.of(
-								new PostfixExpression(new IntegerLiteralExpression(1), List.of())
-							)),
+							new ReturnStatement(Optional.of(Expression.newInt(1))),
 							Optional.empty()
 						)),
 						new JustAStatement(new ReturnStatement(Optional.of(
-							new BinaryOperatorExpression(
-								new PostfixExpression(new IdentExpression(new Ident("n")), List.of()),
-								new PostfixExpression(new LocalMethodCallExpression(
-									new Ident("fac"),
-									List.of(new BinaryOperatorExpression(
-										new PostfixExpression(new IdentExpression(new Ident("n")), List.of()),
-										new PostfixExpression(new IntegerLiteralExpression(1), List.of()),
-										BinaryOperator.SUBTRACTION
-									))
-								), List.of()),
+							Expression.newBinOp(
+								Expression.newIdent("n"),
+								Expression.newCall("fac", Expression.newBinOp(
+									Expression.newIdent("n"),
+									Expression.newInt(1),
+									BinaryOperator.SUBTRACTION
+								)),
 								BinaryOperator.MULTIPLICATION
 							)
 						)))
@@ -376,31 +364,19 @@ class ParserTest {
 						new LocalVariableDeclarationStatement(
 							Type.newIdent("Factorial"),
 							new Ident("f"),
-							Optional.of(new PostfixExpression(
-								new NewObjectExpression(new Ident("Factorial")),
-								List.of()))
+							Optional.of(Expression.newNewObject("Factorial"))
 						),
 						new LocalVariableDeclarationStatement(
 							Type.newInt(),
 							new Ident("n"),
-							Optional.of(new PostfixExpression(
-								new IdentExpression(new Ident("f")),
-								List.of(new MethodInvocationOp(
-									new Ident("fac"),
-									List.of(new PostfixExpression(new IntegerLiteralExpression(42), List.of()))
-								))
-							))
+							Optional.of(Expression.newIdent("f")
+								.withCall("fac", Expression.newInt(42)))
 						),
-						new JustAStatement(new ExpressionStatement(new PostfixExpression(
-							new IdentExpression(new Ident("System")),
-							List.of(
-								new FieldAccessOp(new Ident("out")),
-								new MethodInvocationOp(
-									new Ident("println"),
-									List.of(new PostfixExpression(new IdentExpression(new Ident("n")), List.of()))
-								)
-							)
-						)))
+						new JustAStatement(new ExpressionStatement(
+							Expression.newIdent("System")
+								.withFieldAccess("out")
+								.withCall("println", Expression.newIdent("n"))
+						))
 					))
 				)
 			))
