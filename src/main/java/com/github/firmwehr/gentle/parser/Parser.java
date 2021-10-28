@@ -112,10 +112,11 @@ public class Parser {
 			Type type = parseType();
 			Ident ident = parseIdent();
 
-			if (tokens.expectingOperator(Operator.SEMICOLON).peek().isOperator(Operator.SEMICOLON)) {
+			tokens.expectingOperator(Operator.SEMICOLON).expectingOperator(Operator.LEFT_PAREN);
+			if (tokens.peek().isOperator(Operator.SEMICOLON)) {
 				tokens.take();
 				fields.add(new Field(type, ident));
-			} else if (tokens.expectingOperator(Operator.LEFT_PAREN).peek().isOperator(Operator.LEFT_PAREN)) {
+			} else if (tokens.peek().isOperator(Operator.LEFT_PAREN)) {
 				methods.add(parseMethodRest(type, ident));
 			} else {
 				tokens.error();
@@ -148,10 +149,11 @@ public class Parser {
 		List<Parameter> parameters = new ArrayList<>();
 		if (!tokens.expectingOperator(Operator.RIGHT_PAREN).peek().isOperator(Operator.RIGHT_PAREN)) {
 			parameters.add(parseParameter());
-		}
-		while (tokens.expectingOperator(Operator.COMMA).peek().isOperator(Operator.COMMA)) {
-			tokens.take();
-			parameters.add(parseParameter());
+
+			while (tokens.expectingOperator(Operator.COMMA).peek().isOperator(Operator.COMMA)) {
+				tokens.take();
+				parameters.add(parseParameter());
+			}
 		}
 
 		tokens.expectOperator(Operator.RIGHT_PAREN);
@@ -295,10 +297,10 @@ public class Parser {
 		tokens.expectKeyword(Keyword.RETURN);
 
 		Optional<Expression> returnValue;
-		if (!tokens.expectingOperator(Operator.SEMICOLON).peek().isOperator(Operator.SEMICOLON)) {
-			returnValue = Optional.of(parseExpression());
-		} else {
+		if (tokens.expectingOperator(Operator.SEMICOLON).peek().isOperator(Operator.SEMICOLON)) {
 			returnValue = Optional.empty();
+		} else {
+			returnValue = Optional.of(parseExpression());
 		}
 
 		tokens.expectOperator(Operator.SEMICOLON);
