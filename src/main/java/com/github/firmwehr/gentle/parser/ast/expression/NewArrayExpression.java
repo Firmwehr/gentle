@@ -1,14 +1,13 @@
-package com.github.firmwehr.gentle.parser.ast.primaryexpression;
+package com.github.firmwehr.gentle.parser.ast.expression;
 
 import com.github.firmwehr.gentle.parser.ast.Type;
-import com.github.firmwehr.gentle.parser.ast.expression.Expression;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 import com.google.common.base.Preconditions;
 
 public record NewArrayExpression(
 	Type type,
 	Expression size
-) implements PrimaryExpression {
+) implements Expression {
 	public NewArrayExpression {
 		Preconditions.checkArgument(type.arrayLevel() >= 1);
 	}

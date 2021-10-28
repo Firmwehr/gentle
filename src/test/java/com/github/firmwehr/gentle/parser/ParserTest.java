@@ -413,7 +413,7 @@ class ParserTest {
 						.thenReturn(Expression.newCall(
 							"clamp",
 							Expression.newIdent("n"),
-							Expression.newUnOp(UnaryOperator.NEGATION, Expression.newInt(1)),
+							Expression.newInt(1).withUnary(UnaryOperator.NEGATION),
 							Expression.newInt(1)
 						))))
 				.withMethod(new Method("sum")

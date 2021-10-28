@@ -1,55 +1,73 @@
 package com.github.firmwehr.gentle.parser.ast.expression;
 
+import com.github.firmwehr.gentle.parser.ast.Ident;
 import com.github.firmwehr.gentle.parser.ast.Type;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.PrimaryExpression;
+import com.github.firmwehr.gentle.parser.ast.expression.postfixop.ArrayAccessOp;
+import com.github.firmwehr.gentle.parser.ast.expression.postfixop.FieldAccessOp;
+import com.github.firmwehr.gentle.parser.ast.expression.postfixop.MethodInvocationOp;
+import com.github.firmwehr.gentle.parser.ast.expression.postfixop.PostfixOp;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
 
-import java.util.List;
+import java.util.Arrays;
 
 public sealed interface Expression extends PrettyPrint
-	permits BinaryOperatorExpression, UnaryOperatorExpression, PostfixExpression {
+	permits BinaryOperatorExpression, BooleanLiteralExpression, IdentExpression, IntegerLiteralExpression,
+	        LocalMethodCallExpression, NewArrayExpression, NewObjectExpression, NullExpression, PostfixExpression,
+	        ThisExpression, UnaryOperatorExpression {
 
 	static BinaryOperatorExpression newBinOp(Expression lhs, Expression rhs, BinaryOperator operator) {
 		return new BinaryOperatorExpression(lhs, rhs, operator);
 	}
 
-	static UnaryOperatorExpression newUnOp(UnaryOperator operator, Expression expression) {
-		return new UnaryOperatorExpression(operator, expression);
+	static BooleanLiteralExpression newBool(boolean value) {
+		return new BooleanLiteralExpression(value);
 	}
 
-	static PostfixExpression fromPrimary(PrimaryExpression expression) {
-		return new PostfixExpression(expression, List.of());
+	static IdentExpression newIdent(String name) {
+		return new IdentExpression(new Ident(name));
 	}
 
-	static PostfixExpression newBool(boolean value) {
-		return fromPrimary(PrimaryExpression.newBool(value));
+	static IntegerLiteralExpression newInt(int value) {
+		return new IntegerLiteralExpression(value);
 	}
 
-	static PostfixExpression newIdent(String name) {
-		return fromPrimary(PrimaryExpression.newIdent(name));
+	static LocalMethodCallExpression newCall(String name, Expression... arguments) {
+		return new LocalMethodCallExpression(new Ident(name), Arrays.asList(arguments));
 	}
 
-	static PostfixExpression newInt(int value) {
-		return fromPrimary(PrimaryExpression.newInt(value));
+	static NewArrayExpression newNewArray(Type type, Expression size) {
+		return new NewArrayExpression(type, size);
 	}
 
-	static PostfixExpression newCall(String name, Expression... arguments) {
-		return fromPrimary(PrimaryExpression.newCall(name, arguments));
+	static NewObjectExpression newNewObject(String name) {
+		return new NewObjectExpression(new Ident(name));
 	}
 
-	static PostfixExpression newNewArray(Type type, Expression size) {
-		return fromPrimary(PrimaryExpression.newNewArray(type, size));
+	static NullExpression newNull() {
+		return new NullExpression();
 	}
 
-	static PostfixExpression newNewObject(String name) {
-		return fromPrimary(PrimaryExpression.newNewObject(name));
+	static ThisExpression newThis() {
+		return new ThisExpression();
 	}
 
-	static PostfixExpression newNull() {
-		return fromPrimary(PrimaryExpression.newNull());
+	default UnaryOperatorExpression withUnary(UnaryOperator operator) {
+		return new UnaryOperatorExpression(operator, this);
 	}
 
-	static PostfixExpression newThis() {
-		return fromPrimary(PrimaryExpression.newThis());
+	default PostfixExpression withPostfix(PostfixOp operator) {
+		return new PostfixExpression(this, operator);
+	}
+
+	default PostfixExpression withCall(String name, Expression... arguments) {
+		return withPostfix(new MethodInvocationOp(new Ident(name), Arrays.asList(arguments)));
+	}
+
+	default PostfixExpression withArrayAccess(Expression index) {
+		return withPostfix(new ArrayAccessOp(index));
+	}
+
+	default PostfixExpression withFieldAccess(String name) {
+		return withPostfix(new FieldAccessOp(new Ident(name)));
 	}
 }

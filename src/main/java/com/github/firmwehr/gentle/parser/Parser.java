@@ -17,24 +17,22 @@ import com.github.firmwehr.gentle.parser.ast.basictype.IntType;
 import com.github.firmwehr.gentle.parser.ast.basictype.VoidType;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperatorExpression;
+import com.github.firmwehr.gentle.parser.ast.expression.BooleanLiteralExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.Expression;
+import com.github.firmwehr.gentle.parser.ast.expression.IdentExpression;
+import com.github.firmwehr.gentle.parser.ast.expression.IntegerLiteralExpression;
+import com.github.firmwehr.gentle.parser.ast.expression.LocalMethodCallExpression;
+import com.github.firmwehr.gentle.parser.ast.expression.NewArrayExpression;
+import com.github.firmwehr.gentle.parser.ast.expression.NewObjectExpression;
+import com.github.firmwehr.gentle.parser.ast.expression.NullExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.PostfixExpression;
+import com.github.firmwehr.gentle.parser.ast.expression.ThisExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperator;
 import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperatorExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.postfixop.ArrayAccessOp;
 import com.github.firmwehr.gentle.parser.ast.expression.postfixop.FieldAccessOp;
 import com.github.firmwehr.gentle.parser.ast.expression.postfixop.MethodInvocationOp;
 import com.github.firmwehr.gentle.parser.ast.expression.postfixop.PostfixOp;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.BooleanLiteralExpression;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.IdentExpression;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.IntegerLiteralExpression;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.JustAnExpression;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.LocalMethodCallExpression;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.NewArrayExpression;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.NewObjectExpression;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.NullExpression;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.PrimaryExpression;
-import com.github.firmwehr.gentle.parser.ast.primaryexpression.ThisExpression;
 import com.github.firmwehr.gentle.parser.ast.statement.Block;
 import com.github.firmwehr.gentle.parser.ast.statement.BlockStatement;
 import com.github.firmwehr.gentle.parser.ast.statement.EmptyStatement;
@@ -379,20 +377,19 @@ public class Parser {
 		}
 	}
 
-	private PostfixExpression parsePostfixExpression() throws ParseException {
-		PrimaryExpression expression = parsePrimaryExpression();
-		List<PostfixOp> postfixOps = new ArrayList<>();
+	private Expression parsePostfixExpression() throws ParseException {
+		Expression expression = parsePrimaryExpression();
 
 		while (true) {
 			Optional<PostfixOp> op = parseOptionalPostfixOp();
 			if (op.isPresent()) {
-				postfixOps.add(op.get());
+				expression = new PostfixExpression(expression, op.get());
 			} else {
 				break;
 			}
 		}
 
-		return new PostfixExpression(expression, postfixOps);
+		return expression;
 	}
 
 	private Optional<PostfixOp> parseOptionalPostfixOp() throws ParseException {
@@ -444,8 +441,9 @@ public class Parser {
 			.expectingKeyword(Keyword.NEW);
 	}
 
-	private PrimaryExpression parsePrimaryExpression() throws ParseException {
+	private Expression parsePrimaryExpression() throws ParseException {
 		expectingPrimaryExpression();
+
 		Token token = tokens.peek();
 		Optional<IntegerLiteralToken> integerLiteralToken = token.asIntegerLiteralToken();
 		Optional<IdentToken> identToken = token.asIdentToken();
@@ -476,7 +474,7 @@ public class Parser {
 			tokens.take();
 			Expression expression = parseExpression();
 			tokens.expectOperator(Operator.RIGHT_PAREN);
-			return new JustAnExpression(expression);
+			return expression;
 		} else if (token.isKeyword(Keyword.NEW)) {
 			return parseNewObjectExpressionOrNewArrayExpression();
 		} else {
@@ -484,7 +482,7 @@ public class Parser {
 		}
 	}
 
-	private PrimaryExpression parseNewObjectExpressionOrNewArrayExpression() throws ParseException {
+	private Expression parseNewObjectExpressionOrNewArrayExpression() throws ParseException {
 		tokens.expectKeyword(Keyword.NEW);
 
 		Token token = tokens.expectingIdent().expecting("basic type").peek();
