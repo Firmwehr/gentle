@@ -8,7 +8,7 @@ import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 public record MainMethod(
 	Ident name,
 	Parameter parameter,
-	Block block
+	Block body
 ) implements PrettyPrint {
 	public MainMethod(String name, Type paramType, String paramName) {
 		this(new Ident(name), new Parameter(paramType, new Ident(paramName)), Statement.newBlock());
@@ -23,7 +23,7 @@ public record MainMethod(
 		p.add("Method{").indent().newline();
 		p.add("name = ").add(name).newline();
 		p.add("parameter = ").add(parameter).newline();
-		p.add("block = ").add(block).newline();
+		p.add("body = ").add(body).newline();
 		p.unindent().add("}");
 	}
 }

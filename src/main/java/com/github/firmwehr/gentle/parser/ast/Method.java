@@ -12,20 +12,20 @@ public record Method(
 	Type returnType,
 	Ident name,
 	List<Parameter> parameters,
-	Block block
+	Block body
 ) implements PrettyPrint {
 	public Method(String name) {
 		this(Type.newVoid(), new Ident(name), List.of(), Statement.newBlock());
 	}
 
 	public Method returning(Type returnType) {
-		return new Method(returnType, name, parameters, block);
+		return new Method(returnType, name, parameters, body);
 	}
 
 	public Method withParam(Type type, String name) {
 		List<Parameter> newParameters =
 			Stream.concat(parameters.stream(), Stream.of(new Parameter(type, new Ident(name)))).toList();
-		return new Method(returnType, this.name, newParameters, block);
+		return new Method(returnType, this.name, newParameters, body);
 	}
 
 	public Method withBody(Block body) {
@@ -38,7 +38,7 @@ public record Method(
 		p.add("returnType = ").add(returnType).newline();
 		p.add("name = ").add(name).newline();
 		p.add("parameters = [").indent().addAll(parameters).unindent().add("]").newline();
-		p.add("block = ").add(block).newline();
+		p.add("body = ").add(body).newline();
 		p.unindent().add("}");
 	}
 }
