@@ -11,20 +11,14 @@ import com.github.firmwehr.gentle.parser.ast.Method;
 import com.github.firmwehr.gentle.parser.ast.Parameter;
 import com.github.firmwehr.gentle.parser.ast.Program;
 import com.github.firmwehr.gentle.parser.ast.Type;
-import com.github.firmwehr.gentle.parser.ast.blockstatement.JustAStatement;
-import com.github.firmwehr.gentle.parser.ast.blockstatement.LocalVariableDeclarationStatement;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
 import com.github.firmwehr.gentle.parser.ast.expression.Expression;
-import com.github.firmwehr.gentle.parser.ast.statement.Block;
-import com.github.firmwehr.gentle.parser.ast.statement.ExpressionStatement;
-import com.github.firmwehr.gentle.parser.ast.statement.IfStatement;
-import com.github.firmwehr.gentle.parser.ast.statement.ReturnStatement;
+import com.github.firmwehr.gentle.parser.ast.statement.Statement;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 import com.github.firmwehr.gentle.source.Source;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -114,14 +108,14 @@ class ParserTest {
 							new Parameter(Type.newInt(), new Ident("amount")),
 							new Parameter(Type.newBool(), new Ident("raw"))
 						),
-						new Block(List.of())
+						Statement.newBlock()
 					)
 				),
 				List.of(
 					new MainMethod(
 						new Ident("main"),
 						new Parameter(Type.newIdent("String"), new Ident("args")),
-						new Block(List.of())
+						Statement.newBlock()
 					)
 				)
 			),
@@ -136,13 +130,13 @@ class ParserTest {
 						Type.newIdent("Foo"),
 						new Ident("getSingleFoo"),
 						List.of(),
-						new Block(List.of())
+						Statement.newBlock()
 					),
 					new Method(
 						Type.newIdent("Foo").atLevel(1),
 						new Ident("getManyFoos"),
 						List.of(new Parameter(Type.newInt(), new Ident("amount"))),
-						new Block(List.of())
+						Statement.newBlock()
 					)
 				),
 				List.of()
@@ -179,15 +173,12 @@ class ParserTest {
 					new Parameter(Type.newInt(), new Ident("a")),
 					new Parameter(Type.newInt(), new Ident("b"))
 				),
-				new Block(List.of(
-					new JustAStatement(new ReturnStatement(Optional.of(
-						Expression.newBinOp(
-							Expression.newIdent("a"),
-							Expression.newIdent("b"),
-							BinaryOperator.ADDITION
-						)
-					)))
-				))
+				Statement.newBlock()
+					.thenReturn(Expression.newBinOp(
+						Expression.newIdent("a"),
+						Expression.newIdent("b"),
+						BinaryOperator.ADDITION
+					))
 			)),
 			List.of()
 		)));
@@ -214,9 +205,12 @@ class ParserTest {
 		Program output = parser.parse();
 		Program target = new Program(List.of(
 			new ClassDeclaration(new Ident("Foo"), List.of(), List.of(
-				new Method(Type.newVoid(), new Ident("bar"), List.of(), new Block(List.of(
-					new JustAStatement(new ExpressionStatement(
-						Expression.newBinOp(
+				new Method(
+					Type.newVoid(),
+					new Ident("bar"),
+					List.of(),
+					Statement.newBlock()
+						.thenExpr(Expression.newBinOp(
 							Expression.newBinOp(
 								Expression.newInt(2),
 								Expression.newBinOp(
@@ -228,9 +222,8 @@ class ParserTest {
 							),
 							Expression.newInt(5),
 							BinaryOperator.ADDITION
-						)
-					))
-				)))
+						))
+				)
 			), List.of())
 		));
 		// @formatter:on
@@ -256,9 +249,12 @@ class ParserTest {
 		Program output = parser.parse();
 		Program target = new Program(List.of(
 			new ClassDeclaration(new Ident("Foo"), List.of(), List.of(
-				new Method(Type.newVoid(), new Ident("bar"), List.of(), new Block(List.of(
-					new JustAStatement(new ExpressionStatement(
-						Expression.newBinOp(
+				new Method(
+					Type.newVoid(),
+					new Ident("bar"),
+					List.of(),
+					Statement.newBlock()
+						.thenExpr(Expression.newBinOp(
 							Expression.newBinOp(
 								Expression.newBinOp(
 									Expression.newInt(5),
@@ -290,9 +286,8 @@ class ParserTest {
 								BinaryOperator.LESS_THAN
 							),
 							BinaryOperator.INEQUALITY
-						)
-					))
-				)))
+						))
+				)
 			), List.of())
 		));
 		// @formatter:on
@@ -332,52 +327,45 @@ class ParserTest {
 					Type.newInt(),
 					new Ident("fac"),
 					List.of(new Parameter(Type.newInt(), new Ident("n"))),
-					new Block(List.of(
-						new JustAStatement(new IfStatement(
+					Statement.newBlock()
+						.thenIf(
 							Expression.newBinOp(
 								Expression.newIdent("n"),
 								Expression.newInt(2),
 								BinaryOperator.LESS_THAN
 							),
-							new ReturnStatement(Optional.of(Expression.newInt(1))),
-							Optional.empty()
-						)),
-						new JustAStatement(new ReturnStatement(Optional.of(
-							Expression.newBinOp(
+							Statement.newReturn(Expression.newInt(1))
+						)
+						.thenReturn(Expression.newBinOp(
+							Expression.newIdent("n"),
+							Expression.newCall("fac", Expression.newBinOp(
 								Expression.newIdent("n"),
-								Expression.newCall("fac", Expression.newBinOp(
-									Expression.newIdent("n"),
-									Expression.newInt(1),
-									BinaryOperator.SUBTRACTION
-								)),
-								BinaryOperator.MULTIPLICATION
-							)
-						)))
-					))
+								Expression.newInt(1),
+								BinaryOperator.SUBTRACTION
+							)),
+							BinaryOperator.MULTIPLICATION
+						))
 				)
 			), List.of()),
 			new ClassDeclaration(new Ident("Prog3"), List.of(), List.of(), List.of(
 				new MainMethod(
 					new Ident("main"),
 					new Parameter(Type.newIdent("String"), new Ident("args")),
-					new Block(List.of(
-						new LocalVariableDeclarationStatement(
+					Statement.newBlock()
+						.thenLocalVar(
 							Type.newIdent("Factorial"),
-							new Ident("f"),
-							Optional.of(Expression.newNewObject("Factorial"))
-						),
-						new LocalVariableDeclarationStatement(
+							"f",
+							Expression.newNewObject("Factorial")
+						)
+						.thenLocalVar(
 							Type.newInt(),
-							new Ident("n"),
-							Optional.of(Expression.newIdent("f")
-								.withCall("fac", Expression.newInt(42)))
-						),
-						new JustAStatement(new ExpressionStatement(
-							Expression.newIdent("System")
-								.withFieldAccess("out")
-								.withCall("println", Expression.newIdent("n"))
-						))
-					))
+							"n",
+							Expression.newIdent("f")
+								.withCall("fac", Expression.newInt(42))
+						)
+						.thenExpr(Expression.newIdent("System")
+							.withFieldAccess("out")
+							.withCall("println", Expression.newIdent("n")))
 				)
 			))
 		));
