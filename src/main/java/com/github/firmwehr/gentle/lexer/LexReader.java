@@ -2,7 +2,7 @@ package com.github.firmwehr.gentle.lexer;
 
 import com.github.firmwehr.gentle.source.Source;
 import com.github.firmwehr.gentle.source.SourcePosition;
-import com.github.firmwehr.gentle.util.CodePointIterator;
+import com.github.firmwehr.gentle.util.codepoints.CodePointIterator;
 import com.google.common.base.Preconditions;
 
 import java.util.function.IntPredicate;

@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.util;
 
+import com.github.firmwehr.gentle.util.codepoints.CodePointIterator;
 import com.google.common.base.Preconditions;
 
 import java.util.HashMap;
