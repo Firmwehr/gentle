@@ -49,4 +49,17 @@ class StringCodePointIteratorTest {
 		assertThat(iterator.nextIndex()).isEqualTo(4);
 	}
 
+	@Test
+	void testInvalidUnicode() {
+		String text = "A\uD83CB"; // a single high surrogate char
+		System.out.println(text);
+		var iterator = new StringCodePointIterator(text, 0);
+		iterator.nextInt();
+		assertThat(iterator.nextIndex()).isEqualTo(1);
+		iterator.nextInt();
+		assertThat(iterator.nextIndex()).isEqualTo(2);
+		iterator.nextInt();
+		assertThat(iterator.nextIndex()).isEqualTo(3);
+	}
+
 }

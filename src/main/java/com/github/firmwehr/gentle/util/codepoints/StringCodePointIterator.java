@@ -38,21 +38,24 @@ class StringCodePointIterator implements CodePointIterator {
 	}
 
 	private int getNextCodePoint(boolean increment) {
-		int index = this.nextIndex;
-		char first = this.string.charAt(index);
+		int tempIndex = this.nextIndex;
+		char first = this.string.charAt(tempIndex);
+		int cp = first; // first is returned if we don't come across a valid 2 char codepoint now
+		tempIndex++; // first char was read
 		if (Character.isHighSurrogate(first)) {
-			index++;
 			if (hasNext()) {
-				char lower = this.string.charAt(index);
-				if (increment) {
-					this.nextIndex += 2; // skip both chars as they form the single codepoint we read
+				char lower = this.string.charAt(tempIndex);
+				// we need to make sure that the lower char is actually a low surrogate
+				// otherwise its just broken unicode, but we want to keep the index
+				if (Character.isLowSurrogate(lower)) {
+					tempIndex++; // our codepoint has 2 chars
+					cp = Character.toCodePoint(first, lower);
 				}
-				return Character.toCodePoint(first, lower);
 			}
 		}
 		if (increment) {
-			this.nextIndex = index + 1; // increment by 1
+			this.nextIndex = tempIndex; // increment by either 1 or 2
 		}
-		return first;
+		return cp;
 	}
 }
