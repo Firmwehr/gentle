@@ -4,11 +4,8 @@ import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 import com.github.firmwehr.gentle.parser.ast.ClassDeclaration;
-import com.github.firmwehr.gentle.parser.ast.Field;
-import com.github.firmwehr.gentle.parser.ast.Ident;
 import com.github.firmwehr.gentle.parser.ast.MainMethod;
 import com.github.firmwehr.gentle.parser.ast.Method;
-import com.github.firmwehr.gentle.parser.ast.Parameter;
 import com.github.firmwehr.gentle.parser.ast.Program;
 import com.github.firmwehr.gentle.parser.ast.Type;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
@@ -17,8 +14,6 @@ import com.github.firmwehr.gentle.parser.ast.statement.Statement;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 import com.github.firmwehr.gentle.source.Source;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,8 +28,7 @@ class ParserTest {
 		Parser parser = fromText("class Empty {}");
 
 		Program output = parser.parse();
-		Program target =
-			new Program(List.of(new ClassDeclaration(new Ident("Empty"), List.of(), List.of(), List.of())));
+		Program target = new Program().withDecl(new ClassDeclaration("Empty"));
 
 		System.out.println(PrettyPrinter.format(output));
 		System.out.println();
@@ -57,15 +51,13 @@ class ParserTest {
 			{
 			}
 			""");
+		// @formatter:on
 
 		Program output = parser.parse();
-		Program target = new Program(List.of(
-			new ClassDeclaration(new Ident("Nothing"), List.of(), List.of(), List.of()),
-			new ClassDeclaration(new Ident("to"), List.of(), List.of(), List.of()),
-			new ClassDeclaration(new Ident("c"), List.of(), List.of(), List.of()),
-			new ClassDeclaration(new Ident("HERE"), List.of(), List.of(), List.of())
-		));
-		// @formatter:on
+		Program target = new Program().withDecl(new ClassDeclaration("Nothing"))
+			.withDecl(new ClassDeclaration("to"))
+			.withDecl(new ClassDeclaration("c"))
+			.withDecl(new ClassDeclaration("HERE"));
 
 		System.out.println(PrettyPrinter.format(output));
 		System.out.println();
@@ -76,6 +68,7 @@ class ParserTest {
 
 	@Test
 	void classesWithMethodsAndFields() throws LexerException, ParseException {
+
 		// @formatter:off
 		Parser parser = fromText("""
 			class Foo {
@@ -93,55 +86,22 @@ class ParserTest {
 			""");
 
 		Program output = parser.parse();
-		Program target = new Program(List.of(
-			new ClassDeclaration(
-				new Ident("Foo"),
-				List.of(
-					new Field(Type.newInt().atLevel(1), new Ident("numbers"))
-				),
-				List.of(
-					new Method(
-						Type.newVoid(),
-						new Ident("eat"),
-						List.of(
-							new Parameter(Type.newInt().atLevel(1), new Ident("types")),
-							new Parameter(Type.newInt(), new Ident("amount")),
-							new Parameter(Type.newBool(), new Ident("raw"))
-						),
-						Statement.newBlock()
-					)
-				),
-				List.of(
-					new MainMethod(
-						new Ident("main"),
-						new Parameter(Type.newIdent("String"), new Ident("args")),
-						Statement.newBlock()
-					)
-				)
-			),
-			new ClassDeclaration(
-				new Ident("Bar"),
-				List.of(
-					new Field(Type.newBool().atLevel(2), new Ident("bitmap")),
-					new Field(Type.newIdent("Foo"), new Ident("foo"))
-				),
-				List.of(
-					new Method(
-						Type.newIdent("Foo"),
-						new Ident("getSingleFoo"),
-						List.of(),
-						Statement.newBlock()
-					),
-					new Method(
-						Type.newIdent("Foo").atLevel(1),
-						new Ident("getManyFoos"),
-						List.of(new Parameter(Type.newInt(), new Ident("amount"))),
-						Statement.newBlock()
-					)
-				),
-				List.of()
-			)
-		));
+		Program target = new Program()
+			.withDecl(new ClassDeclaration("Foo")
+				.withMethod(new Method("eat")
+					.withParam(Type.newInt().atLevel(1), "types")
+					.withParam(Type.newInt(), "amount")
+					.withParam(Type.newBool(), "raw"))
+				.withField(Type.newInt().atLevel(1), "numbers")
+				.withMainMethod(new MainMethod("main", Type.newIdent("String"), "args")))
+			.withDecl(new ClassDeclaration("Bar")
+				.withMethod(new Method("getSingleFoo")
+					.returning(Type.newIdent("Foo")))
+				.withMethod(new Method("getManyFoos")
+					.returning(Type.newIdent("Foo").atLevel(1))
+					.withParam(Type.newInt(), "amount"))
+				.withField(Type.newBool().atLevel(2), "bitmap")
+				.withField(Type.newIdent("Foo"), "foo"));
 		// @formatter:on
 
 		System.out.println(PrettyPrinter.format(output));
@@ -163,25 +123,17 @@ class ParserTest {
 
 		// @formatter:off
 		Program output = parser.parse();
-		Program target = new Program(List.of(new ClassDeclaration(
-			new Ident("Foo"),
-			List.of(),
-			List.of(new Method(
-				Type.newVoid(),
-				new Ident("add"),
-				List.of(
-					new Parameter(Type.newInt(), new Ident("a")),
-					new Parameter(Type.newInt(), new Ident("b"))
-				),
-				Statement.newBlock()
-					.thenReturn(Expression.newBinOp(
-						Expression.newIdent("a"),
-						Expression.newIdent("b"),
-						BinaryOperator.ADDITION
-					))
-			)),
-			List.of()
-		)));
+		Program target = new Program()
+			.withDecl(new ClassDeclaration("Foo")
+				.withMethod(new Method("add")
+					.withParam(Type.newInt(), "a")
+					.withParam(Type.newInt(), "b")
+					.withBody(Statement.newBlock()
+						.thenReturn(Expression.newBinOp(
+							Expression.newIdent("a"),
+							Expression.newIdent("b"),
+							BinaryOperator.ADDITION
+						)))));
 		// @formatter:on
 
 		System.out.println(PrettyPrinter.format(output));
@@ -203,13 +155,10 @@ class ParserTest {
 
 		// @formatter:off
 		Program output = parser.parse();
-		Program target = new Program(List.of(
-			new ClassDeclaration(new Ident("Foo"), List.of(), List.of(
-				new Method(
-					Type.newVoid(),
-					new Ident("bar"),
-					List.of(),
-					Statement.newBlock()
+		Program target = new Program()
+			.withDecl(new ClassDeclaration("Foo")
+				.withMethod(new Method("bar")
+					.withBody(Statement.newBlock()
 						.thenExpr(Expression.newBinOp(
 							Expression.newBinOp(
 								Expression.newInt(2),
@@ -222,10 +171,7 @@ class ParserTest {
 							),
 							Expression.newInt(5),
 							BinaryOperator.ADDITION
-						))
-				)
-			), List.of())
-		));
+						)))));
 		// @formatter:on
 
 		System.out.println(PrettyPrinter.format(output));
@@ -247,13 +193,10 @@ class ParserTest {
 
 		// @formatter:off
 		Program output = parser.parse();
-		Program target = new Program(List.of(
-			new ClassDeclaration(new Ident("Foo"), List.of(), List.of(
-				new Method(
-					Type.newVoid(),
-					new Ident("bar"),
-					List.of(),
-					Statement.newBlock()
+		Program target = new Program()
+			.withDecl(new ClassDeclaration("Foo")
+				.withMethod(new Method("bar")
+					.withBody(Statement.newBlock()
 						.thenExpr(Expression.newBinOp(
 							Expression.newBinOp(
 								Expression.newBinOp(
@@ -286,10 +229,7 @@ class ParserTest {
 								BinaryOperator.LESS_THAN
 							),
 							BinaryOperator.INEQUALITY
-						))
-				)
-			), List.of())
-		));
+						)))));
 		// @formatter:on
 
 		System.out.println(PrettyPrinter.format(output));
@@ -321,13 +261,12 @@ class ParserTest {
 			""");
 
 		Program output = parser.parse();
-		Program target = new Program(List.of(
-			new ClassDeclaration(new Ident("Factorial"), List.of(), List.of(
-				new Method(
-					Type.newInt(),
-					new Ident("fac"),
-					List.of(new Parameter(Type.newInt(), new Ident("n"))),
-					Statement.newBlock()
+		Program target = new Program()
+			.withDecl(new ClassDeclaration("Factorial")
+				.withMethod(new Method("fac")
+					.returning(Type.newInt())
+					.withParam(Type.newInt(), "n")
+					.withBody(Statement.newBlock()
 						.thenIf(
 							Expression.newBinOp(
 								Expression.newIdent("n"),
@@ -344,14 +283,10 @@ class ParserTest {
 								BinaryOperator.SUBTRACTION
 							)),
 							BinaryOperator.MULTIPLICATION
-						))
-				)
-			), List.of()),
-			new ClassDeclaration(new Ident("Prog3"), List.of(), List.of(), List.of(
-				new MainMethod(
-					new Ident("main"),
-					new Parameter(Type.newIdent("String"), new Ident("args")),
-					Statement.newBlock()
+						)))))
+			.withDecl(new ClassDeclaration("Prog3")
+				.withMainMethod(new MainMethod("main", Type.newIdent("String"), "args")
+					.withBody(Statement.newBlock()
 						.thenLocalVar(
 							Type.newIdent("Factorial"),
 							"f",
@@ -365,10 +300,7 @@ class ParserTest {
 						)
 						.thenExpr(Expression.newIdent("System")
 							.withFieldAccess("out")
-							.withCall("println", Expression.newIdent("n")))
-				)
-			))
-		));
+							.withCall("println", Expression.newIdent("n"))))));
 		// @formatter:on
 
 		System.out.println(PrettyPrinter.format(output));

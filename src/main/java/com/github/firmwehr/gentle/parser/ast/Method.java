@@ -1,10 +1,12 @@
 package com.github.firmwehr.gentle.parser.ast;
 
 import com.github.firmwehr.gentle.parser.ast.statement.Block;
+import com.github.firmwehr.gentle.parser.ast.statement.Statement;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 public record Method(
 	Type returnType,
@@ -12,6 +14,24 @@ public record Method(
 	List<Parameter> parameters,
 	Block block
 ) implements PrettyPrint {
+	public Method(String name) {
+		this(Type.newVoid(), new Ident(name), List.of(), Statement.newBlock());
+	}
+
+	public Method returning(Type returnType) {
+		return new Method(returnType, name, parameters, block);
+	}
+
+	public Method withParam(Type type, String name) {
+		List<Parameter> newParameters =
+			Stream.concat(parameters.stream(), Stream.of(new Parameter(type, new Ident(name)))).toList();
+		return new Method(returnType, this.name, newParameters, block);
+	}
+
+	public Method withBody(Block body) {
+		return new Method(returnType, name, parameters, body);
+	}
+
 	@Override
 	public void prettyPrint(PrettyPrinter p) {
 		p.add("Method{").indent().newline();
