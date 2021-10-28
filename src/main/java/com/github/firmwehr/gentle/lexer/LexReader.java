@@ -198,15 +198,15 @@ public class LexReader {
 		var it = CodePointIterator.iterate(source.getContent(), index);
 
 		// capture entire line (including newline)
-		int i = 0;
+		int charCount = 0;
 		while (it.hasNext()) {
 			var cp = it.nextInt();
-			i++; // effectively marks cp as read
+			charCount += Character.charCount(cp); // effectively marks cp as read
 
 			if (cp == CODEPOINT_CARRIAGE_RETURN) {
 				// check for additional \n in case we use windows line endings
 				if (it.hasNext() && it.peekNext() == CODEPOINT_LINE_FEED) {
-					i++;
+					charCount++; // only one char, no charCount() needed
 				}
 				break;
 			}
@@ -220,12 +220,12 @@ public class LexReader {
 		 * creating an empty string would conflict with other invariats like being unable to read once isEndOfInput()
 		 * becomes true
 		 */
-		if (i == 0) {
+		if (charCount == 0) {
 			throw new LexerException("unable to read line, end of input reached", this);
 		}
 
 		// assemble captured codepoints
-		var s = source.getContent().substring(index, index + i);
+		var s = source.getContent().substring(index, index + charCount);
 		advanceSourcePosition(s);
 		return s;
 	}

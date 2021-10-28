@@ -43,4 +43,16 @@ public class LexReaderTest {
 		assertThat(line).isEqualTo(diff1);
 		assertThat(diff1).isEqualTo(diff2);
 	}
+
+	@Test
+	void testUnicodeInSingleLineComments() throws LexerException {
+		String comment = "//This is a \uD83D\uDCA9\uD83D\uDCA9\uD83D\uDCA9 comment\nX";
+		var reader = new LexReader(new Source(comment));
+		var reader2 = reader.fork();
+
+		var line = reader.readLine();
+		var diff = reader2.diff(reader);
+		assertThat(line).isEqualTo("//This is a \uD83D\uDCA9\uD83D\uDCA9\uD83D\uDCA9 comment\n");
+		assertThat(line).isEqualTo(diff);
+	}
 }
