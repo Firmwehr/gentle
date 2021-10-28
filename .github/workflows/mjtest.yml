@@ -21,4 +21,5 @@ jobs:
       - name: Build using build script
         run: ./build
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
+      - run: "git -C mjtest/tests reset --hard origin/master"
       - run: "./mjtest/mjt.py lexer ./run"
