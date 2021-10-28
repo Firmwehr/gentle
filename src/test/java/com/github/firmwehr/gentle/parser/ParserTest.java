@@ -459,6 +459,42 @@ class ParserTest {
 	}
 
 	@Test
+	void danglingElse() throws LexerException, ParseException {
+		Parser parser = fromText("""
+			class Foo {
+				public void bar() {
+					if (a)
+						if (b)
+							return 0;
+						else
+							return 1;
+					return 2;
+				}
+			}
+			""");
+
+		// @formatter:off
+		Program output = parser.parse();
+		Program target = new Program()
+			.withDecl(new ClassDeclaration("Foo")
+				.withMethod(new Method("bar")
+					.withBody(Statement.newBlock()
+						.thenIf(Expression.newIdent("a"), Statement.newIf(
+							Expression.newIdent("b"),
+							Statement.newReturn(Expression.newInt(0)),
+							Statement.newReturn(Expression.newInt(1))
+						))
+						.thenReturn(Expression.newInt(2)))));
+		// @formatter:on
+
+		System.out.println(PrettyPrinter.format(output));
+		System.out.println();
+		System.out.println(PrettyPrinter.format(target));
+
+		assertThat(output).isEqualTo(target);
+	}
+
+	@Test
 	void nestedBlockStatements() throws LexerException, ParseException {
 		Parser parser = fromText("""
 			class Foo {
