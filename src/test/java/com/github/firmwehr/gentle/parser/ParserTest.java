@@ -11,10 +11,6 @@ import com.github.firmwehr.gentle.parser.ast.Method;
 import com.github.firmwehr.gentle.parser.ast.Parameter;
 import com.github.firmwehr.gentle.parser.ast.Program;
 import com.github.firmwehr.gentle.parser.ast.Type;
-import com.github.firmwehr.gentle.parser.ast.basictype.BooleanType;
-import com.github.firmwehr.gentle.parser.ast.basictype.IdentType;
-import com.github.firmwehr.gentle.parser.ast.basictype.IntType;
-import com.github.firmwehr.gentle.parser.ast.basictype.VoidType;
 import com.github.firmwehr.gentle.parser.ast.blockstatement.JustAStatement;
 import com.github.firmwehr.gentle.parser.ast.blockstatement.LocalVariableDeclarationStatement;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
@@ -114,16 +110,16 @@ class ParserTest {
 			new ClassDeclaration(
 				new Ident("Foo"),
 				List.of(
-					new Field(new Type(new IntType(), 1), new Ident("numbers"))
+					new Field(Type.newInt().atLevel(1), new Ident("numbers"))
 				),
 				List.of(
 					new Method(
-						new Type(new VoidType(), 0),
+						Type.newVoid(),
 						new Ident("eat"),
 						List.of(
-							new Parameter(new Type(new IntType(), 1), new Ident("types")),
-							new Parameter(new Type(new IntType(), 0), new Ident("amount")),
-							new Parameter(new Type(new BooleanType(), 0), new Ident("raw"))
+							new Parameter(Type.newInt().atLevel(1), new Ident("types")),
+							new Parameter(Type.newInt(), new Ident("amount")),
+							new Parameter(Type.newBool(), new Ident("raw"))
 						),
 						new Block(List.of())
 					)
@@ -131,10 +127,7 @@ class ParserTest {
 				List.of(
 					new MainMethod(
 						new Ident("main"),
-						new Parameter(
-							new Type(new IdentType(new Ident("String")), 0),
-							new Ident("args")
-						),
+						new Parameter(Type.newIdent("String"), new Ident("args")),
 						new Block(List.of())
 					)
 				)
@@ -142,20 +135,20 @@ class ParserTest {
 			new ClassDeclaration(
 				new Ident("Bar"),
 				List.of(
-					new Field(new Type((new BooleanType()), 2), new Ident("bitmap")),
-					new Field(new Type(new IdentType(new Ident("Foo")), 0), new Ident("foo"))
+					new Field(Type.newBool().atLevel(2), new Ident("bitmap")),
+					new Field(Type.newIdent("Foo"), new Ident("foo"))
 				),
 				List.of(
 					new Method(
-						new Type(new IdentType(new Ident("Foo")), 0),
+						Type.newIdent("Foo"),
 						new Ident("getSingleFoo"),
 						List.of(),
 						new Block(List.of())
 					),
 					new Method(
-						new Type(new IdentType(new Ident("Foo")), 1),
+						Type.newIdent("Foo").atLevel(1),
 						new Ident("getManyFoos"),
-						List.of(new Parameter(new Type(new IntType(), 0), new Ident("amount"))),
+						List.of(new Parameter(Type.newInt(), new Ident("amount"))),
 						new Block(List.of())
 					)
 				),
@@ -187,11 +180,11 @@ class ParserTest {
 			new Ident("Foo"),
 			List.of(),
 			List.of(new Method(
-				new Type(new VoidType(), 0),
+				Type.newVoid(),
 				new Ident("add"),
 				List.of(
-					new Parameter(new Type(new IntType(), 0), new Ident("a")),
-					new Parameter(new Type(new IntType(), 0), new Ident("b"))
+					new Parameter(Type.newInt(), new Ident("a")),
+					new Parameter(Type.newInt(), new Ident("b"))
 				),
 				new Block(List.of(
 					new JustAStatement(new ReturnStatement(Optional.of(
@@ -228,7 +221,7 @@ class ParserTest {
 		Program output = parser.parse();
 		Program target = new Program(List.of(
 			new ClassDeclaration(new Ident("Foo"), List.of(), List.of(
-				new Method(new Type(new VoidType(), 0), new Ident("bar"), List.of(), new Block(List.of(
+				new Method(Type.newVoid(), new Ident("bar"), List.of(), new Block(List.of(
 					new JustAStatement(new ExpressionStatement(
 						new BinaryOperatorExpression(
 							new BinaryOperatorExpression(
@@ -270,7 +263,7 @@ class ParserTest {
 		Program output = parser.parse();
 		Program target = new Program(List.of(
 			new ClassDeclaration(new Ident("Foo"), List.of(), List.of(
-				new Method(new Type(new VoidType(), 0), new Ident("bar"), List.of(), new Block(List.of(
+				new Method(Type.newVoid(), new Ident("bar"), List.of(), new Block(List.of(
 					new JustAStatement(new ExpressionStatement(
 						new BinaryOperatorExpression(
 							new BinaryOperatorExpression(
@@ -343,9 +336,9 @@ class ParserTest {
 		Program target = new Program(List.of(
 			new ClassDeclaration(new Ident("Factorial"), List.of(), List.of(
 				new Method(
-					new Type(new IntType(), 0),
+					Type.newInt(),
 					new Ident("fac"),
-					List.of(new Parameter(new Type(new IntType(), 0), new Ident("n"))),
+					List.of(new Parameter(Type.newInt(), new Ident("n"))),
 					new Block(List.of(
 						new JustAStatement(new IfStatement(
 							new BinaryOperatorExpression(
@@ -378,20 +371,17 @@ class ParserTest {
 			new ClassDeclaration(new Ident("Prog3"), List.of(), List.of(), List.of(
 				new MainMethod(
 					new Ident("main"),
-					new Parameter(
-						new Type(new IdentType(new Ident("String")), 0),
-						new Ident("args")
-					),
+					new Parameter(Type.newIdent("String"), new Ident("args")),
 					new Block(List.of(
 						new LocalVariableDeclarationStatement(
-							new Type(new IdentType(new Ident("Factorial")), 0),
+							Type.newIdent("Factorial"),
 							new Ident("f"),
 							Optional.of(new PostfixExpression(
 								new NewObjectExpression(new Ident("Factorial")),
 								List.of()))
 						),
 						new LocalVariableDeclarationStatement(
-							new Type(new IntType(), 0),
+							Type.newInt(),
 							new Ident("n"),
 							Optional.of(new PostfixExpression(
 								new IdentExpression(new Ident("f")),
