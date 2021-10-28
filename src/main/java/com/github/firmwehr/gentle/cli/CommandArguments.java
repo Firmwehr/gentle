@@ -17,6 +17,9 @@ public interface CommandArguments {
 	@Option(names = "--lextest", description = "Reads the given file and prints all tokens or aborts on first error")
 	boolean lextest();
 
+	@Option(names = "--disable-unicode", description = "Disables support for Unicode identifiers.")
+	boolean disableUnicode();
+
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "The file to operate on.",
 		paramLabel = "PATH")
 	Path path();

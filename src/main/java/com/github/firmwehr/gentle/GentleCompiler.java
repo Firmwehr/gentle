@@ -52,9 +52,11 @@ public class GentleCompiler {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(GentleCompiler.class);
 
+	private static CommandArguments arguments;
+
 	public static void main(String[] args) {
 		LOGGER.info("Hello World, please be gentle UwU");
-		CommandArguments arguments = new CommandArgumentsParser().parseOrExit(args);
+		arguments = new CommandArgumentsParser().parseOrExit(args);
 
 		boolean validFlags = arguments.echo() ^ arguments.lextest();
 		if (!validFlags) {
@@ -104,5 +106,9 @@ public class GentleCompiler {
 			LOGGER.error("lextest failed", e);
 			System.exit(1);
 		}
+	}
+
+	public static CommandArguments arguments() {
+		return arguments;
 	}
 }
