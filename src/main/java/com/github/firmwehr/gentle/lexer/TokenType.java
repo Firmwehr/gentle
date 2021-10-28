@@ -156,25 +156,36 @@ public enum TokenType {
 
 	public static ParsedToken parseNextToken(LexReader reader) throws LexerException {
 
+		// hotfix will be fixed with https://github.com/Firmwehr/gentle/issues/35
+		boolean hotfixRejectCommentStartAsKeyword = false;
+		try {
+			var peek = reader.peek(2);
+			hotfixRejectCommentStartAsKeyword = "/*".equalsIgnoreCase(peek) || "//".equalsIgnoreCase(peek);
+		} catch (Exception ignore) { // can't be /* so we don't care
+		}
+
 		// check trie for keywords first
 		var keywordReader = reader.fork(); // fork reader in case next token is not keyword
 		var traversal = KEYWORD_TRIE.startTraversal();
 		Optional<TokenType> maybeTokenType = Optional.empty();
-		while (true) {
-			// end of input means aborting traversal (might still be valid token)
-			if (keywordReader.isEndOfInput()) {
-				break;
-			}
 
-			// try to continue traversal with current codepoint
-			int cp = keywordReader.peek();
-			if (!traversal.advance(cp)) {
-				break;
-			}
+		if (!hotfixRejectCommentStartAsKeyword) {
+			while (true) {
+				// end of input means aborting traversal (might still be valid token)
+				if (keywordReader.isEndOfInput()) {
+					break;
+				}
 
-			// traversal successfull, advance reader and store current element in case next round ends traversal
-			maybeTokenType = traversal.current();
-			keywordReader.consume();
+				// try to continue traversal with current codepoint
+				int cp = keywordReader.peek();
+				if (!traversal.advance(cp)) {
+					break;
+				}
+
+				// traversal successfull, advance reader and store current element in case next round ends traversal
+				maybeTokenType = traversal.current();
+				keywordReader.consume();
+			}
 		}
 
 		// if no valid token type is found during traversal, this might still be empty
