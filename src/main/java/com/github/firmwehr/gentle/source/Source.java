@@ -9,7 +9,11 @@ public class Source {
 	private final String content;
 	private final List<String> lines;
 
-	public Source(String content) {
+	public Source(String content) throws SourceException {
+		if (!content.codePoints().allMatch(c -> c <= 127)) {
+			throw new SourceException("input contains non-ASCII characters");
+		}
+
 		this.content = content;
 		this.lines = content.lines().collect(Collectors.toList());
 	}
