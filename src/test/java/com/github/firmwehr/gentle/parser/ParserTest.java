@@ -14,6 +14,7 @@ import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperator;
 import com.github.firmwehr.gentle.parser.ast.statement.Statement;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 import com.github.firmwehr.gentle.source.Source;
+import com.github.firmwehr.gentle.source.SourceException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -23,13 +24,17 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ParserTest {
-	private static Parser fromText(String text) throws LexerException {
+	private static Parser fromText(String text) throws SourceException, LexerException {
 		Source source = new Source(text);
 		return Parser.fromLexer(source, new Lexer(source, Lexer.tokenFilter(TokenType.WHITESPACE, TokenType.COMMENT)));
 	}
 
 	// This wrapper allows us to give the parameterized test cases nice labels
-	private record ParserTestCase(String label, String source, Program expectedProgram) {
+	private record ParserTestCase(
+		String label,
+		String source,
+		Program expectedProgram
+	) {
 		@Override
 		public String toString() {
 			return label();
@@ -39,7 +44,8 @@ class ParserTest {
 	@ParameterizedTest
 	@MethodSource("provideSyntacticallyCorrectPrograms")
 	public void parse_shouldConstructAstForSyntacticallyCorrectPrograms(ParserTestCase testCase)
-		throws LexerException, ParseException {
+		throws SourceException, LexerException, ParseException {
+
 		Parser parser = fromText(testCase.source());
 		Program actualProgram = parser.parse();
 

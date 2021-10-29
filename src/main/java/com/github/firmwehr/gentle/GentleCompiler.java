@@ -10,6 +10,7 @@ import com.github.firmwehr.gentle.parser.ParseException;
 import com.github.firmwehr.gentle.parser.Parser;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 import com.github.firmwehr.gentle.source.Source;
+import com.github.firmwehr.gentle.source.SourceException;
 import org.apache.logging.log4j.core.config.ConfigurationSource;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.slf4j.Logger;
@@ -100,10 +101,13 @@ public class GentleCompiler {
 				}
 			}
 		} catch (IOException e) {
-			LOGGER.error("Could not read for lextest file '{}': {}", path, e.getMessage());
+			LOGGER.error("Could not read file '{}': {}", path, e.getMessage());
+			System.exit(1);
+		} catch (SourceException e) {
+			LOGGER.error("Error reading file '{}': {}", path, e.getMessage());
 			System.exit(1);
 		} catch (LexerException e) {
-			LOGGER.error("lextest failed", e);
+			LOGGER.error("Lexing failed", e);
 			System.exit(1);
 		}
 	}
@@ -116,6 +120,9 @@ public class GentleCompiler {
 			LOGGER.info("Parse result:\n{}", PrettyPrinter.format(parser.parse()));
 		} catch (IOException e) {
 			LOGGER.error("Could not read file '{}': {}", path, e.getMessage());
+			System.exit(1);
+		} catch (SourceException e) {
+			LOGGER.error("Error reading file '{}': {}", path, e.getMessage());
 			System.exit(1);
 		} catch (LexerException e) {
 			LOGGER.error("Lexing failed", e);
