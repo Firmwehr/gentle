@@ -160,7 +160,7 @@ public enum TokenType {
 		boolean hotfixRejectCommentStartAsKeyword = false;
 		try {
 			var peek = reader.peek(2);
-			hotfixRejectCommentStartAsKeyword = "/*".equalsIgnoreCase(peek) || "//".equalsIgnoreCase(peek);
+			hotfixRejectCommentStartAsKeyword = "/*".equalsIgnoreCase(peek);
 		} catch (Exception ignore) { // can't be /* so we don't care
 		}
 
