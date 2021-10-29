@@ -76,6 +76,7 @@ dependencies {
 	// junit
 	val junitVersion = "5.8.1"
 	testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
+	testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
 	testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
 	testImplementation("org.assertj:assertj-core:3.21.0")
 	testImplementation("org.buildobjects:jproc:2.6.2")
