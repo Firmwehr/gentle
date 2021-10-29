@@ -17,13 +17,7 @@ public sealed interface Token extends HasSourceSpan
 
 	static Token fromLexerToken(com.github.firmwehr.gentle.lexer.tokens.Token token) {
 		return switch (token) {
-			case TokenComment comment -> {
-				var type = switch (comment.type()) {
-					case SINGLE_LINE -> CommentToken.CommentType.LINE;
-					case STAR -> CommentToken.CommentType.BLOCK;
-				};
-				yield new CommentToken(comment.sourceSpan(), type, comment.text());
-			}
+			case TokenComment comment -> new CommentToken(comment.sourceSpan(), comment.text());
 			case TokenEndOfFile eof -> new EofToken(eof.sourceSpan());
 			case TokenIdentifier ident -> new IdentToken(ident.sourceSpan(), ident.id());
 			case TokenIntegerLiteral lit -> new IntegerLiteralToken(lit.sourceSpan(), lit.number());

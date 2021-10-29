@@ -459,7 +459,9 @@ public class Parser {
 			return new BooleanLiteralExpression(false);
 		} else if (integerLiteralToken.isPresent()) {
 			tokens.take();
-			return new IntegerLiteralExpression(integerLiteralToken.get().value());
+			var value = integerLiteralToken.get().value();
+			// TODO: check for Integer.MIN_VALUE
+			return new IntegerLiteralExpression(value.intValueExact());
 		} else if (identToken.isPresent()) {
 			tokens.take();
 			if (tokens.expectingOperator(Operator.LEFT_PAREN).peek().isOperator(Operator.LEFT_PAREN)) {
