@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.parser.ast.Ident;
 import com.github.firmwehr.gentle.parser.ast.Type;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 
 public sealed interface Expression extends PrettyPrint
@@ -23,8 +24,8 @@ public sealed interface Expression extends PrettyPrint
 		return new IdentExpression(new Ident(name));
 	}
 
-	static IntegerLiteralExpression newInt(int value) {
-		return new IntegerLiteralExpression(value);
+	static IntegerLiteralExpression newInt(long value) {
+		return new IntegerLiteralExpression(BigInteger.valueOf(value));
 	}
 
 	static LocalMethodCallExpression newCall(String name, Expression... arguments) {
