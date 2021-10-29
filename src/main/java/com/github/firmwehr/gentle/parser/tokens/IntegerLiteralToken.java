@@ -10,6 +10,7 @@ public record IntegerLiteralToken(
 ) implements Token {
 	@Override
 	public String format() {
+		// this is NOT debug output, we actually have to rely on the toString output representation
 		return "integer literal " + value;
 	}
 }

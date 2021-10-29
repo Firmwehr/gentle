@@ -40,7 +40,8 @@ public record TokenIntegerLiteral(
 
 	@Override
 	public String format() {
-		return "integer literal " + number.toString();
+		// this is NOT debug output, we actually have to rely on the toString output representation
+		return "integer literal " + number;
 	}
 
 	@Override
