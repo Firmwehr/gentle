@@ -38,7 +38,7 @@ class ParserTest {
 
 	@ParameterizedTest
 	@MethodSource("provideSyntacticallyCorrectPrograms")
-	public void parse_shouldParseSyntacticallyCorrectPrograms(ParserTestCase testCase)
+	public void parse_shouldConstructAstForSyntacticallyCorrectPrograms(ParserTestCase testCase)
 		throws LexerException, ParseException {
 		Parser parser = fromText(testCase.source());
 		Program actualProgram = parser.parse();
@@ -47,7 +47,8 @@ class ParserTest {
 		System.out.println();
 		System.out.println(PrettyPrinter.format(testCase.expectedProgram()));
 
-		assertThat(actualProgram).isEqualTo(testCase.expectedProgram());
+		// Expected value is for some reason on the left side
+		assertThat(testCase.expectedProgram()).isEqualTo(actualProgram);
 	}
 
 	private static List<Arguments> provideSyntacticallyCorrectPrograms() {
