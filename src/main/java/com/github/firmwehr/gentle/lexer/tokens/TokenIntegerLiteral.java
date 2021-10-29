@@ -5,9 +5,11 @@ import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.TokenType;
 import com.github.firmwehr.gentle.source.SourceSpan;
 
+import java.math.BigInteger;
+
 public record TokenIntegerLiteral(
 	SourceSpan sourceSpan,
-	int number
+	BigInteger number
 ) implements Token {
 
 	public static TokenIntegerLiteral create(LexReader reader) throws LexerException {
@@ -18,8 +20,8 @@ public record TokenIntegerLiteral(
 				throw new LexerException("leading zero is not allowed", reader);
 			}
 
-			int number = Integer.parseInt(str);
-			return new TokenIntegerLiteral(new SourceSpan(startPos, reader.endPositionOfRead()), number);
+			var bigint = new BigInteger(str);
+			return new TokenIntegerLiteral(new SourceSpan(startPos, reader.endPositionOfRead()), bigint);
 		} catch (NumberFormatException e) {
 			throw new LexerException("not a number", reader, e);
 		}
@@ -27,7 +29,7 @@ public record TokenIntegerLiteral(
 
 	@Override
 	public String format() {
-		return "integer literal " + number;
+		return "integer literal " + number.toString();
 	}
 
 	@Override
