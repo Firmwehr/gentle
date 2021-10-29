@@ -26,4 +26,8 @@ public record SourcePosition(
 	public String format() {
 		return line + ":" + column;
 	}
+
+	public SourceSpan span() {
+		return new SourceSpan(this, this);
+	}
 }
