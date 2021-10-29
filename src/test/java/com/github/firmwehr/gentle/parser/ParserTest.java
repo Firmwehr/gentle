@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ParserTest {
-	public static Parser fromText(String text) throws LexerException {
+	private static Parser fromText(String text) throws LexerException {
 		Source source = new Source(text);
 		return Parser.fromLexer(source, new Lexer(source, Lexer.tokenFilter(TokenType.WHITESPACE, TokenType.COMMENT)));
 	}
