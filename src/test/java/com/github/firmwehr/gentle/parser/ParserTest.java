@@ -53,6 +53,10 @@ class ParserTest {
 	private static List<Arguments> provideSyntacticallyCorrectPrograms() {
 		// @formatter:off
 		return List.of(
+			Arguments.of(new ParserTestCase("empty program",
+				"",
+				new Program()
+			)),
 			Arguments.of(new ParserTestCase("empty class",
 				"class Empty {}",
 				new Program().withDecl(new ClassDeclaration("Empty"))
@@ -224,6 +228,34 @@ class ParserTest {
 									),
 									BinaryOperator.NOT_EQUAL
 								)))))
+			)),
+			Arguments.of(new ParserTestCase("sum of primary expressions",
+				"""
+                class SumOfPrimExpr {
+                    public int foo() {
+                        return null + false + true + 42 + foo + foo() + foo(42) + foo(42, foo) + this + (6 * 7) + new Bar() + new Bar[100][];
+                    }
+                }
+				""",
+				new Program()
+					.withDecl(new ClassDeclaration("SumOfPrimExpr")
+						.withMethod(new Method("foo")
+							.returning(Type.newInt())
+							.withBody(Statement.newBlock()
+								.thenReturn(List.of(
+									Expression.newBool(false),
+									Expression.newBool(true),
+									Expression.newInt(42),
+									Expression.newIdent("foo"),
+									Expression.newCall("foo"),
+									Expression.newCall("foo", Expression.newInt(42)),
+									Expression.newCall("foo", Expression.newInt(42), Expression.newIdent("foo")),
+									Expression.newThis(),
+									Expression.newBinOp(Expression.newInt(6), Expression.newInt(7), BinaryOperator.MULTIPLY),
+									Expression.newNewObject("Bar"),
+									Expression.newNewArray(Type.newIdent("Bar").atLevel(2), Expression.newInt(100))
+								// Sadly there's no foldl1 so the first expression (null) must be given as the neutral element
+								).stream().reduce(Expression.newNull(), (l, r) -> Expression.newBinOp(l, r, BinaryOperator.ADD))))))
 			)),
 			Arguments.of(new ParserTestCase("recursive factorial program",
 				"""
