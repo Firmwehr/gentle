@@ -501,9 +501,17 @@ public class Parser {
 			tokens.expectOperator(Operator.RIGHT_BRACKET);
 
 			int arrayLevel = 1;
-			while (tokens.expectingOperator(Operator.LEFT_BRACKET).peek().isOperator(Operator.LEFT_BRACKET)) {
+			// This loop checks for the closing bracket in addition to the opening bracket because if there is
+			// anything between the brackets, it is considered an array access and not part of the NewArrayExpression.
+			//
+			// For example, the expression `new int[1][2]` is parsed as a NewArrayExpression `new int[1]` followed by
+			// a PostfixExpression with ArrayAccess `[2]` as its single PostfixOp. This means that `new int[1][2]` is
+			// equivalent to `(new int[1])[2]`.
+			while (tokens.expectingOperator(Operator.LEFT_BRACKET).peek().isOperator(Operator.LEFT_BRACKET) &&
+				tokens.peek(1).isOperator(Operator.RIGHT_BRACKET)) {
+
 				tokens.take();
-				tokens.expectOperator(Operator.RIGHT_BRACKET);
+				tokens.take();
 				arrayLevel++;
 			}
 
