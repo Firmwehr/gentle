@@ -258,6 +258,25 @@ class ParserTest {
 								// Sadly there's no foldl1 so the first expression (null) must be given as the neutral element
 								).stream().reduce(Expression.newNull(), (l, r) -> Expression.newBinOp(l, r, BinaryOperator.ADD))))))
 			)),
+			Arguments.of(new ParserTestCase("array access expression",
+				"""
+                class Postfix {
+                    public int foo() {
+                        return a[i - j][b[this]];
+                    }
+                }
+				""",
+				new Program()
+					.withDecl(new ClassDeclaration("Postfix")
+						.withMethod(new Method("foo")
+							.returning(Type.newInt())
+							.withBody(Statement.newBlock()
+								.thenReturn(Expression.newIdent("a")
+									.withArrayAccess(Expression.newBinOp(Expression.newIdent("i"), Expression.newIdent("j"), BinaryOperator.SUBTRACT))
+									.withArrayAccess(Expression.newIdent("b")
+										.withArrayAccess(Expression.newThis()))
+								))))
+			)),
 			Arguments.of(new ParserTestCase("recursive factorial program",
 				"""
 				class Factorial {
