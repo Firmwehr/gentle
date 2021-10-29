@@ -7,11 +7,16 @@ import com.github.firmwehr.gentle.parser.ast.basictype.IntType;
 import com.github.firmwehr.gentle.parser.ast.basictype.VoidType;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
+import com.google.common.base.Preconditions;
 
 public record Type(
 	BasicType basicType,
 	int arrayLevel
 ) implements PrettyPrint {
+	public Type {
+		Preconditions.checkArgument(arrayLevel >= 0);
+	}
+
 	public static Type newBool() {
 		return new Type(new BooleanType(), 0);
 	}
