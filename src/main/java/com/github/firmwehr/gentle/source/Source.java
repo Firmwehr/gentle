@@ -1,5 +1,7 @@
 package com.github.firmwehr.gentle.source;
 
+import com.google.common.base.Preconditions;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -10,6 +12,9 @@ public class Source {
 	private final List<String> lines;
 
 	public Source(String content) {
+		Preconditions.checkArgument(content.codePoints().allMatch(c -> c <= 127),
+			"content must consist exclusively of ASCII characters");
+
 		this.content = content;
 		this.lines = content.lines().collect(Collectors.toList());
 	}
