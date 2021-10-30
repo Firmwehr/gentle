@@ -15,60 +15,60 @@ import java.util.function.Predicate;
 public class EqualityChecker<T> implements Predicate<T> {
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.publicLookup();
 	private static final Map<Class<?>, List<MethodHandle>> ACCESSOR_CACHE = new HashMap<>();
-	private final T other;
+	private final T expected;
 	private final Set<Class<?>> exceptTypes;
 	private final boolean deep;
 
-	public EqualityChecker(T other, Set<Class<?>> exceptTypes, boolean deep) {
-		this.other = other;
+	public EqualityChecker(T expected, Set<Class<?>> exceptTypes, boolean deep) {
+		this.expected = expected;
 		this.exceptTypes = exceptTypes;
 		this.deep = deep;
 	}
 
 	@Override
-	public boolean test(T own) {
-		return isEqual(own);
+	public boolean test(T actual) {
+		return isEqual(actual);
 	}
 
-	public boolean isEqual(T own) {
-		if (this.other == own) {
+	public boolean isEqual(T actual) {
+		if (this.expected == actual) {
 			return true;
 		}
-		if (own == null) {
+		if (actual == null) {
 			return false;
 		}
-		var handles = ACCESSOR_CACHE.computeIfAbsent(this.other.getClass(), EqualityChecker::createAccessors);
+		var handles = ACCESSOR_CACHE.computeIfAbsent(this.expected.getClass(), EqualityChecker::createAccessors);
 		for (MethodHandle handle : handles) {
 			if (this.exceptTypes.contains(handle.type().returnType())) {
 				continue; // ignore this one
 			}
-			if (!isEqualAttribute(handle, own)) {
+			if (!isEqualAttribute(handle, actual)) {
 				return false;
 			}
 		}
 		return true;
 	}
 
-	private boolean isEqualAttribute(MethodHandle handle, T own) {
-		Object otherAttribute;
-		Object ownAttribute;
+	private boolean isEqualAttribute(MethodHandle handle, T actual) {
+		Object expectedAttribute;
+		Object actualAttribute;
 		try {
-			otherAttribute = handle.invoke(this.other);
-			ownAttribute = handle.invoke(own);
+			expectedAttribute = handle.invoke(this.expected);
+			actualAttribute = handle.invoke(actual);
 		} catch (Throwable e) {
 			throw new AssertionError("accessor threw exception", e);
 		}
-		if (otherAttribute == null || ownAttribute == null) {
+		if (expectedAttribute == null || actualAttribute == null) {
 			// if both are null, we consider them equal, if only one is null, we consider them not equal
-			return otherAttribute == ownAttribute;
+			return expectedAttribute == actualAttribute;
 		}
 		// if we don't need to deeply scan records, we can just use normal equals here
 		if (!this.deep ||
-			!(otherAttribute.getClass().isRecord() && otherAttribute.getClass() == ownAttribute.getClass())) {
-			return otherAttribute.equals(ownAttribute);
+			!(expectedAttribute.getClass().isRecord() && expectedAttribute.getClass() == actualAttribute.getClass())) {
+			return expectedAttribute.equals(actualAttribute);
 		}
 		// otherwise, we just run a check again on the attribute
-		return new EqualityChecker<>(otherAttribute, this.exceptTypes, true).isEqual(ownAttribute);
+		return new EqualityChecker<>(expectedAttribute, this.exceptTypes, true).isEqual(actualAttribute);
 	}
 
 	private static List<MethodHandle> createAccessors(Class<?> recordType) {
