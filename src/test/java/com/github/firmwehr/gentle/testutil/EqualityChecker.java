@@ -26,15 +26,15 @@ public class EqualityChecker<T> implements Predicate<T> {
 	}
 
 	@Override
-	public boolean test(T t) {
-		return isEqual(t);
+	public boolean test(T own) {
+		return isEqual(own);
 	}
 
-	public boolean isEqual(T t) {
-		if (this.other == t) {
+	public boolean isEqual(T own) {
+		if (this.other == own) {
 			return true;
 		}
-		if (t == null) {
+		if (own == null) {
 			return false;
 		}
 		var handles = ACCESSOR_CACHE.computeIfAbsent(this.other.getClass(), EqualityChecker::createAccessors);
@@ -42,33 +42,33 @@ public class EqualityChecker<T> implements Predicate<T> {
 			if (this.exceptTypes.contains(handle.type().returnType())) {
 				continue; // ignore this one
 			}
-			if (!isEqualAttribute(handle, t)) {
+			if (!isEqualAttribute(handle, own)) {
 				return false;
 			}
 		}
 		return true;
 	}
 
-	private boolean isEqualAttribute(MethodHandle handle, T t) {
+	private boolean isEqualAttribute(MethodHandle handle, T own) {
 		Object otherAttribute;
-		Object rAttribute;
+		Object ownAttribute;
 		try {
 			otherAttribute = handle.invoke(this.other);
-			rAttribute = handle.invoke(t);
+			ownAttribute = handle.invoke(own);
 		} catch (Throwable e) {
 			throw new AssertionError("accessor threw exception", e);
 		}
-		if (otherAttribute == null || rAttribute == null) {
+		if (otherAttribute == null || ownAttribute == null) {
 			// if both are null, we consider them equal, if only one is null, we consider them not equal
-			return otherAttribute == rAttribute;
+			return otherAttribute == ownAttribute;
 		}
 		// if we don't need to deeply scan records, we can just use normal equals here
 		if (!this.deep ||
-			!(otherAttribute.getClass().isRecord() && otherAttribute.getClass() == rAttribute.getClass())) {
-			return otherAttribute.equals(rAttribute);
+			!(otherAttribute.getClass().isRecord() && otherAttribute.getClass() == ownAttribute.getClass())) {
+			return otherAttribute.equals(ownAttribute);
 		}
 		// otherwise, we just run a check again on the attribute
-		return new EqualityChecker<>(otherAttribute, this.exceptTypes, true).isEqual(rAttribute);
+		return new EqualityChecker<>(otherAttribute, this.exceptTypes, true).isEqual(ownAttribute);
 	}
 
 	private static List<MethodHandle> createAccessors(Class<?> recordType) {
