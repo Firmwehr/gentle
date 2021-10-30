@@ -5,6 +5,10 @@ on:
     branches: [ master ]
   pull_request:
 
+concurrency:
+  group: ${{ github.ref }}-analysis
+  cancel-in-progress: true
+
 jobs:
   qodana:
     runs-on: ubuntu-latest
