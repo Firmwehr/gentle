@@ -96,18 +96,17 @@ public record Source(String content) {
 		return content.charAt(offset) == '\r' && content.charAt(offset + 1) == '\n';
 	}
 
-	public String formatErrorAtOffset(int offset, String message, String description) {
+	public String formatMessagePointingTo(int offset, String message) {
 		Pair<SourcePosition, String> positionAndLine = positionAndLineFromOffset(offset);
 		SourcePosition position = positionAndLine.first();
 		String line = positionAndLine.second();
 
 		StringBuilder builder = new StringBuilder();
-		builder.append(message)
-			.append(" at line ")
+		builder.append("[line ")
 			.append(position.line())
-			.append(":")
-			.append(position.column())
-			.append("\n#\n# ")
+			.append("]")
+			.append("\n#")
+			.append("\n# ")
 			.append(line)
 			.append("\n# ");
 
@@ -119,8 +118,19 @@ public record Source(String content) {
 			}
 		}).forEach(it -> builder.append((char) it));
 
-		builder.append("^ ").append(description);
+		builder.append("^ ").append(message);
 
 		return builder.toString();
+	}
+
+	public String formatErrorAt(String description, int offset, String message) {
+		return description + "\n" + formatMessagePointingTo(offset, message);
+	}
+
+	public String formatErrorWithReferenceAt(
+		String description, int offset, String message, int referenceOffset, String referenceMessage
+	) {
+		return description + "\n" + formatMessagePointingTo(offset, message) + "\n\n" +
+			formatMessagePointingTo(referenceOffset, referenceMessage);
 	}
 }

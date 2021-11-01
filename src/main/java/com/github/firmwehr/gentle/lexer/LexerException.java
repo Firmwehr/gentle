@@ -15,6 +15,6 @@ public class LexerException extends Exception {
 
 	@Override
 	public String getMessage() {
-		return source.formatErrorAtOffset(offset, "Failed to lex token", super.getMessage());
+		return source.formatErrorAt("Failed to lex token", offset, super.getMessage());
 	}
 }
