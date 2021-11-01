@@ -10,8 +10,9 @@ public record MainMethod(
 	Parameter parameter,
 	Block body
 ) implements PrettyPrint {
-	public MainMethod(String name, Type paramType, String paramName) {
-		this(new Ident(name), new Parameter(paramType, new Ident(paramName)), Statement.newBlock());
+	public static MainMethod dummy(String name, Type paramType, String paramName) {
+		return new MainMethod(Ident.dummy(name), new Parameter(paramType, Ident.dummy(paramName)),
+			Statement.newBlock());
 	}
 
 	public MainMethod withBody(Block body) {

@@ -16,11 +16,11 @@ public record Block(List<BlockStatement> statements) implements Statement, Block
 	}
 
 	public Block thenLocalVar(Type type, String name) {
-		return then(new LocalVariableDeclarationStatement(type, new Ident(name), Optional.empty()));
+		return then(new LocalVariableDeclarationStatement(type, Ident.dummy(name), Optional.empty()));
 	}
 
 	public Block thenLocalVar(Type type, String name, Expression value) {
-		return then(new LocalVariableDeclarationStatement(type, new Ident(name), Optional.of(value)));
+		return then(new LocalVariableDeclarationStatement(type, Ident.dummy(name), Optional.of(value)));
 	}
 
 	public Block thenBlock(Block block) {

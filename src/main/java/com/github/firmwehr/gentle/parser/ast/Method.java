@@ -14,8 +14,8 @@ public record Method(
 	List<Parameter> parameters,
 	Block body
 ) implements PrettyPrint {
-	public Method(String name) {
-		this(Type.newVoid(), new Ident(name), List.of(), Statement.newBlock());
+	public static Method dummy(String name) {
+		return new Method(Type.newVoid(), Ident.dummy(name), List.of(), Statement.newBlock());
 	}
 
 	public Method returning(Type returnType) {
@@ -23,7 +23,7 @@ public record Method(
 	}
 
 	public Method withParam(Type type, String name) {
-		Parameter parameter = new Parameter(type, new Ident(name));
+		Parameter parameter = new Parameter(type, Ident.dummy(name));
 		return new Method(returnType, this.name, Util.copyAndAppend(parameters, parameter), body);
 	}
 

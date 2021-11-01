@@ -22,7 +22,7 @@ public record Type(
 	}
 
 	public static Type newIdent(String name) {
-		return new Type(new IdentType(new Ident(name)), 0);
+		return new Type(new IdentType(Ident.dummy(name)), 0);
 	}
 
 	public static Type newInt() {

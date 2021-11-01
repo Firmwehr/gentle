@@ -15,12 +15,12 @@ public record ClassDeclaration(
 	List<Method> methods,
 	List<MainMethod> mainMethods
 ) implements PrettyPrint {
-	public ClassDeclaration(String name) {
-		this(new Ident(name), List.of(), List.of(), List.of());
+	public static ClassDeclaration dummy(String name) {
+		return new ClassDeclaration(Ident.dummy(name), List.of(), List.of(), List.of());
 	}
 
 	public ClassDeclaration withField(Type type, String name) {
-		Field field = new Field(type, new Ident(name));
+		Field field = new Field(type, Ident.dummy(name));
 		return new ClassDeclaration(this.name, Util.copyAndAppend(fields, field), methods, mainMethods);
 	}
 

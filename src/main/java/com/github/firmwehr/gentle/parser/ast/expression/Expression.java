@@ -21,7 +21,7 @@ public sealed interface Expression extends PrettyPrint
 	}
 
 	static IdentExpression newIdent(String name) {
-		return new IdentExpression(new Ident(name));
+		return new IdentExpression(Ident.dummy(name));
 	}
 
 	static IntegerLiteralExpression newInt(long value) {
@@ -29,7 +29,7 @@ public sealed interface Expression extends PrettyPrint
 	}
 
 	static LocalMethodCallExpression newCall(String name, Expression... arguments) {
-		return new LocalMethodCallExpression(new Ident(name), Arrays.asList(arguments));
+		return new LocalMethodCallExpression(Ident.dummy(name), Arrays.asList(arguments));
 	}
 
 	static NewArrayExpression newNewArray(Type type, Expression size) {
@@ -37,7 +37,7 @@ public sealed interface Expression extends PrettyPrint
 	}
 
 	static NewObjectExpression newNewObject(String name) {
-		return new NewObjectExpression(new Ident(name));
+		return new NewObjectExpression(Ident.dummy(name));
 	}
 
 	static NullExpression newNull() {
@@ -53,7 +53,7 @@ public sealed interface Expression extends PrettyPrint
 	}
 
 	default MethodInvocationExpression withCall(String name, Expression... arguments) {
-		return new MethodInvocationExpression(this, new Ident(name), Arrays.asList(arguments));
+		return new MethodInvocationExpression(this, Ident.dummy(name), Arrays.asList(arguments));
 	}
 
 	default ArrayAccessExpression withArrayAccess(Expression index) {
@@ -61,6 +61,6 @@ public sealed interface Expression extends PrettyPrint
 	}
 
 	default FieldAccessExpression withFieldAccess(String name) {
-		return new FieldAccessExpression(this, new Ident(name));
+		return new FieldAccessExpression(this, Ident.dummy(name));
 	}
 }
