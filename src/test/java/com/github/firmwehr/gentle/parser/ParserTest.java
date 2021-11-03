@@ -533,7 +533,34 @@ class ParserTest {
 								.thenEmpty().thenEmpty().thenEmpty().thenEmpty()
 								.thenEmpty().thenEmpty().thenEmpty().thenEmpty()
 								.thenEmpty().thenEmpty().thenEmpty().thenEmpty().thenEmpty().thenEmpty())))
-				))
+				)),
+			Arguments.of(new ParserTestCase(
+				"array access on a NewArrayExpression",
+				"""
+				class Foo {
+					public void bar() {
+						new int[1][2];
+						new Foo[3][][4];
+						new void[5][][][];
+					}
+				}
+				""",
+				new Program()
+					.withDecl(new ClassDeclaration("Foo")
+						.withMethod(new Method("bar")
+							.withBody(Statement.newBlock()
+								.thenExpr(Expression.newNewArray(
+									Type.newInt().atLevel(1),
+									Expression.newInt(1)
+								).withArrayAccess(Expression.newInt(2)))
+								.thenExpr(Expression.newNewArray(
+									Type.newIdent("Foo").atLevel(2),
+									Expression.newInt(3)
+								).withArrayAccess(Expression.newInt(4)))
+								.thenExpr(Expression.newNewArray(
+									Type.newVoid().atLevel(4),
+									Expression.newInt(5)
+								)))))))
 		);
 		// @formatter:on
 	}
