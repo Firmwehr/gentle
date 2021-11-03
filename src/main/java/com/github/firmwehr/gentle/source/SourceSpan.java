@@ -18,6 +18,6 @@ public record SourceSpan(
 	}
 
 	public String format() {
-		return "%s..%s".formatted(start.format(), end.format());
+		return start.format() + ".." + end.format();
 	}
 }
