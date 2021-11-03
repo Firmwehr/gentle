@@ -33,9 +33,6 @@ public interface CommandArguments {
 			if (!Files.isReadable(path)) {
 				throw new IllegalArgumentException("The file '%s' is not readable".formatted(path));
 			}
-			if (!Files.isRegularFile(path)) {
-				throw new IllegalArgumentException("The file '%s' is not a regular file".formatted(path));
-			}
 
 			return path;
 		}
