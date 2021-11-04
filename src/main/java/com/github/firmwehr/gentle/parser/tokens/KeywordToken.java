@@ -8,6 +8,6 @@ public record KeywordToken(
 ) implements Token {
 	@Override
 	public String format() {
-		return "'" + keyword.getName() + "'";
+		return keyword.getName();
 	}
 }
