@@ -60,13 +60,26 @@ public class GentleCompiler {
 		LOGGER.info("Hello World, please be gentle UwU");
 		CommandArguments arguments = new CommandArgumentsParser().parseOrExit(args);
 
-		if (arguments.echo() && arguments.lextest()) {
+		int flagsSet = 0;
+		if (arguments.echo()) {
+			flagsSet++;
+		}
+		if (arguments.lextest()) {
+			flagsSet++;
+		}
+		if (arguments.parsetest()) {
+			flagsSet++;
+		}
+
+		if (flagsSet != 1) {
 			LOGGER.error("Conflicting flags");
 			System.exit(1);
 		} else if (arguments.echo()) {
 			echoCommand(arguments.path());
 		} else if (arguments.lextest()) {
 			lexTestCommand(arguments.path());
+		} else if (arguments.parsetest()) {
+			parseTestCommand(arguments.path());
 		} else {
 			runCommand(arguments.path());
 		}
@@ -108,6 +121,27 @@ public class GentleCompiler {
 			System.exit(1);
 		} catch (LexerException e) {
 			LOGGER.error("Lexing failed", e);
+			System.exit(1);
+		}
+	}
+
+	private static void parseTestCommand(Path path) {
+		try {
+			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			Lexer lexer = new Lexer(source, Lexer.tokenFilter(TokenType.WHITESPACE, TokenType.COMMENT));
+			Parser parser = Parser.fromLexer(source, lexer);
+			parser.parse(); // result ignored for now
+		} catch (IOException e) {
+			LOGGER.error("Could not read file '{}': {}", path, e.getMessage());
+			System.exit(1);
+		} catch (SourceException e) {
+			LOGGER.error("Error reading file '{}': {}", path, e.getMessage());
+			System.exit(1);
+		} catch (LexerException e) {
+			LOGGER.error("Lexing failed", e);
+			System.exit(1);
+		} catch (ParseException e) {
+			LOGGER.error("Parsing failed", e);
 			System.exit(1);
 		}
 	}
