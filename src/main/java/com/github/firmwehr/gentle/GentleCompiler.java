@@ -15,6 +15,7 @@ import com.github.firmwehr.gentle.source.SourceException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,6 +23,7 @@ import java.nio.file.Path;
 public class GentleCompiler {
 
 	private static final Logger LOGGER = new Logger(GentleCompiler.class);
+	private static final Charset FILE_CHARSET = StandardCharsets.US_ASCII;
 
 	public static void main(String[] args) {
 		LOGGER.info("Hello World, please be gentle UwU");
@@ -65,7 +67,7 @@ public class GentleCompiler {
 
 	private static void lexTestCommand(Path path) {
 		try {
-			var source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			var source = new Source(Files.readString(path, FILE_CHARSET));
 			var lexer = new Lexer(source, true);
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
@@ -89,7 +91,7 @@ public class GentleCompiler {
 
 	private static void parseTestCommand(Path path) {
 		try {
-			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			Source source = new Source(Files.readString(path, FILE_CHARSET));
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
 			parser.parse(); // result ignored for now
@@ -107,7 +109,7 @@ public class GentleCompiler {
 
 	private static void runCommand(Path path) {
 		try {
-			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			Source source = new Source(Files.readString(path, FILE_CHARSET));
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
 			LOGGER.info("Parse result:\n%s", PrettyPrinter.format(parser.parse()));

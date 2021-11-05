@@ -9,10 +9,6 @@ public class Source {
 	private final String content;
 
 	public Source(String content) throws SourceException {
-		if (!content.codePoints().allMatch(c -> c <= 127)) {
-			throw new SourceException("input contains non-ASCII characters");
-		}
-
 		this.content = content;
 	}
 
