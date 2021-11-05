@@ -3,21 +3,21 @@ package com.github.firmwehr.gentle.source;
 /**
  * A contiguous section of the source code file.
  *
- * @param start the first character of the span (inclusive)
- * @param end the last character of the span (inclusive)
+ * @param startOffset the first character of the span (inclusive)
+ * @param endOffset the last character of the span (inclusive)
  */
 public record SourceSpan(
-	SourcePosition start,
-	SourcePosition end
+	int startOffset,
+	int endOffset
 ) {
 
 	public SourceSpan {
-		if (start.offset() > end.offset()) {
+		if (startOffset > endOffset) {
 			throw new IllegalArgumentException("start must not be later than end");
 		}
 	}
 
 	public String format() {
-		return start.format() + ".." + end.format();
+		return startOffset + ".." + endOffset;
 	}
 }

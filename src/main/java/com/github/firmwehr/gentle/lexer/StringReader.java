@@ -1,4 +1,6 @@
-package com.github.firmwehr.gentle.lexer2;
+package com.github.firmwehr.gentle.lexer;
+
+import com.github.firmwehr.gentle.source.Source;
 
 import java.util.function.Predicate;
 
@@ -7,27 +9,23 @@ import java.util.function.Predicate;
  */
 public class StringReader {
 
+	private final Source source;
 	private final String underlying;
 	private int position;
 
 	/**
 	 * Creates a new string reader.
 	 *
-	 * @param underlying the underlying string
+	 * @param source the underlying source
 	 */
-	public StringReader(String underlying) {
-		this(underlying, 0);
+	public StringReader(Source source) {
+		this.underlying = source.getContent();
+		this.source = source;
+		this.position = 0;
 	}
 
-	/**
-	 * Creates a new string reader.
-	 *
-	 * @param underlying the underlying string
-	 * @param position the initial position
-	 */
-	public StringReader(String underlying, int position) {
-		this.underlying = underlying;
-		this.position = position;
+	public Source getSource() {
+		return source;
 	}
 
 	public boolean canRead() {
@@ -57,9 +55,9 @@ public class StringReader {
 		return underlying.charAt(position);
 	}
 
-	public void assertRead(String string) throws LexException {
+	public void assertRead(String string) throws LexerException {
 		if (!readChars(string.length()).equals(string)) {
-			throw new LexException("Expected '" + string + "'", this);
+			throw new LexerException("Expected '" + string + "'", this);
 		}
 	}
 
@@ -112,11 +110,11 @@ public class StringReader {
 		return underlying.substring(start, position);
 	}
 
-	public String assertReadUntil(String needle) throws LexException {
+	public String assertReadUntil(String needle) throws LexerException {
 		int needleIndex = underlying.indexOf(needle, position);
 
 		if (needleIndex < 0) {
-			throw new LexException("Expected " + needle, this);
+			throw new LexerException("Expected " + needle, this);
 		}
 
 		int untilNeedle = needleIndex - position;

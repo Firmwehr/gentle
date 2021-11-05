@@ -1,7 +1,7 @@
 package com.github.firmwehr.gentle.parser;
 
-import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
+import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.parser.ast.ClassDeclaration;
 import com.github.firmwehr.gentle.parser.ast.Field;
 import com.github.firmwehr.gentle.parser.ast.Ident;

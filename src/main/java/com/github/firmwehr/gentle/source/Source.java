@@ -1,13 +1,10 @@
 package com.github.firmwehr.gentle.source;
 
-import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class Source {
 
 	private final String content;
-	private final List<String> lines;
 
 	public Source(String content) throws SourceException {
 		if (!content.codePoints().allMatch(c -> c <= 127)) {
@@ -15,31 +12,51 @@ public class Source {
 		}
 
 		this.content = content;
-		this.lines = content.lines().collect(Collectors.toList());
 	}
 
 	public String getContent() {
 		return content;
 	}
 
-	public String formatErrorAtPosition(SourcePosition position, String message, String description) {
-		String line;
-		if (position.line() - 1 < lines.size()) {
-			line = lines.get(position.line() - 1);
-		} else {
-			line = "";
+	public String formatErrorAtPosition(int position, String message, String description) {
+		int lineStart = position - 1;
+		int column = 1;
+		while (lineStart > 0) {
+			if (content.charAt(lineStart) == '\n' || content.charAt(lineStart) == '\r') {
+				lineStart++;
+				column--;
+				break;
+			}
+			lineStart--;
+			column++;
 		}
+		int endOfLine = content.length();
+		if (content.indexOf('\n', lineStart) >= 0) {
+			endOfLine = Math.min(endOfLine, content.indexOf('\n', lineStart));
+		}
+		if (content.indexOf('\r', lineStart) >= 0) {
+			endOfLine = Math.min(endOfLine, content.indexOf('\r', lineStart));
+		}
+		String line = content.substring(lineStart, endOfLine);
+
+		int lineNumber = 1 + (int) content.substring(0, position)
+			.replace("\r\n", "\n")
+			.replace("\r", "\n")
+			.codePoints()
+			.filter(it -> it == '\n')
+			.count();
 
 		StringBuilder builder = new StringBuilder();
-
 		builder.append(message)
 			.append(" at line ")
-			.append(position.format())
+			.append(lineNumber)
+			.append(":")
+			.append(column)
 			.append("\n#\n# ")
 			.append(line)
 			.append("\n# ");
 
-		line.chars().limit(position.column() - 1).map(it -> {
+		line.chars().limit(column - 1).map(it -> {
 			if (it == ' ' || it == '\t') {
 				return it;
 			} else {
