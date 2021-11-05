@@ -20,48 +20,83 @@ public class Source {
 		return content;
 	}
 
-	public Pair<SourcePosition, String> positionAndLineFromOffset(int offset) {
+	/**
+	 * Find the beginning of the line a certain character is in. If the character is part of a linebreak, it belongs to
+	 * the line preceding the line break.
+	 *
+	 * @param offset arbitrary but valid character offset
+	 *
+	 * @return index of the line's first character
+	 */
+	private int startOfLine(int offset) {
+		// First, go backwards until the end of the previous line to find the start of the current line.
 		int lineStart = offset;
-		int column = 1;
-		// If we start in a linebreak, that belongs on the line that precedes it
-		boolean inLineBreak = isLineBreakChar(offset);
-		while (lineStart > 0) {
-			if (inLineBreak && isLineBreakChar(lineStart)) {
-				int charsInLineBreak = 1;
-				if (isWindowsLinebreak(lineStart - 1)) {
-					charsInLineBreak = 2;
-				}
-				lineStart -= charsInLineBreak;
-				column += charsInLineBreak;
-				inLineBreak = false;
-				continue;
-			}
 
-			if (isLineBreakChar(lineStart)) {
-				lineStart++;
-				column--;
-				break;
-			}
+		// Line breaks belong to the preceding line, not the following line.
+		// If we start in a line break, we advance to the character preceding the line break.
+		if (isLineBreakChar(lineStart)) {
 			lineStart--;
-			column++;
 		}
-		int endOfLine = content.length();
-		if (content.indexOf('\n', lineStart) >= 0) {
-			endOfLine = Math.min(endOfLine, content.indexOf('\n', lineStart));
+		if (lineStart >= 0 && isWindowsLinebreak(lineStart)) {
+			// We started on the \n in a \r\n, so we need to take another step back.
+			lineStart--;
 		}
-		if (content.indexOf('\r', lineStart) >= 0) {
-			endOfLine = Math.min(endOfLine, content.indexOf('\r', lineStart));
-		}
-		String line = content.substring(lineStart, endOfLine);
 
-		int lineNumber = 1 + (int) content.substring(0, endOfLine)
+		// Now, advance backwards until we find the line break of the previous line.
+		while (lineStart >= 0 && !isLineBreakChar(lineStart)) {
+			lineStart--;
+		}
+
+		// Finally, move forward one step so that we're at the beginning of the current line.
+		lineStart++;
+
+		return lineStart;
+	}
+
+	/**
+	 * @param lineStart index of the line's first character
+	 *
+	 * @return 1 + index of the line's last non-linebreak character
+	 */
+	private int endOfLine(int lineStart) {
+		int index = content.length();
+
+		int newlineIndex = content.indexOf('\n', lineStart);
+		if (newlineIndex >= 0 && newlineIndex < index) {
+			index = newlineIndex;
+		}
+
+		int carriageReturnIndex = content.indexOf('\r', lineStart);
+		if (carriageReturnIndex >= 0 && carriageReturnIndex < index) {
+			index = carriageReturnIndex;
+		}
+
+		return index;
+	}
+
+	/**
+	 * @param offset arbitrary but valid character offset
+	 *
+	 * @return amount of linebreaks before (and excluding) the specified character
+	 */
+	private int linebreaksUntil(int offset) {
+		return (int) content.substring(0, offset)
 			.replace("\r\n", "\n")
 			.replace("\r", "\n")
 			.codePoints()
 			.filter(it -> it == '\n')
 			.count();
+	}
 
-		return new Pair<>(new SourcePosition(offset, lineNumber, column), line);
+	public Pair<SourcePosition, String> positionAndLineFromOffset(int offset) {
+		int lineStart = startOfLine(offset);
+		int lineEnd = endOfLine(lineStart);
+		String line = content.substring(lineStart, lineEnd);
+
+		int column = offset - lineStart + 1; // Columns are 1-indexed
+		int row = linebreaksUntil(lineStart) + 1; // Rows are 1-indexed
+
+		return new Pair<>(new SourcePosition(offset, row, column), line);
 	}
 
 	private boolean isLineBreakChar(int offset) {
