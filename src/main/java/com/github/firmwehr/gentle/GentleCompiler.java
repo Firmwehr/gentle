@@ -114,7 +114,9 @@ public class GentleCompiler {
 
 			// Write at once, do not flush in between!
 			//noinspection UseOfSystemOutOrSystemErr
-			System.out.writeBytes(outputStream.toByteArray());
+			outputStream.writeTo(System.out);
+			//noinspection UseOfSystemOutOrSystemErr
+			System.out.flush();
 		} catch (IOException e) {
 			LOGGER.error("Could not read file '{}': {}", path, e.getMessage());
 			System.exit(1);
