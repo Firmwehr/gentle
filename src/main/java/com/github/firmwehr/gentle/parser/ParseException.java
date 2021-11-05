@@ -14,6 +14,10 @@ public class ParseException extends Exception {
 		this.description = description;
 	}
 
+	public Token getToken() {
+		return token;
+	}
+
 	@Override
 	public String getMessage() {
 		return "Unexpected " + token.format() + "\n" + source.formatMessageAt(token.sourceSpan(), description);
