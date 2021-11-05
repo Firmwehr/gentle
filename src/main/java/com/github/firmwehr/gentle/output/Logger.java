@@ -7,7 +7,7 @@ import static org.fusesource.jansi.Ansi.ansi;
 
 public class Logger {
 
-	private static final boolean LOGGER_DISABLED = System.getenv("SPEEDCENTER") != null;
+	private static final boolean LOGGER_DISABLED = System.getenv("ENABLE_GENTLE_LOG") == null;
 
 	private final LogLevel level;
 	private final String prefix;
