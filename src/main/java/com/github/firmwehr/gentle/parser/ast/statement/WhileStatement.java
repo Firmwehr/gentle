@@ -13,7 +13,7 @@ public record WhileStatement(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add("while ").add(condition).add(" ").add(body);
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		p.add("while (").add(condition, true).add(") ").add(body);
 	}
 }

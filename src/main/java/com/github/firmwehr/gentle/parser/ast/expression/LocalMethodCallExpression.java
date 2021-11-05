@@ -10,7 +10,15 @@ public record LocalMethodCallExpression(
 	List<Expression> arguments
 ) implements Expression {
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add(name).add("(").indent().addAll(arguments).unindent().add(")");
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		if (!omitParentheses) {
+			p.add("(");
+		}
+
+		p.add(name).add("(").addAll(arguments, ", ", false, true).add(")");
+
+		if (!omitParentheses) {
+			p.add(")");
+		}
 	}
 }

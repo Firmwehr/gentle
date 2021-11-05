@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.parser.Util;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 
+import java.util.Comparator;
 import java.util.List;
 
 public record Program(List<ClassDeclaration> classes) implements PrettyPrint {
@@ -16,7 +17,7 @@ public record Program(List<ClassDeclaration> classes) implements PrettyPrint {
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add("Program[").indent().addAll(classes).unindent().add("]");
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		this.classes.stream().sorted(Comparator.comparing(c -> c.name().ident())).forEach(c -> p.add(c).newline());
 	}
 }

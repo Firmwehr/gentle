@@ -8,7 +8,15 @@ public record BinaryOperatorExpression(
 	BinaryOperator operator
 ) implements Expression {
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add("(").add(lhs).add(" ").add(operator.getName()).add(" ").add(rhs).add(")");
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		if (!omitParentheses) {
+			p.add("(");
+		}
+
+		p.add(lhs).add(" ").add(operator.getName()).add(" ").add(rhs);
+
+		if (!omitParentheses) {
+			p.add(")");
+		}
 	}
 }

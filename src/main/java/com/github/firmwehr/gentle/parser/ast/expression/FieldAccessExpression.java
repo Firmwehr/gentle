@@ -8,7 +8,15 @@ public record FieldAccessExpression(
 	Ident name
 ) implements Expression {
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		if (!omitParentheses) {
+			p.add("(");
+		}
+
 		p.add(expression).add(".").add(name);
+
+		if (!omitParentheses) {
+			p.add(")");
+		}
 	}
 }

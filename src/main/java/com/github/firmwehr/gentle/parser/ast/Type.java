@@ -38,7 +38,7 @@ public record Type(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
 		p.add(basicType);
 		for (int i = 0; i < arrayLevel; i++) {
 			p.add("[]");

@@ -10,7 +10,7 @@ public record Ident(String ident) implements PrettyPrint {
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add("\"").add(ident).add("\"");
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		p.add(ident);
 	}
 }

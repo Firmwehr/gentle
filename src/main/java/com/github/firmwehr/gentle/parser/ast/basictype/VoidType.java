@@ -4,7 +4,7 @@ import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 
 public record VoidType() implements BasicType {
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
 		p.add("void");
 	}
 }

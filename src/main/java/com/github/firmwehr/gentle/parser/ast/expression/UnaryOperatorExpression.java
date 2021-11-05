@@ -8,7 +8,15 @@ public record UnaryOperatorExpression(
 	Expression expression
 ) implements Expression {
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add("(").add(operator.getName()).add(expression).add(")");
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		if (!omitParentheses) {
+			p.add("(");
+		}
+
+		p.add(operator.getName()).add(expression);
+
+		if (!omitParentheses) {
+			p.add(")");
+		}
 	}
 }

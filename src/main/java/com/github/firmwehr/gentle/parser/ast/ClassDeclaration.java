@@ -4,7 +4,10 @@ import com.github.firmwehr.gentle.parser.Util;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public record ClassDeclaration(
 	Ident name,
@@ -31,11 +34,26 @@ public record ClassDeclaration(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add("ClassDeclaration{").indent().newline();
-		p.add("fields = [").indent().addAll(fields).unindent().add("]").newline();
-		p.add("methods = [").indent().addAll(methods).unindent().add("]").newline();
-		p.add("mainMethods = [").indent().addAll(mainMethods).unindent().add("]").newline();
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		List<Field> fields = this.fields.stream()
+			.sorted(Comparator.comparing(field -> field.name().ident()))
+			.collect(Collectors.toList());
+
+		List<PrettyPrint> methods =
+			Stream.concat(this.methods.stream(), this.mainMethods.stream()).sorted(Comparator.comparing(it -> {
+				// Ugly, but the easiest thing I could think of right now
+				if (it instanceof Method m) {
+					return m.name().ident();
+				} else if (it instanceof MainMethod m) {
+					return m.name().ident();
+				} else {
+					throw new IllegalArgumentException("expected Method or MainMethod");
+				}
+			})).collect(Collectors.toList());
+
+		p.add("public class ").add(name).add(" {").indent().newline();
+		p.addAll(methods, "", true);
+		p.addAll(fields, "", true);
 		p.unindent().add("}");
 	}
 }

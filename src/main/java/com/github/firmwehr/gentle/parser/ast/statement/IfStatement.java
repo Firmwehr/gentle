@@ -16,8 +16,8 @@ public record IfStatement(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add("if ").add(condition).add(" ").add(body);
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		p.add("if (").add(condition, true).add(") ").add(body);
 		elseBody.ifPresent(statement -> p.add(" else ").add(statement));
 	}
 }

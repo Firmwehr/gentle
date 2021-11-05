@@ -12,9 +12,9 @@ public record ReturnStatement(Optional<Expression> returnValue) implements State
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
 		p.add("return");
-		returnValue.ifPresent(expression -> p.add(" ").add(expression));
+		returnValue.ifPresent(expression -> p.add(" ").add(expression, true));
 		p.add(";");
 	}
 }
