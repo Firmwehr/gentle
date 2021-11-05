@@ -17,7 +17,36 @@ public record IfStatement(
 
 	@Override
 	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
-		p.add("if (").add(condition, true).add(") ").add(body);
-		elseBody.ifPresent(statement -> p.add(" else ").add(statement));
+		p.add("if (").add(condition, true).add(")");
+
+		boolean elseOnNewLine;
+		if (body instanceof EmptyStatement) {
+			p.add(body);
+			elseOnNewLine = true;
+		} else if (body instanceof Block) {
+			p.add(" ").add(body);
+			elseOnNewLine = false;
+		} else {
+			p.indent().newline().add(body).unindent();
+			elseOnNewLine = true;
+		}
+
+		if (elseBody.isPresent()) {
+			if (elseOnNewLine) {
+				p.newline();
+			} else {
+				p.add(" ");
+			}
+
+			p.add("else");
+
+			if (elseBody.get() instanceof EmptyStatement || elseBody.get() instanceof IfStatement) {
+				p.add(elseBody.get());
+			} else if (elseBody.get() instanceof Block) {
+				p.add(" ").add(elseBody.get());
+			} else {
+				p.indent().newline().add(elseBody.get()).unindent();
+			}
+		}
 	}
 }

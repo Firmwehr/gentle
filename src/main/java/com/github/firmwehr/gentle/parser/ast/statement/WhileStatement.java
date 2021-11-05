@@ -14,6 +14,14 @@ public record WhileStatement(
 
 	@Override
 	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
-		p.add("while (").add(condition, true).add(") ").add(body);
+		p.add("while (").add(condition, true).add(")");
+
+		if (body instanceof EmptyStatement) {
+			p.add(body);
+		} else if (body instanceof Block) {
+			p.add(" ").add(body);
+		} else {
+			p.indent().newline().add(body).unindent();
+		}
 	}
 }
