@@ -1,100 +1,321 @@
 package com.github.firmwehr.gentle.lexer;
 
-import com.github.firmwehr.gentle.lexer.tokens.Token;
+import com.github.firmwehr.gentle.parser.tokens.CommentToken;
+import com.github.firmwehr.gentle.parser.tokens.EofToken;
+import com.github.firmwehr.gentle.parser.tokens.IdentToken;
+import com.github.firmwehr.gentle.parser.tokens.IntegerLiteralToken;
+import com.github.firmwehr.gentle.parser.tokens.Keyword;
+import com.github.firmwehr.gentle.parser.tokens.KeywordToken;
+import com.github.firmwehr.gentle.parser.tokens.Operator;
+import com.github.firmwehr.gentle.parser.tokens.OperatorToken;
+import com.github.firmwehr.gentle.parser.tokens.Token;
+import com.github.firmwehr.gentle.parser.tokens.WhitespaceToken;
 import com.github.firmwehr.gentle.source.Source;
-import com.google.common.base.Preconditions;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
-import java.util.Set;
-import java.util.function.Predicate;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
-/**
- * Primary class for lexing strings.
- */
 public class Lexer {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(Lexer.class);
+	private final StringReader reader;
+	private final boolean onlyRelevantTokens;
 
-	private final Predicate<TokenType> tokenFilter;
-	private final Source source;
-
-	private LexReader reader;
-
-	/**
-	 * Constructs a new lexer that will generate tokens from the given source.
-	 *
-	 * @param source The source file to read.
-	 */
-	public Lexer(Source source) {
-		this(source, tokenType -> true);
+	public Lexer(Source source, boolean onlyRelevantTokens) {
+		this.reader = new StringReader(source);
+		this.onlyRelevantTokens = onlyRelevantTokens;
 	}
 
-	/**
-	 * Constructs a new lexer that will generate tokens from the given source.
-	 *
-	 * @param source The source file to read.
-	 * @param tokenTypePredicate A predicate that will be used to drop certain tokens from the output stream. Please
-	 * 	consider using {@link #tokenFilter(TokenType...)} to construct this predicate. The predicate is not allowed to
-	 * 	reject EOF tokens.
-	 *
-	 * @throws IllegalArgumentException If the provided predicate is also rejecting EOF tokens since this is
-	 * 	impossible.
-	 */
-	public Lexer(Source source, Predicate<TokenType> tokenTypePredicate) {
-		// filtering eof token will cause nextToken() to enter endless loop on reaching end of input
-		// note that this is just an optimistic check since predicates could be statefull
-		Preconditions.checkArgument(tokenTypePredicate.test(TokenType.EOF),
-			"tokenTypePredicate is not allowed to drop EOF token");
-		this.source = source;
-		this.tokenFilter = tokenTypePredicate;
-		this.reader = new LexReader(source);
-	}
+	public List<Token> lex() throws LexerException {
+		List<Token> tokens = new ArrayList<>();
 
-	/**
-	 * Helper method for constructing token filtering predicates from a list of tokens.
-	 *
-	 * @param tokenTypes List of tokens that should be dropped.
-	 *
-	 * @return Predicate that will drop the given list of tokens.
-	 */
-	public static Predicate<TokenType> tokenFilter(TokenType... tokenTypes) {
-		var set = Set.of(tokenTypes);
-		return (tokenType) -> !set.contains(tokenType);
-	}
-
-	/**
-	 * Parses the next token in the input stream.
-	 *
-	 * @return The next parsed token.
-	 *
-	 * @throws LexerException If the next input segment could not be parsed to a valid token.
-	 */
-	public Token nextToken() throws LexerException {
-		while (true) {
-			var token = nextTokenInternal();
-			if (tokenFilter.test(token.tokenType())) {
-				return token;
-			} else if (token.tokenType() == TokenType.EOF) {
-				throw new AssertionError("lexer predicate just dropped EOF. This is a bug");
+		while (reader.canRead()) {
+			if (isDigit(reader.peek())) {
+				tokens.add(readNumber());
+				continue;
 			}
+			if (isIdentifierStart(reader.peek())) {
+				tokens.add(readIdentOrKeyword());
+				continue;
+			}
+			if (Character.isWhitespace(reader.peek())) {
+				int start = reader.getPosition();
+				reader.readWhitespace();
+				if (!onlyRelevantTokens) {
+					tokens.add(new WhitespaceToken(new SourceSpan(start, reader.getPosition())));
+				}
+				continue;
+			}
+			if (reader.canRead(2) && reader.peek(2).equals("/*")) {
+				Token comment = readComment();
+				if (!onlyRelevantTokens) {
+					tokens.add(comment);
+				}
+				continue;
+			}
+			tokens.add(readOperator("Expected an operator, integer, identifier or comment"));
 		}
+		tokens.add(new EofToken(new SourceSpan(reader.getPosition(), reader.getPosition())));
+
+		return tokens;
 	}
 
-	private Token nextTokenInternal() throws LexerException {
-		var parse = TokenType.parseNextToken(reader.fork());
-		var childReader = parse.reader();
-		var token = parse.token();
-		var diff = reader.diff(childReader);
+	private Token readNumber() {
+		int start = reader.getPosition();
+		if (reader.peek() == '0') {
+			reader.readChar();
+			return new IntegerLiteralToken(new SourceSpan(start, reader.getPosition()), BigInteger.ZERO);
+		}
+		BigInteger integer = new BigInteger(reader.readWhile(this::isDigit));
+		return new IntegerLiteralToken(new SourceSpan(start, reader.getPosition()), integer);
+	}
 
-		if (diff.isEmpty() && token.tokenType() != TokenType.EOF) { // eof is allowed to read empty token
-			throw new Error("parsed token from empty string, this is an error in the code");
+	private Token readIdentOrKeyword() throws LexerException {
+		if (!isIdentifierPart(reader.peek())) {
+			throw new LexerException("Expected an identifier start", reader);
+		}
+		int start = reader.getPosition();
+		String read = reader.readChar() + reader.readWhile(this::isIdentifierPart);
+
+		Optional<Token> keywordToken = getKeywordToken(start, reader.getPosition(), read);
+		return keywordToken.orElseGet(() -> new IdentToken(new SourceSpan(start, reader.getPosition()),
+			read.intern()));
+	}
+
+	private Token readOperator(String errorMessage) throws LexerException {
+		int start = reader.getPosition();
+
+		Operator operator = switch (reader.readChar()) {
+			case '!' -> {
+				if (reader.peek() == '=') {
+					reader.readChar();
+					yield Operator.NOT_EQUAL;
+				}
+				yield Operator.LOGICAL_NOT;
+			}
+			case '%' -> {
+				if (reader.peek() == '=') {
+					reader.readChar();
+					yield Operator.ASSIGN_MODULO;
+				}
+				yield Operator.MODULO;
+			}
+			case '&' -> {
+				if (reader.peek() == '=') {
+					reader.readChar();
+					yield Operator.ASSIGN_BITWISE_AND;
+				}
+				if (reader.peek() == '&') {
+					reader.readChar();
+					yield Operator.LOGICAL_AND;
+				}
+				yield Operator.BITWISE_AND;
+			}
+			case '*' -> {
+				if (reader.peek() == '=') {
+					reader.readChar();
+					yield Operator.ASSIGN_MULTIPLY;
+				}
+				yield Operator.MULTIPLY;
+			}
+			case '+' -> {
+				if (reader.peek() == '=') {
+					reader.readChar();
+					yield Operator.ADD_AND_ASSIGN;
+				}
+				if (reader.peek() == '+') {
+					reader.readChar();
+					yield Operator.INCREMENT;
+				}
+				yield Operator.PLUS;
+			}
+			case '-' -> {
+				if (reader.peek() == '=') {
+					reader.readChar();
+					yield Operator.ASSIGN_SUBTRACT;
+				}
+				if (reader.peek() == '-') {
+					reader.readChar();
+					yield Operator.DECREMENT;
+				}
+				yield Operator.MINUS;
+			}
+			case '/' -> {
+				if (reader.peek() == '=') {
+					reader.readChar();
+					yield Operator.ASSIGN_DIVIDE;
+				}
+				yield Operator.DIVIDE;
+			}
+			case '<' -> {
+				if (reader.peek() == '<') {
+					reader.readChar();
+					if (reader.peek() == '=') {
+						reader.readChar();
+						yield Operator.ASSIGN_LEFT_SHIFT;
+					}
+					yield Operator.LEFT_SHIFT;
+				}
+				if (reader.peek() == '=') {
+					reader.readChar();
+					yield Operator.LESS_OR_EQUAL;
+				}
+				yield Operator.LESS_THAN;
+			}
+			case '=' -> {
+				if (reader.peek() == '=') {
+					reader.readChar();
+					yield Operator.EQUAL;
+				}
+				yield Operator.ASSIGN;
+			}
+			case '>' -> {
+				if (reader.peek() == '>') {
+					reader.readChar();
+					if (reader.peek() == '>') {
+						reader.readChar();
+						if (reader.peek() == '=') {
+							reader.readChar();
+							yield Operator.ASSIGN_UNSIGNED_RIGHT_SHIFT;
+						}
+						yield Operator.UNSIGNED_RIGHT_SHIFT;
+					}
+					if (reader.peek() == '=') {
+						reader.readChar();
+						yield Operator.ASSIGN_SIGNED_RIGHT_SHIFT;
+					}
+					yield Operator.SIGNED_RIGHT_SHIFT;
+				}
+				if (reader.peek() == '=') {
+					reader.readChar();
+					yield Operator.GREATER_OR_EQUAL;
+				}
+				yield Operator.GREATER_THAN;
+			}
+			case '^' -> {
+				if (reader.peek() == '=') {
+					reader.readChar();
+					yield Operator.ASSIGN_BITWISE_XOR;
+				}
+				yield Operator.BITWISE_XOR;
+			}
+			case '|' -> {
+				if (reader.peek() == '|') {
+					reader.readChar();
+					yield Operator.LOGICAL_OR;
+				}
+				if (reader.peek() == '=') {
+					reader.readChar();
+					yield Operator.ASSIGN_BITWISE_OR;
+				}
+				yield Operator.BITWISE_OR;
+			}
+			case '~' -> Operator.BITWISE_NOT;
+			case '{' -> Operator.LEFT_BRACE;
+			case '}' -> Operator.RIGHT_BRACE;
+			case '[' -> Operator.LEFT_BRACKET;
+			case ']' -> Operator.RIGHT_BRACKET;
+			case '?' -> Operator.QUESTION_MARK;
+			case ':' -> Operator.COLON;
+			case ';' -> Operator.SEMICOLON;
+			case '.' -> Operator.DOT;
+			case ',' -> Operator.COMMA;
+			case '(' -> Operator.LEFT_PAREN;
+			case ')' -> Operator.RIGHT_PAREN;
+			default -> {
+				// We consumed it in the switch, so we un-consume it now so the error offset matches
+				reader.unreadChar();
+				throw new LexerException(errorMessage, reader);
+			}
+		};
+
+		return new OperatorToken(new SourceSpan(start, reader.getPosition()), operator);
+	}
+
+	private Token readComment() throws LexerException {
+		int start = reader.getPosition();
+		reader.assertRead("/*");
+		String text = reader.assertReadUntil("*/");
+		text = text.substring(0, text.length() - 2);
+		return new CommentToken(new SourceSpan(start, reader.getPosition()), text);
+	}
+
+	private boolean isDigit(char c) {
+		return c >= '0' && c <= '9';
+	}
+
+	private boolean isIdentifierStart(char c) {
+		return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_';
+	}
+
+	private boolean isIdentifierPart(char c) {
+		return isIdentifierStart(c) || isDigit(c);
+	}
+
+	private Optional<Token> getKeywordToken(int start, int end, String input) {
+		Keyword keyword = switch (input) {
+			case "abstract" -> Keyword.ABSTRACT;
+			case "assert" -> Keyword.ASSERT;
+			case "boolean" -> Keyword.BOOLEAN;
+			case "break" -> Keyword.BREAK;
+			case "byte" -> Keyword.BYTE;
+			case "case" -> Keyword.CASE;
+			case "catch" -> Keyword.CATCH;
+			case "char" -> Keyword.CHAR;
+			case "class" -> Keyword.CLASS;
+			case "const" -> Keyword.CONST;
+			case "continue" -> Keyword.CONTINUE;
+			case "default" -> Keyword.DEFAULT;
+			case "double" -> Keyword.DOUBLE;
+			case "do" -> Keyword.DO;
+			case "else" -> Keyword.ELSE;
+			case "enum" -> Keyword.ENUM;
+			case "extends" -> Keyword.EXTENDS;
+			case "false" -> Keyword.FALSE;
+			case "finally" -> Keyword.FINALLY;
+			case "final" -> Keyword.FINAL;
+			case "float" -> Keyword.FLOAT;
+			case "for" -> Keyword.FOR;
+			case "goto" -> Keyword.GOTO;
+			case "if" -> Keyword.IF;
+			case "implements" -> Keyword.IMPLEMENTS;
+			case "import" -> Keyword.IMPORT;
+			case "instanceof" -> Keyword.INSTANCEOF;
+			case "interface" -> Keyword.INTERFACE;
+			case "int" -> Keyword.INT;
+			case "long" -> Keyword.LONG;
+			case "native" -> Keyword.NATIVE;
+			case "new" -> Keyword.NEW;
+			case "null" -> Keyword.NULL;
+			case "package" -> Keyword.PACKAGE;
+			case "private" -> Keyword.PRIVATE;
+			case "protected" -> Keyword.PROTECTED;
+			case "public" -> Keyword.PUBLIC;
+			case "return" -> Keyword.RETURN;
+			case "short" -> Keyword.SHORT;
+			case "static" -> Keyword.STATIC;
+			case "strictfp" -> Keyword.STRICTFP;
+			case "super" -> Keyword.SUPER;
+			case "switch" -> Keyword.SWITCH;
+			case "synchronized" -> Keyword.SYNCHRONIZED;
+			case "this" -> Keyword.THIS;
+			case "throws" -> Keyword.THROWS;
+			case "throw" -> Keyword.THROW;
+			case "transient" -> Keyword.TRANSIENT;
+			case "true" -> Keyword.TRUE;
+			case "try" -> Keyword.TRY;
+			case "void" -> Keyword.VOID;
+			case "volatile" -> Keyword.VOLATILE;
+			case "while" -> Keyword.WHILE;
+			default -> null;
+		};
+
+		if (keyword == null) {
+			return Optional.empty();
 		}
 
-		if (LOGGER.isTraceEnabled()) {
-			LOGGER.trace("emitting token {} from string slice @ {}: '{}'", token, token.sourceSpan().format(), diff);
-		}
-		reader = childReader;
-		return token;
+		return Optional.of(new KeywordToken(new SourceSpan(start, end), keyword));
 	}
 }

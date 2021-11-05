@@ -5,10 +5,10 @@ import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandArgumentsParser;
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
-import com.github.firmwehr.gentle.lexer.TokenType;
 import com.github.firmwehr.gentle.parser.ParseException;
 import com.github.firmwehr.gentle.parser.Parser;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
+import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.source.Source;
 import com.github.firmwehr.gentle.source.SourceException;
 import org.apache.logging.log4j.core.config.ConfigurationSource;
@@ -16,6 +16,7 @@ import org.apache.logging.log4j.core.config.Configurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -103,16 +104,19 @@ public class GentleCompiler {
 	private static void lexTestCommand(Path path) {
 		try {
 			var source = new Source(Files.readString(path, StandardCharsets.UTF_8));
-			var lexer = new Lexer(source, Lexer.tokenFilter(TokenType.COMMENT, TokenType.WHITESPACE));
+			var lexer = new Lexer(source, true);
+			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
-			while (true) {
-				var token = lexer.nextToken();
-				//noinspection UseOfSystemOutOrSystemErr
-				System.out.println(token.format());
-				if (token.tokenType() == TokenType.EOF) {
-					break;
-				}
+			for (Token token : lexer.lex()) {
+				outputStream.writeBytes(token.format().getBytes(StandardCharsets.UTF_8));
+				outputStream.write('\n');
 			}
+
+			// Write at once, do not flush in between!
+			//noinspection UseOfSystemOutOrSystemErr
+			outputStream.writeTo(System.out);
+			//noinspection UseOfSystemOutOrSystemErr
+			System.out.flush();
 		} catch (IOException e) {
 			LOGGER.error("Could not read file '{}': {}", path, e.getMessage());
 			System.exit(1);
@@ -128,7 +132,7 @@ public class GentleCompiler {
 	private static void parseTestCommand(Path path) {
 		try {
 			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
-			Lexer lexer = new Lexer(source, Lexer.tokenFilter(TokenType.WHITESPACE, TokenType.COMMENT));
+			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
 			parser.parse(); // result ignored for now
 		} catch (IOException e) {
@@ -149,7 +153,7 @@ public class GentleCompiler {
 	private static void runCommand(Path path) {
 		try {
 			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
-			Lexer lexer = new Lexer(source, Lexer.tokenFilter(TokenType.WHITESPACE, TokenType.COMMENT));
+			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
 			LOGGER.info("Parse result:\n{}", PrettyPrinter.format(parser.parse()));
 		} catch (IOException e) {

@@ -8,6 +8,6 @@ public record IdentToken(
 ) implements Token {
 	@Override
 	public String format() {
-		return "identifier '" + ident + "'";
+		return "identifier " + ident;
 	}
 }

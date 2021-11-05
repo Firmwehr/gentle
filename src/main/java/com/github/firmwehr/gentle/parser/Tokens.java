@@ -1,7 +1,7 @@
 package com.github.firmwehr.gentle.parser;
 
-import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
+import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.parser.tokens.EofToken;
 import com.github.firmwehr.gentle.parser.tokens.IdentToken;
 import com.github.firmwehr.gentle.parser.tokens.Keyword;
@@ -9,7 +9,6 @@ import com.github.firmwehr.gentle.parser.tokens.Operator;
 import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.source.Source;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -34,15 +33,9 @@ public class Tokens {
 	}
 
 	public static Tokens fromLexer(Source source, Lexer lexer) throws LexerException {
-		List<Token> tokens = new ArrayList<>();
-		while (true) {
-			Token token = Token.fromLexerToken(lexer.nextToken());
-			if (token instanceof EofToken eof) {
-				return new Tokens(source, tokens, eof);
-			} else {
-				tokens.add(token);
-			}
-		}
+		List<Token> tokens = lexer.lex();
+		EofToken eofToken = (EofToken) tokens.get(tokens.size() - 1);
+		return new Tokens(source, tokens.subList(0, tokens.size() - 1), eofToken);
 	}
 
 	public <T> T error() throws ParseException {

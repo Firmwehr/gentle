@@ -1,13 +1,12 @@
 package com.github.firmwehr.gentle.source;
 
-import java.util.List;
+import com.github.firmwehr.gentle.util.Pair;
+
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class Source {
 
 	private final String content;
-	private final List<String> lines;
 
 	public Source(String content) throws SourceException {
 		if (!content.codePoints().allMatch(c -> c <= 127)) {
@@ -15,26 +14,110 @@ public class Source {
 		}
 
 		this.content = content;
-		this.lines = content.lines().collect(Collectors.toList());
 	}
 
 	public String getContent() {
 		return content;
 	}
 
-	public String formatErrorAtPosition(SourcePosition position, String message, String description) {
-		String line;
-		if (position.line() - 1 < lines.size()) {
-			line = lines.get(position.line() - 1);
-		} else {
-			line = "";
+	/**
+	 * Find the beginning of the line a certain character is in. If the character is part of a linebreak, it belongs to
+	 * the line preceding the line break.
+	 *
+	 * @param offset arbitrary but valid character offset
+	 *
+	 * @return index of the line's first character
+	 */
+	private int startOfLine(int offset) {
+		// First, go backwards until the end of the previous line to find the start of the current line.
+		int lineStart = offset;
+
+		// Line breaks belong to the preceding line, not the following line.
+		// If we start in a line break, we advance to the character preceding the line break.
+		if (isLineBreakChar(lineStart)) {
+			lineStart--;
+		}
+		if (lineStart >= 0 && isWindowsLinebreak(lineStart)) {
+			// We started on the \n in a \r\n, so we need to take another step back.
+			lineStart--;
 		}
 
-		StringBuilder builder = new StringBuilder();
+		// Now, advance backwards until we find the line break of the previous line.
+		while (lineStart >= 0 && !isLineBreakChar(lineStart)) {
+			lineStart--;
+		}
 
+		// Finally, move forward one step so that we're at the beginning of the current line.
+		lineStart++;
+
+		return lineStart;
+	}
+
+	/**
+	 * @param lineStart index of the line's first character
+	 *
+	 * @return 1 + index of the line's last non-linebreak character
+	 */
+	private int endOfLine(int lineStart) {
+		int index = content.length();
+
+		int newlineIndex = content.indexOf('\n', lineStart);
+		if (newlineIndex >= 0 && newlineIndex < index) {
+			index = newlineIndex;
+		}
+
+		int carriageReturnIndex = content.indexOf('\r', lineStart);
+		if (carriageReturnIndex >= 0 && carriageReturnIndex < index) {
+			index = carriageReturnIndex;
+		}
+
+		return index;
+	}
+
+	/**
+	 * @param offset arbitrary but valid character offset
+	 *
+	 * @return amount of linebreaks before (and excluding) the specified character
+	 */
+	private int linebreaksUntil(int offset) {
+		return (int) content.substring(0, offset)
+			.replace("\r\n", "\n")
+			.replace("\r", "\n")
+			.codePoints()
+			.filter(it -> it == '\n')
+			.count();
+	}
+
+	public Pair<SourcePosition, String> positionAndLineFromOffset(int offset) {
+		int lineStart = startOfLine(offset);
+		int lineEnd = endOfLine(lineStart);
+		String line = content.substring(lineStart, lineEnd);
+
+		int column = offset - lineStart + 1; // Columns are 1-indexed
+		int row = linebreaksUntil(lineStart) + 1; // Rows are 1-indexed
+
+		return new Pair<>(new SourcePosition(offset, row, column), line);
+	}
+
+	private boolean isLineBreakChar(int offset) {
+		return content.charAt(offset) == '\n' || content.charAt(offset) == '\r';
+	}
+
+	private boolean isWindowsLinebreak(int offset) {
+		return content.charAt(offset) == '\r' && content.charAt(offset + 1) == '\n';
+	}
+
+	public String formatErrorAtOffset(int offset, String message, String description) {
+		Pair<SourcePosition, String> positionAndLine = positionAndLineFromOffset(offset);
+		SourcePosition position = positionAndLine.first();
+		String line = positionAndLine.second();
+
+		StringBuilder builder = new StringBuilder();
 		builder.append(message)
 			.append(" at line ")
-			.append(position.format())
+			.append(position.line())
+			.append(":")
+			.append(position.column())
 			.append("\n#\n# ")
 			.append(line)
 			.append("\n# ");

@@ -8,6 +8,6 @@ public record OperatorToken(
 ) implements Token {
 	@Override
 	public String format() {
-		return "'" + operator.getName() + "'";
+		return operator.getName();
 	}
 }

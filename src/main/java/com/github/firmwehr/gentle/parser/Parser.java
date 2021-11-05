@@ -47,8 +47,6 @@ import com.github.firmwehr.gentle.parser.tokens.Operator;
 import com.github.firmwehr.gentle.parser.tokens.OperatorToken;
 import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.source.Source;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +54,6 @@ import java.util.Optional;
 
 @SuppressWarnings("ClassCanBeRecord")
 public class Parser {
-	private static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
 
 	private final Tokens tokens;
 

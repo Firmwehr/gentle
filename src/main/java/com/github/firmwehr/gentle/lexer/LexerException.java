@@ -1,21 +1,20 @@
 package com.github.firmwehr.gentle.lexer;
 
+import com.github.firmwehr.gentle.source.Source;
+
 public class LexerException extends Exception {
 
-	private final LexReader reader;
+	private final Source source;
+	private final int offset;
 
-	public LexerException(String message, LexReader reader, Throwable throwable) {
-		super(message, throwable);
-		this.reader = reader.fork();
-	}
-
-	public LexerException(String message, LexReader reader) {
+	public LexerException(String message, StringReader reader) {
 		super(message);
-		this.reader = reader.fork();
+		this.source = reader.getSource();
+		this.offset = reader.getPosition();
 	}
 
 	@Override
 	public String getMessage() {
-		return reader.getSource().formatErrorAtPosition(reader.position(), "Failed to lex token", super.getMessage());
+		return source.formatErrorAtOffset(offset, "Failed to lex token", super.getMessage());
 	}
 }
