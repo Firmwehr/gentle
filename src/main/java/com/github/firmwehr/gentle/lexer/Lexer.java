@@ -12,6 +12,8 @@ import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.parser.tokens.WhitespaceToken;
 import com.github.firmwehr.gentle.source.Source;
 import com.github.firmwehr.gentle.source.SourceSpan;
+import com.github.firmwehr.gentle.util.string.SimpleStringTable;
+import com.github.firmwehr.gentle.util.string.StringTable;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -20,6 +22,7 @@ import java.util.Optional;
 
 public class Lexer {
 
+	private final StringTable stringTable = new SimpleStringTable();
 	private final StringReader reader;
 	private final boolean onlyRelevantTokens;
 
@@ -80,8 +83,8 @@ public class Lexer {
 		String read = reader.readChar() + reader.readWhile(this::isIdentifierPart);
 
 		Optional<Token> keywordToken = getKeywordToken(start, reader.getPosition(), read);
-		return keywordToken.orElseGet(() -> new IdentToken(new SourceSpan(start, reader.getPosition()),
-			read.intern()));
+		return keywordToken.orElseGet(
+			() -> new IdentToken(new SourceSpan(start, reader.getPosition()), stringTable.deduplicate(read)));
 	}
 
 	private Token readOperator(String errorMessage) throws LexerException {
