@@ -40,9 +40,9 @@ public record IfStatement(
 
 			p.add("else");
 
-			if (elseBody.get() instanceof EmptyStatement || elseBody.get() instanceof IfStatement) {
+			if (elseBody.get() instanceof EmptyStatement) {
 				p.add(elseBody.get());
-			} else if (elseBody.get() instanceof Block) {
+			} else if (elseBody.get() instanceof IfStatement || elseBody.get() instanceof Block) {
 				p.add(" ").add(elseBody.get());
 			} else {
 				p.indent().newline().add(elseBody.get()).unindent();
