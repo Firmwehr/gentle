@@ -21,8 +21,8 @@ public record IfStatement(
 
 		boolean elseOnNewLine;
 		if (body instanceof EmptyStatement) {
-			p.add(body);
-			elseOnNewLine = true;
+			p.add(" { }");
+			elseOnNewLine = false;
 		} else if (body instanceof Block) {
 			p.add(" ").add(body);
 			elseOnNewLine = false;
@@ -41,7 +41,7 @@ public record IfStatement(
 			p.add("else");
 
 			if (elseBody.get() instanceof EmptyStatement) {
-				p.add(elseBody.get());
+				p.add(" { }");
 			} else if (elseBody.get() instanceof IfStatement || elseBody.get() instanceof Block) {
 				p.add(" ").add(elseBody.get());
 			} else {
