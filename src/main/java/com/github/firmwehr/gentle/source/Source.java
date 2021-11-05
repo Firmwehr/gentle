@@ -21,10 +21,23 @@ public class Source {
 	}
 
 	public Pair<SourcePosition, String> positionAndLineFromOffset(int offset) {
-		int lineStart = offset - 1;
+		int lineStart = offset;
 		int column = 1;
+		// If we start in a linebreak, that belongs on the line that precedes it
+		boolean inLineBreak = isLineBreakChar(offset);
 		while (lineStart > 0) {
-			if (content.charAt(lineStart) == '\n' || content.charAt(lineStart) == '\r') {
+			if (inLineBreak && isLineBreakChar(lineStart)) {
+				int charsInLineBreak = 1;
+				if (isWindowsLinebreak(lineStart - 1)) {
+					charsInLineBreak = 2;
+				}
+				lineStart -= charsInLineBreak;
+				column += charsInLineBreak;
+				inLineBreak = false;
+				continue;
+			}
+
+			if (isLineBreakChar(lineStart)) {
 				lineStart++;
 				column--;
 				break;
@@ -41,7 +54,7 @@ public class Source {
 		}
 		String line = content.substring(lineStart, endOfLine);
 
-		int lineNumber = 1 + (int) content.substring(0, offset)
+		int lineNumber = 1 + (int) content.substring(0, endOfLine)
 			.replace("\r\n", "\n")
 			.replace("\r", "\n")
 			.codePoints()
@@ -49,6 +62,14 @@ public class Source {
 			.count();
 
 		return new Pair<>(new SourcePosition(offset, lineNumber, column), line);
+	}
+
+	private boolean isLineBreakChar(int offset) {
+		return content.charAt(offset) == '\n' || content.charAt(offset) == '\r';
+	}
+
+	private boolean isWindowsLinebreak(int offset) {
+		return content.charAt(offset) == '\r' && content.charAt(offset + 1) == '\n';
 	}
 
 	public String formatErrorAtOffset(int offset, String message, String description) {

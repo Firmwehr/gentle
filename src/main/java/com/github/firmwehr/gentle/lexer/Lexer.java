@@ -224,7 +224,11 @@ public class Lexer {
 			case ',' -> Operator.COMMA;
 			case '(' -> Operator.LEFT_PAREN;
 			case ')' -> Operator.RIGHT_PAREN;
-			default -> throw new LexerException(errorMessage, reader);
+			default -> {
+				// We consumed it in the switch, so we un-consume it now so the error offset matches
+				reader.unreadChar();
+				throw new LexerException(errorMessage, reader);
+			}
 		};
 
 		return new OperatorToken(new SourceSpan(start, reader.getPosition()), operator);

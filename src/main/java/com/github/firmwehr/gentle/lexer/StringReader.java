@@ -76,6 +76,13 @@ public class StringReader {
 		return underlying.charAt(position++);
 	}
 
+	public void unreadChar() {
+		if (position > 0) {
+			position--;
+		}
+	}
+
+
 	public String readChars(int count) {
 		int oldPos = this.position;
 		position += count;
@@ -128,4 +135,5 @@ public class StringReader {
 	public int getPosition() {
 		return position;
 	}
+
 }
