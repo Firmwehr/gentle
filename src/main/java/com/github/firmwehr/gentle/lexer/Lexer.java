@@ -212,18 +212,18 @@ public class Lexer {
 				}
 				yield Operator.BITWISE_OR;
 			}
-			case '~' ->  Operator.BITWISE_NOT;
-			case '{' ->  Operator.LEFT_BRACE;
-			case '}' ->  Operator.RIGHT_BRACE;
-			case '[' ->  Operator.LEFT_BRACKET;
-			case ']' ->  Operator.RIGHT_BRACKET;
-			case '?' ->  Operator.QUESTION_MARK;
-			case ':' ->  Operator.COLON;
-			case ';' ->  Operator.SEMICOLON;
-			case '.' ->  Operator.DOT;
-			case ',' ->  Operator.COMMA;
-			case '(' ->  Operator.LEFT_PAREN;
-			case ')' ->  Operator.RIGHT_PAREN;
+			case '~' -> Operator.BITWISE_NOT;
+			case '{' -> Operator.LEFT_BRACE;
+			case '}' -> Operator.RIGHT_BRACE;
+			case '[' -> Operator.LEFT_BRACKET;
+			case ']' -> Operator.RIGHT_BRACKET;
+			case '?' -> Operator.QUESTION_MARK;
+			case ':' -> Operator.COLON;
+			case ';' -> Operator.SEMICOLON;
+			case '.' -> Operator.DOT;
+			case ',' -> Operator.COMMA;
+			case '(' -> Operator.LEFT_PAREN;
+			case ')' -> Operator.RIGHT_PAREN;
 			default -> throw new LexerException(errorMessage, reader);
 		};
 

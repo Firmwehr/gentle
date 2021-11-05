@@ -1,5 +1,7 @@
 package com.github.firmwehr.gentle.source;
 
+import com.github.firmwehr.gentle.util.Pair;
+
 import java.util.Objects;
 
 public class Source {
@@ -18,8 +20,8 @@ public class Source {
 		return content;
 	}
 
-	public String formatErrorAtPosition(int position, String message, String description) {
-		int lineStart = position - 1;
+	public Pair<SourcePosition, String> positionAndLineFromOffset(int offset) {
+		int lineStart = offset - 1;
 		int column = 1;
 		while (lineStart > 0) {
 			if (content.charAt(lineStart) == '\n' || content.charAt(lineStart) == '\r') {
@@ -39,24 +41,32 @@ public class Source {
 		}
 		String line = content.substring(lineStart, endOfLine);
 
-		int lineNumber = 1 + (int) content.substring(0, position)
+		int lineNumber = 1 + (int) content.substring(0, offset)
 			.replace("\r\n", "\n")
 			.replace("\r", "\n")
 			.codePoints()
 			.filter(it -> it == '\n')
 			.count();
 
+		return new Pair<>(new SourcePosition(offset, lineNumber, column), line);
+	}
+
+	public String formatErrorAtOffset(int offset, String message, String description) {
+		Pair<SourcePosition, String> positionAndLine = positionAndLineFromOffset(offset);
+		SourcePosition position = positionAndLine.first();
+		String line = positionAndLine.second();
+
 		StringBuilder builder = new StringBuilder();
 		builder.append(message)
 			.append(" at line ")
-			.append(lineNumber)
+			.append(position.line())
 			.append(":")
-			.append(column)
+			.append(position.column())
 			.append("\n#\n# ")
 			.append(line)
 			.append("\n# ");
 
-		line.chars().limit(column - 1).map(it -> {
+		line.chars().limit(position.column() - 1).map(it -> {
 			if (it == ' ' || it == '\t') {
 				return it;
 			} else {

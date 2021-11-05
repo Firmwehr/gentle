@@ -16,6 +16,6 @@ public class ParseException extends Exception {
 
 	@Override
 	public String getMessage() {
-		return source.formatErrorAtPosition(token.sourceSpan().startOffset(), "Unexpected " + token.format(), description);
+		return source.formatErrorAtOffset(token.sourceSpan().startOffset(), "Unexpected " + token.format(), description);
 	}
 }

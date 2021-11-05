@@ -3,8 +3,8 @@ package com.github.firmwehr.gentle;
 import com.djdch.log4j.StaticShutdownCallbackRegistry;
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandArgumentsParser;
-import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.Lexer;
+import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.parser.ParseException;
 import com.github.firmwehr.gentle.parser.Parser;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
@@ -108,10 +108,12 @@ public class GentleCompiler {
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
 			for (Token token : lexer.lex()) {
-				//noinspection UseOfSystemOutOrSystemErr
 				outputStream.writeBytes(token.format().getBytes(StandardCharsets.UTF_8));
 				outputStream.write('\n');
 			}
+
+			// Write at once, do not flush in between!
+			//noinspection UseOfSystemOutOrSystemErr
 			System.out.writeBytes(outputStream.toByteArray());
 		} catch (IOException e) {
 			LOGGER.error("Could not read file '{}': {}", path, e.getMessage());

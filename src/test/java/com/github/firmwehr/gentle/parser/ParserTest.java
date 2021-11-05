@@ -2,7 +2,6 @@ package com.github.firmwehr.gentle.parser;
 
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
-import com.github.firmwehr.gentle.lexer.TokenType;
 import com.github.firmwehr.gentle.parser.ast.ClassDeclaration;
 import com.github.firmwehr.gentle.parser.ast.MainMethod;
 import com.github.firmwehr.gentle.parser.ast.Method;
@@ -26,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ParserTest {
 	private static Parser fromText(String text) throws SourceException, LexerException {
 		Source source = new Source(text);
-		return Parser.fromLexer(source, new Lexer(source, Lexer.tokenFilter(TokenType.WHITESPACE, TokenType.COMMENT)));
+		return Parser.fromLexer(source, new Lexer(source, true));
 	}
 
 	// This wrapper allows us to give the parameterized test cases nice labels
