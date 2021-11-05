@@ -45,6 +45,12 @@ class ParserTest {
 		// pde = parser defined error
 		SourcePosition expectedPde
 	) {
+		// expects source to have unix line endings
+		public static FailingParserTestCase fromPos(String label, String source, int line, int column) {
+			int offset = source.lines().limit(line - 1).mapToInt(line_ -> line_.length() + 1).sum() + column - 1;
+			return new FailingParserTestCase(label, source, new SourcePosition(offset, line, column));
+		}
+
 		@Override
 		public String toString() {
 			return label;
@@ -68,130 +74,183 @@ class ParserTest {
 		// @formatter:off
 		return Stream.of(
 			// ClassDeclaration
-			new FailingParserTestCase("missing class keyword",
+			FailingParserTestCase.fromPos("missing class keyword",
 				"""
                 {}
                 """,
-				new SourcePosition(0, 1, 1)
+				1, 1
 			),
-			new FailingParserTestCase("missing class name",
+			FailingParserTestCase.fromPos("missing class name",
 				"""
                 class {}
                 """,
-				new SourcePosition(6, 1, 7)
+				1, 7
 			),
-			new FailingParserTestCase("missing opening brace",
+			FailingParserTestCase.fromPos("missing opening brace",
 				"""
 				class C = 42;
 				""",
-				new SourcePosition(8, 1, 9)
+				1, 9
 			),
-			new FailingParserTestCase("missing closing brace",
+			FailingParserTestCase.fromPos("missing closing brace",
 				"""
                 class C {
                 """,
-				new SourcePosition(10, 2, 1)
+				2, 1
 			),
 			// ClassMember
-			new FailingParserTestCase("missing public modifier",
+			FailingParserTestCase.fromPos("missing public modifier",
 				"""
                 class C { int foo() {} }
                 """,
-				new SourcePosition(10, 1, 11)
+				1, 11
 			),
-			new FailingParserTestCase("main method returning int",
+			FailingParserTestCase.fromPos("main method returning int",
 				"""
 				class C { public static int main(String[] args) {} }
 				""",
-				new SourcePosition(24, 1, 25)
+				1, 25
 			),
-			new FailingParserTestCase("public final field",
+			FailingParserTestCase.fromPos("public final field",
 				"""
                 class C { public final int i = 42; }
                 """,
-				new SourcePosition(17, 1, 18)
+				1, 18
 			),
-			new FailingParserTestCase("multiple field declarations",
+			FailingParserTestCase.fromPos("multiple field declarations",
 				"""
                 class C { public int i, j = 42; }
                 """,
-				new SourcePosition(22, 1, 23)
+				1, 23
 			),
-			new FailingParserTestCase("missing main parameters",
+			FailingParserTestCase.fromPos("missing main parameters",
 				"""
                 class C { public static void main; }
                 """,
-				new SourcePosition(33, 1, 34)
+				1, 34
 			),
-			new FailingParserTestCase("missing method block",
+			FailingParserTestCase.fromPos("missing method block",
 				"""
                 class C { public int foo() public int bar(); }
                 """,
-				new SourcePosition(27, 1, 28)
+				1, 28
 			),
-			new FailingParserTestCase("incomplete throws clause",
+			FailingParserTestCase.fromPos("incomplete throws clause",
 				"""
 				class C { public int foo() throws; }
 				""",
-				new SourcePosition(33, 1, 34)
+				1, 34
 			),
-			new FailingParserTestCase("trailing parameter comma",
+			FailingParserTestCase.fromPos("trailing parameter comma",
 				"""
                 class C { public int foo(int x,); }
                 """,
-				new SourcePosition(31, 1, 32)
+				1, 32
 			),
-			new FailingParserTestCase("invalid parameter",
+			FailingParserTestCase.fromPos("invalid parameter",
 				"""
                 class C { public int foo(int *x); }
                 """,
-				new SourcePosition(29, 1, 30)
+				1, 30
 			),
 			// Type
-			new FailingParserTestCase("index in array type",
+			FailingParserTestCase.fromPos("index in array type",
 				"""
 				class C { public int[42] a; }
 				""",
-				new SourcePosition(21, 1, 22)
+				1, 22
 			),
-			new FailingParserTestCase("float type",
+			FailingParserTestCase.fromPos("float type",
 				"""
                 class C { public float bar(); }
                 """,
-				new SourcePosition(17, 1, 18)
+				1, 18
 			),
 			// Block
-			new FailingParserTestCase("empty statement where a block should be",
+			FailingParserTestCase.fromPos("empty statement where a block should be",
 				"""
 				class C { public void foo(); }
 				""",
-				new SourcePosition(27, 1, 28)
+				1, 28
 			),
-			new FailingParserTestCase("mismatched block braces",
+			FailingParserTestCase.fromPos("mismatched block braces",
 				"""
 				class C { public int foo() {{{}{}} public int bar() {} }
 				""",
-				new SourcePosition(35, 1, 36)
+				1, 36
 			),
 			// Statement
-			// FIXME
+			FailingParserTestCase.fromPos("lone else",
+				"""
+				class C { public int f() { else; }
+				""",
+				1, 28
+			),
+			FailingParserTestCase.fromPos("missing if parens",
+				"""
+				class C { public int f() { if x == 42; }
+				""",
+				1, 31
+			),
+			FailingParserTestCase.fromPos("missing else statement",
+				"""
+                class C { public int f() { if (x == 42); else }
+                """,
+				1, 47
+			),
+			FailingParserTestCase.fromPos("missing while parens",
+				"""
+				class C { public int f() { while b; }
+				""",
+				1, 34
+			),
+			FailingParserTestCase.fromPos("invalid return expression",
+				"""
+				class C { public int f() { return ++p; }
+				""",
+				1, 35
+			),
+			FailingParserTestCase.fromPos("incomplete local variable declaration",
+				"""
+                class C {
+                    public int f() { int = 42; }
+                }
+                """,
+				2, 26
+			),
+			FailingParserTestCase.fromPos("float as identifier",
+				"""
+                class C {
+                    public int f() { int float = 42; }
+                }
+                """,
+				2, 26
+			),
+			FailingParserTestCase.fromPos("incomplete local variable declaration 2",
+				"""
+				class C {
+					public int f() { int x = }
+				}
+				""",
+				2, 27
+			),
 			// Special cases
-			new FailingParserTestCase("leading zero integer literal",
+			FailingParserTestCase.fromPos("leading zero integer literal",
 				"""
                 class C {
                     public int eight() { return 010; }
                 }
                 """,
-				new SourcePosition(43, 2, 34)
+				2, 34
             ),
-			new FailingParserTestCase("confusing error position",
+			FailingParserTestCase.fromPos("confusing error position",
 				"""
                 class C {
                     public int foo() {   {{ }   }
                     void bar() {}
                 }
                 """,
-				new SourcePosition(56, 3, 13)
+				3, 13
 			)
 		).map(Arguments::of).toList();
 		// @formatter:on
