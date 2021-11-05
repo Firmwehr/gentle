@@ -2,19 +2,7 @@ package com.github.firmwehr.gentle.source;
 
 import com.github.firmwehr.gentle.util.Pair;
 
-import java.util.Objects;
-
-public class Source {
-
-	private final String content;
-
-	public Source(String content) throws SourceException {
-		this.content = content;
-	}
-
-	public String getContent() {
-		return content;
-	}
+public record Source(String content) {
 
 	/**
 	 * Find the beginning of the line a certain character is in. If the character is part of a linebreak, it belongs to
@@ -134,22 +122,5 @@ public class Source {
 		builder.append("^ ").append(description);
 
 		return builder.toString();
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) {
-			return true;
-		}
-		if (o == null || getClass() != o.getClass()) {
-			return false;
-		}
-		Source source = (Source) o;
-		return Objects.equals(content, source.content);
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(content);
 	}
 }

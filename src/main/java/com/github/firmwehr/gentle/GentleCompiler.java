@@ -11,11 +11,11 @@ import com.github.firmwehr.gentle.parser.Parser;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.source.Source;
-import com.github.firmwehr.gentle.source.SourceException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -77,11 +77,11 @@ public class GentleCompiler {
 			}
 
 			UserOutput.outputData(outputStream);
+		} catch (MalformedInputException e) {
+			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			System.exit(1);
 		} catch (IOException e) {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
-			System.exit(1);
-		} catch (SourceException e) {
-			UserOutput.userError("Error reading file '%s': %s", path, e.getMessage());
 			System.exit(1);
 		} catch (LexerException e) {
 			UserOutput.userError(e);
@@ -95,11 +95,11 @@ public class GentleCompiler {
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
 			parser.parse(); // result ignored for now
+		} catch (MalformedInputException e) {
+			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			System.exit(1);
 		} catch (IOException e) {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
-			System.exit(1);
-		} catch (SourceException e) {
-			UserOutput.userError("Error reading file '%s': %s", path, e.getMessage());
 			System.exit(1);
 		} catch (LexerException | ParseException e) {
 			UserOutput.userError(e);
@@ -113,11 +113,11 @@ public class GentleCompiler {
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
 			LOGGER.info("Parse result:\n%s", PrettyPrinter.format(parser.parse()));
+		} catch (MalformedInputException e) {
+			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			System.exit(1);
 		} catch (IOException e) {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
-			System.exit(1);
-		} catch (SourceException e) {
-			UserOutput.userError("Error reading file '%s': %s", path, e.getMessage());
 			System.exit(1);
 		} catch (LexerException | ParseException e) {
 			UserOutput.userError(e);

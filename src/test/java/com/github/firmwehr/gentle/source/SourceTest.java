@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SourceTest {
 
 	@Test
-	void multipleLinuxLineEndings() throws SourceException {
+	void multipleLinuxLineEndings() {
 		Source source = new Source("Hello\n\nWorld");
 
 		assertThat(source.positionAndLineFromOffset(3).first()).isEqualTo(new SourcePosition(3, 1, 4));
@@ -24,7 +24,7 @@ class SourceTest {
 	}
 
 	@Test
-	void multipleWindowsLineEndings() throws SourceException {
+	void multipleWindowsLineEndings() {
 		Source source = new Source("Hello\r\n\r\nWorld");
 
 		assertThat(source.positionAndLineFromOffset(3).first()).isEqualTo(new SourcePosition(3, 1, 4));
@@ -45,7 +45,7 @@ class SourceTest {
 	}
 
 	@Test
-	void multipleMacLineEndings() throws SourceException {
+	void multipleMacLineEndings() {
 		Source source = new Source("Hello\r\rWorld");
 
 		assertThat(source.positionAndLineFromOffset(3).first()).isEqualTo(new SourcePosition(3, 1, 4));
@@ -62,7 +62,7 @@ class SourceTest {
 	}
 
 	@Test
-	void linuxLineEndings() throws SourceException {
+	void linuxLineEndings() {
 		Source source = new Source("Hello\nWorld");
 
 		assertThat(source.positionAndLineFromOffset(3).first()).isEqualTo(new SourcePosition(3, 1, 4));
@@ -76,7 +76,7 @@ class SourceTest {
 	}
 
 	@Test
-	void windowsLineEndings() throws SourceException {
+	void windowsLineEndings() {
 		Source source = new Source("Hello\r\nWorld");
 
 		assertThat(source.positionAndLineFromOffset(3).first()).isEqualTo(new SourcePosition(3, 1, 4));
@@ -92,7 +92,7 @@ class SourceTest {
 	}
 
 	@Test
-	void macLineEndings() throws SourceException {
+	void macLineEndings() {
 		Source source = new Source("Hello\rWorld");
 
 		assertThat(source.positionAndLineFromOffset(3).first()).isEqualTo(new SourcePosition(3, 1, 4));
