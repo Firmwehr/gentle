@@ -54,12 +54,7 @@ val integrationTest = task<Test>("integrationTest") {
 dependencies {
 
 	// logging
-	val slf4jVersion = "1.7.32"
-	val log4j2 = "2.14.1"
-	implementation("org.slf4j:slf4j-api:$slf4jVersion")
-	implementation("org.apache.logging.log4j:log4j-core:$log4j2")
-	implementation("org.apache.logging.log4j:log4j-slf4j-impl:$log4j2")
-	implementation("com.djdch.log4j:log4j-staticshutdown:1.1.0") // https://stackoverflow.com/a/28835409/1834100
+	implementation("org.fusesource.jansi:jansi:2.4.0")
 
 	// annotations
 	compileOnly("org.jetbrains", "annotations", "22.0.0")
