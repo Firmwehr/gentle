@@ -24,7 +24,7 @@ public class Source {
 	 * Find the beginning of the line a certain character is in. If the character is part of a linebreak, it belongs to
 	 * the line preceding the line break.
 	 *
-	 * @param offset arbitrary but valid character offset
+	 * @param offset arbitrary character offset (may extend beyond end of content)
 	 *
 	 * @return index of the line's first character
 	 */
@@ -32,14 +32,19 @@ public class Source {
 		// First, go backwards until the end of the previous line to find the start of the current line.
 		int lineStart = offset;
 
-		// Line breaks belong to the preceding line, not the following line.
-		// If we start in a line break, we advance to the character preceding the line break.
-		if (isLineBreakChar(lineStart)) {
+		if (offset >= content.length()) {
+			// We were past the end of the content, so we just skip back to the last character of the file. Since we
+			// didn't point at any character, we certainly didn't start at a linebreak character, so we can just skip
+			// that part of the logic.
+			lineStart = content.length() - 1;
+		} else if (isLineBreakChar(lineStart)) {
+			// Line breaks belong to the preceding line, not the following line.
+			// If we start in a line break, we advance to the character preceding the line break.
 			lineStart--;
-		}
-		if (lineStart >= 0 && isWindowsLinebreak(lineStart)) {
-			// We started on the \n in a \r\n, so we need to take another step back.
-			lineStart--;
+			if (lineStart >= 0 && isWindowsLinebreak(lineStart)) {
+				// We started on the \n in a \r\n, so we need to take another step back.
+				lineStart--;
+			}
 		}
 
 		// Now, advance backwards until we find the line break of the previous line.
