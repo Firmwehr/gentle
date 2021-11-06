@@ -4,9 +4,13 @@ import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.parser.ParseException;
 import com.github.firmwehr.gentle.parser.Parser;
+import com.github.firmwehr.gentle.parser.ParserTestCase;
+import com.github.firmwehr.gentle.parser.ParserTestCaseProvider;
 import com.github.firmwehr.gentle.parser.ast.Program;
 import com.github.firmwehr.gentle.source.Source;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -65,5 +69,16 @@ public class PrettyPrinterTest {
 
 		var program = parse(exampleInput);
 		assertThat(PrettyPrinter.format(program)).isEqualTo(exampleOutput);
+	}
+
+	@ParameterizedTest
+	@ArgumentsSource(ParserTestCaseProvider.class)
+	public void format_shouldReturnParsableStrings(ParserTestCase testCase) throws ParseException, LexerException {
+		Program program1 = parse(testCase.source());
+		String prettyPrinted = PrettyPrinter.format(program1);
+		Program program2 = parse(prettyPrinted);
+
+		// Not comparing program1 and program2 directly as format may reorder class members
+		assertThat(prettyPrinted).isEqualTo(PrettyPrinter.format(program2));
 	}
 }
