@@ -2,12 +2,21 @@ package com.github.firmwehr.gentle.output;
 
 import com.google.common.base.Throwables;
 import org.fusesource.jansi.Ansi;
+import org.fusesource.jansi.AnsiConsole;
 
 import static org.fusesource.jansi.Ansi.ansi;
 
 public class Logger {
 
 	private static final boolean LOGGER_DISABLED = System.getenv("GENTLE_ENABLE_LOG") == null;
+
+	static {
+		if (LOGGER_DISABLED) {
+			UserOutput.userMessage("Logging disabled. Enable by setting the 'GENTLE_ENABLE_LOG' environment variable");
+		} else if (System.getProperty("os.name").contains("win")) {
+			AnsiConsole.systemInstall();
+		}
+	}
 
 	private final LogLevel level;
 	private final String prefix;
