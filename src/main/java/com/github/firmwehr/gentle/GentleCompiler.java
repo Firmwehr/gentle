@@ -72,7 +72,7 @@ public class GentleCompiler {
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
 			for (Token token : lexer.lex()) {
-				outputStream.writeBytes(token.format().getBytes(StandardCharsets.UTF_8));
+				outputStream.writeBytes(token.format().getBytes(FILE_CHARSET));
 				outputStream.write('\n');
 			}
 
