@@ -55,19 +55,6 @@ public class Tokens {
 		throw new ParseException(source, peek(), description);
 	}
 
-	public void take(int n) {
-		if (n < 1) {
-			throw new IllegalArgumentException("n must be greater than 0");
-		}
-
-		index = Math.min(tokens.size(), index + n);
-		expectedTokensAtIndex.clear();
-	}
-
-	public void take() {
-		take(1);
-	}
-
 	public Token peek(int offset) {
 		if (offset < 0) {
 			throw new IllegalArgumentException("offset must not be negative");
@@ -90,7 +77,15 @@ public class Tokens {
 		return this;
 	}
 
-	public void expectKeyword(Keyword keyword) throws ParseException {
+	public void take() {
+		if (index < tokens.size()) {
+			index++;
+		}
+		expectedTokensAtIndex.clear();
+	}
+
+
+	public void takeKeyword(Keyword keyword) throws ParseException {
 		if (peek().isKeyword(keyword)) {
 			take();
 		} else {
@@ -98,7 +93,7 @@ public class Tokens {
 		}
 	}
 
-	public void expectOperator(Operator operator) throws ParseException {
+	public void takeOperator(Operator operator) throws ParseException {
 		if (peek().isOperator(operator)) {
 			take();
 		} else {
@@ -106,7 +101,7 @@ public class Tokens {
 		}
 	}
 
-	public IdentToken expectIdent() throws ParseException {
+	public IdentToken takeIdent() throws ParseException {
 		Optional<IdentToken> identToken = peek().asIdentToken();
 		if (identToken.isPresent()) {
 			take();
@@ -116,7 +111,7 @@ public class Tokens {
 		}
 	}
 
-	public void expectEof() throws ParseException {
+	public void takeEof() throws ParseException {
 		if (!peek().isEof()) {
 			error();
 		}
