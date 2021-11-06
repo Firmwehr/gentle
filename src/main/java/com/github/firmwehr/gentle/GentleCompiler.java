@@ -56,12 +56,9 @@ public class GentleCompiler {
 
 	private static void echoCommand(Path path) {
 		try {
-			//noinspection UseOfSystemOutOrSystemErr
-			System.out.write(Files.readAllBytes(path));
-			//noinspection UseOfSystemOutOrSystemErr
-			System.out.flush();
+			UserOutput.outputData(Files.readAllBytes(path));
 		} catch (IOException e) {
-			UserOutput.getInstance().userError("Could not echo file '%s': %s", path, e.getMessage());
+			UserOutput.userError("Could not echo file '%s': %s", path, e.getMessage());
 			System.exit(1);
 		}
 	}
@@ -77,19 +74,15 @@ public class GentleCompiler {
 				outputStream.write('\n');
 			}
 
-			// Write at once, do not flush in between!
-			//noinspection UseOfSystemOutOrSystemErr
-			outputStream.writeTo(System.out);
-			//noinspection UseOfSystemOutOrSystemErr
-			System.out.flush();
+			UserOutput.outputData(outputStream);
 		} catch (IOException e) {
-			UserOutput.getInstance().userError("Could not read file '%s': %s", path, e.getMessage());
+			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
 			System.exit(1);
 		} catch (SourceException e) {
-			UserOutput.getInstance().userError("Error reading file '%s': %s", path, e.getMessage());
+			UserOutput.userError("Error reading file '%s': %s", path, e.getMessage());
 			System.exit(1);
 		} catch (LexerException e) {
-			UserOutput.getInstance().userError(e.getMessage());
+			UserOutput.userError(e);
 			System.exit(1);
 		}
 	}
@@ -101,16 +94,13 @@ public class GentleCompiler {
 			Parser parser = Parser.fromLexer(source, lexer);
 			parser.parse(); // result ignored for now
 		} catch (IOException e) {
-			UserOutput.getInstance().userError("Could not read file '%s': %s", path, e.getMessage());
+			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
 			System.exit(1);
 		} catch (SourceException e) {
-			UserOutput.getInstance().userError("Error reading file '%s': %s", path, e.getMessage());
+			UserOutput.userError("Error reading file '%s': %s", path, e.getMessage());
 			System.exit(1);
-		} catch (LexerException e) {
-			UserOutput.getInstance().userError(e.getMessage());
-			System.exit(1);
-		} catch (ParseException e) {
-			UserOutput.getInstance().userError(e.getMessage());
+		} catch (LexerException | ParseException e) {
+			UserOutput.userError(e);
 			System.exit(1);
 		}
 	}
@@ -122,16 +112,13 @@ public class GentleCompiler {
 			Parser parser = Parser.fromLexer(source, lexer);
 			LOGGER.info("Parse result:\n%s", PrettyPrinter.format(parser.parse()));
 		} catch (IOException e) {
-			UserOutput.getInstance().userError("Could not read file '%s': %s", path, e.getMessage());
+			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
 			System.exit(1);
 		} catch (SourceException e) {
-			UserOutput.getInstance().userError("Error reading file '%s': %s", path, e.getMessage());
+			UserOutput.userError("Error reading file '%s': %s", path, e.getMessage());
 			System.exit(1);
-		} catch (LexerException e) {
-			UserOutput.getInstance().userError(e.getMessage());
-			System.exit(1);
-		} catch (ParseException e) {
-			UserOutput.getInstance().userError(e.getMessage());
+		} catch (LexerException | ParseException e) {
+			UserOutput.userError(e);
 			System.exit(1);
 		}
 	}

@@ -7,7 +7,7 @@ import static org.fusesource.jansi.Ansi.ansi;
 
 public class Logger {
 
-	private static final boolean LOGGER_DISABLED = System.getenv("ENABLE_GENTLE_LOG") == null;
+	private static final boolean LOGGER_DISABLED = System.getenv("GENTLE_ENABLE_LOG") == null;
 
 	private final LogLevel level;
 	private final String prefix;
@@ -29,7 +29,7 @@ public class Logger {
 		if (LOGGER_DISABLED) {
 			return;
 		}
-		if (level != LogLevel.DEBUG) {
+		if (level.ordinal() > LogLevel.DEBUG.ordinal()) {
 			return;
 		}
 		debug(message + "%n%s", Throwables.getStackTraceAsString(throwable));
@@ -39,7 +39,7 @@ public class Logger {
 		if (LOGGER_DISABLED) {
 			return;
 		}
-		if (level != LogLevel.DEBUG) {
+		if (level.ordinal() > LogLevel.DEBUG.ordinal()) {
 			return;
 		}
 		Ansi text = ansi().fgBrightBlack()
@@ -50,14 +50,14 @@ public class Logger {
 			.a(indentLinesExceptFirst(message.formatted(arguments)))
 			.reset();
 
-		UserOutput.getInstance().userMessage(text.toString());
+		UserOutput.userMessage(text.toString());
 	}
 
 	public void info(String message, Throwable throwable) {
 		if (LOGGER_DISABLED) {
 			return;
 		}
-		if (level.ordinal() <= LogLevel.INFO.ordinal()) {
+		if (level.ordinal() > LogLevel.INFO.ordinal()) {
 			return;
 		}
 		info(message + "%n%s", Throwables.getStackTraceAsString(throwable));
@@ -67,7 +67,7 @@ public class Logger {
 		if (LOGGER_DISABLED) {
 			return;
 		}
-		if (level.ordinal() <= LogLevel.INFO.ordinal()) {
+		if (level.ordinal() > LogLevel.INFO.ordinal()) {
 			return;
 		}
 		Ansi text = ansi().fgBrightGreen()
@@ -78,7 +78,34 @@ public class Logger {
 			.a(indentLinesExceptFirst(message.formatted(arguments)))
 			.reset();
 
-		UserOutput.getInstance().userMessage(text.toString());
+		UserOutput.userMessage(text.toString());
+	}
+
+	public void warn(String message, Throwable throwable) {
+		if (LOGGER_DISABLED) {
+			return;
+		}
+		if (level.ordinal() > LogLevel.WARNING.ordinal()) {
+			return;
+		}
+		warn(message + "%n%s", Throwables.getStackTraceAsString(throwable));
+	}
+
+	public void warn(String message, Object... arguments) {
+		if (LOGGER_DISABLED) {
+			return;
+		}
+		if (level.ordinal() > LogLevel.WARNING.ordinal()) {
+			return;
+		}
+		Ansi text = ansi().fgBrightMagenta()
+			.a("[warn ]")
+			.fgCyan()
+			.a("[" + prefix + "] ")
+			.fgMagenta()
+			.a(indentLinesExceptFirst(message.formatted(arguments)))
+			.reset();
+		UserOutput.userMessage(text.toString());
 	}
 
 	public void error(String message, Throwable throwable) {
@@ -99,7 +126,7 @@ public class Logger {
 			.fgRed()
 			.a(indentLinesExceptFirst(message.formatted(arguments)))
 			.reset();
-		UserOutput.getInstance().userMessage(text.toString());
+		UserOutput.userMessage(text.toString());
 	}
 
 	private String indentLinesExceptFirst(String input) {
@@ -109,6 +136,7 @@ public class Logger {
 	public enum LogLevel {
 		DEBUG,
 		INFO,
+		WARNING,
 		ERROR
 	}
 }
