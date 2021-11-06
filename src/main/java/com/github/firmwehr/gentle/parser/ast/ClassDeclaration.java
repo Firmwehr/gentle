@@ -51,7 +51,7 @@ public record ClassDeclaration(
 				}
 			})).collect(Collectors.toList());
 
-		p.add("public class ").add(name).add(" ");
+		p.add("class ").add(name).add(" ");
 
 		if (fields.isEmpty() && methods.isEmpty()) {
 			// Strictly speaking, this is not a block, but since the behavior for empty class bodies was never
