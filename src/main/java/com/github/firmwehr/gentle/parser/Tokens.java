@@ -1,7 +1,7 @@
 package com.github.firmwehr.gentle.parser;
 
-import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.lexer.Lexer;
+import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.parser.tokens.EofToken;
 import com.github.firmwehr.gentle.parser.tokens.IdentToken;
 import com.github.firmwehr.gentle.parser.tokens.Keyword;
@@ -9,7 +9,7 @@ import com.github.firmwehr.gentle.parser.tokens.Operator;
 import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.source.Source;
 
-import java.util.HashSet;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -21,7 +21,7 @@ public class Tokens {
 	private final EofToken lastToken;
 
 	private int index;
-	private Set<String> expectedTokensAtIndex;
+	private final Set<ExpectedToken> expectedTokensAtIndex;
 
 	public Tokens(Source source, List<Token> tokens, EofToken lastToken) {
 		this.source = source;
@@ -29,7 +29,7 @@ public class Tokens {
 		this.lastToken = lastToken;
 
 		index = 0;
-		expectedTokensAtIndex = new HashSet<>();
+		expectedTokensAtIndex = EnumSet.allOf(ExpectedToken.class);
 	}
 
 	public static Tokens fromLexer(Source source, Lexer lexer) throws LexerException {
@@ -39,7 +39,8 @@ public class Tokens {
 	}
 
 	public <T> T error() throws ParseException {
-		List<String> expectedTokens = expectedTokensAtIndex.stream().sorted().collect(Collectors.toList());
+		List<String> expectedTokens =
+			expectedTokensAtIndex.stream().map(ExpectedToken::getDescription).sorted().collect(Collectors.toList());
 
 		String description;
 		if (expectedTokens.size() == 0) {
@@ -84,34 +85,13 @@ public class Tokens {
 		return peek(0);
 	}
 
-	public Tokens expecting(String token) {
+	public Tokens expecting(ExpectedToken token) {
 		expectedTokensAtIndex.add(token);
 		return this;
 	}
 
-	public Tokens expectingKeyword(Keyword keyword) {
-		return expecting("'" + keyword.getName() + "'");
-	}
-
-	public Tokens expectingOperator(Operator operator) {
-		return expecting("'" + operator.getName() + "'");
-	}
-
-	public Tokens expectingIdent() {
-		return expecting("identifier");
-	}
-
-	public Tokens expectingIntegerLiteral() {
-		return expecting("integer literal");
-	}
-
-	public Tokens expectingEof() {
-		return expecting("EOF");
-	}
-
 	public void expectKeyword(Keyword keyword) throws ParseException {
-		Token token = expectingKeyword(keyword).peek();
-		if (token.isKeyword(keyword)) {
+		if (peek().isKeyword(keyword)) {
 			take();
 		} else {
 			error();
@@ -119,8 +99,7 @@ public class Tokens {
 	}
 
 	public void expectOperator(Operator operator) throws ParseException {
-		Token token = expectingOperator(operator).peek();
-		if (token.isOperator(operator)) {
+		if (peek().isOperator(operator)) {
 			take();
 		} else {
 			error();
@@ -128,7 +107,7 @@ public class Tokens {
 	}
 
 	public IdentToken expectIdent() throws ParseException {
-		Optional<IdentToken> identToken = expecting("identifier").peek().asIdentToken();
+		Optional<IdentToken> identToken = peek().asIdentToken();
 		if (identToken.isPresent()) {
 			take();
 			return identToken.get();
@@ -138,7 +117,7 @@ public class Tokens {
 	}
 
 	public void expectEof() throws ParseException {
-		if (!expectingEof().peek().isEof()) {
+		if (!peek().isEof()) {
 			error();
 		}
 	}
