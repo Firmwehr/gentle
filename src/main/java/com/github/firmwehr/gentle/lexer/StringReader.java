@@ -19,7 +19,7 @@ public class StringReader {
 	 * @param source the underlying source
 	 */
 	public StringReader(Source source) {
-		this.underlying = source.getContent();
+		this.underlying = source.content();
 		this.source = source;
 		this.position = 0;
 	}

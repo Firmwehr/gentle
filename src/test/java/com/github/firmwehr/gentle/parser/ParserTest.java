@@ -13,7 +13,6 @@ import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperator;
 import com.github.firmwehr.gentle.parser.ast.statement.Statement;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 import com.github.firmwehr.gentle.source.Source;
-import com.github.firmwehr.gentle.source.SourceException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -23,7 +22,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ParserTest {
-	private static Parser fromText(String text) throws SourceException, LexerException {
+	private static Parser fromText(String text) throws LexerException {
 		Source source = new Source(text);
 		return Parser.fromLexer(source, new Lexer(source, true));
 	}
@@ -43,7 +42,7 @@ class ParserTest {
 	@ParameterizedTest
 	@MethodSource("provideSyntacticallyCorrectPrograms")
 	public void parse_shouldConstructAstForSyntacticallyCorrectPrograms(ParserTestCase testCase)
-		throws SourceException, LexerException, ParseException {
+		throws LexerException, ParseException {
 
 		Parser parser = fromText(testCase.source());
 		Program actualProgram = parser.parse();
