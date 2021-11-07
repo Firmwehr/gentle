@@ -6,7 +6,7 @@ import java.math.BigInteger;
 
 public record IntegerLiteralExpression(BigInteger value) implements Expression {
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
 		p.add(value.toString());
 	}
 }

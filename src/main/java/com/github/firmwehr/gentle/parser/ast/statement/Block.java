@@ -8,6 +8,7 @@ import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public record Block(List<BlockStatement> statements) implements Statement, BlockStatement {
 	public Block then(BlockStatement statement) {
@@ -60,7 +61,16 @@ public record Block(List<BlockStatement> statements) implements Statement, Block
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add("{").indent().addAll(statements, "", true).unindent().add("}");
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		List<BlockStatement> statements =
+			this.statements.stream().filter(s -> !(s instanceof EmptyStatement)).collect(Collectors.toList());
+
+		if (statements.isEmpty()) {
+			p.add("{ }");
+		} else {
+			p.add("{").indent().newline();
+			p.addAll(statements, "", true);
+			p.unindent().add("}");
+		}
 	}
 }

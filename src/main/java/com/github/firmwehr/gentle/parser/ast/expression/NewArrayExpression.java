@@ -13,10 +13,18 @@ public record NewArrayExpression(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add("new 4").add(type.basicType()).add("[").add(size).add("]");
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		if (!omitParentheses) {
+			p.add("(");
+		}
+
+		p.add("new ").add(type.basicType()).add("[").add(size, true).add("]");
 		for (int i = 0; i < type.arrayLevel() - 1; i++) {
 			p.add("[]");
+		}
+
+		if (!omitParentheses) {
+			p.add(")");
 		}
 	}
 }

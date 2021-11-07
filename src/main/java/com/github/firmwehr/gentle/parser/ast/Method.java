@@ -32,12 +32,14 @@ public record Method(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add("Method{").indent().newline();
-		p.add("returnType = ").add(returnType).newline();
-		p.add("name = ").add(name).newline();
-		p.add("parameters = [").indent().addAll(parameters).unindent().add("]").newline();
-		p.add("body = ").add(body).newline();
-		p.unindent().add("}");
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		p.add("public ")
+			.add(returnType)
+			.add(" ")
+			.add(name)
+			.add("(")
+			.addAll(parameters, ", ", false)
+			.add(") ")
+			.add(body);
 	}
 }

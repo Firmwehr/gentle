@@ -1,6 +1,6 @@
 package com.github.firmwehr.gentle.parser.prettyprint;
 
-import java.util.Collection;
+import java.util.List;
 
 public class PrettyPrinter {
 	private final StringBuilder builder;
@@ -40,7 +40,7 @@ public class PrettyPrinter {
 
 	public PrettyPrinter add(String string) {
 		if (atStartOfLine) {
-			builder.append("  ".repeat(indentation));
+			builder.append("\t".repeat(indentation));
 			atStartOfLine = false;
 		}
 
@@ -49,32 +49,39 @@ public class PrettyPrinter {
 		return this;
 	}
 
-	public <T extends PrettyPrint> PrettyPrinter add(T t) {
-		t.prettyPrint(this);
+	public <T extends PrettyPrint> PrettyPrinter add(T t, boolean omitParentheses) {
+		t.prettyPrint(this, omitParentheses);
 
 		return this;
 	}
 
-	public <T extends PrettyPrint, C extends Collection<T>> PrettyPrinter addAll(
-		C ts, String separator, boolean newlines
+	public <T extends PrettyPrint> PrettyPrinter add(T t) {
+		return add(t, false);
+	}
+
+
+	public <T extends PrettyPrint> PrettyPrinter addAll(
+		List<T> ts, String separator, boolean newlines, boolean omitParentheses
 	) {
 		if (!ts.isEmpty()) {
-			if (newlines) {
-				newline();
-			}
-			for (T t : ts) {
-				add(t).add(separator);
+			for (int i = 0; i < ts.size() - 1; i++) {
+				add(ts.get(i), omitParentheses).add(separator);
 				if (newlines) {
 					newline();
 				}
+			}
+
+			add(ts.get(ts.size() - 1), omitParentheses);
+			if (newlines) {
+				newline();
 			}
 		}
 
 		return this;
 	}
 
-	public <T extends PrettyPrint, C extends Collection<T>> PrettyPrinter addAll(C ts) {
-		return addAll(ts, ",", true);
+	public <T extends PrettyPrint> PrettyPrinter addAll(List<T> ts, String separator, boolean newlines) {
+		return addAll(ts, separator, newlines, true);
 	}
 
 	public String format() {

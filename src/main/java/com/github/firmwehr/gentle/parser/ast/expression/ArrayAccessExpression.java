@@ -7,7 +7,15 @@ public record ArrayAccessExpression(
 	Expression index
 ) implements Expression {
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add(expression).add("[").add(index).add("]");
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		if (!omitParentheses) {
+			p.add("(");
+		}
+
+		p.add(expression).add("[").add(index, true).add("]");
+
+		if (!omitParentheses) {
+			p.add(")");
+		}
 	}
 }

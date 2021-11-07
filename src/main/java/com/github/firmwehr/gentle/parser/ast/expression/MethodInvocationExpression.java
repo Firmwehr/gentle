@@ -11,7 +11,15 @@ public record MethodInvocationExpression(
 	List<Expression> arguments
 ) implements Expression {
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add(expression).add(".").add(name).add("(").indent().addAll(arguments).unindent().add(")");
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		if (!omitParentheses) {
+			p.add("(");
+		}
+
+		p.add(expression).add(".").add(name).add("(").addAll(arguments, ", ", false, true).add(")");
+
+		if (!omitParentheses) {
+			p.add(")");
+		}
 	}
 }

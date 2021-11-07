@@ -19,11 +19,7 @@ public record MainMethod(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
-		p.add("Method{").indent().newline();
-		p.add("name = ").add(name).newline();
-		p.add("parameter = ").add(parameter).newline();
-		p.add("body = ").add(body).newline();
-		p.unindent().add("}");
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+		p.add("public static void ").add(name).add("(").add(parameter).add(") ").add(body);
 	}
 }

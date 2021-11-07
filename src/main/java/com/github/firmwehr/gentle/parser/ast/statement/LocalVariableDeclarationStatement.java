@@ -13,9 +13,9 @@ public record LocalVariableDeclarationStatement(
 	Optional<Expression> value
 ) implements BlockStatement {
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
 		p.add(type).add(" ").add(name);
-		value.ifPresent(expression -> p.add(" = ").add(expression));
+		value.ifPresent(expression -> p.add(" = ").add(expression, true));
 		p.add(";");
 	}
 }

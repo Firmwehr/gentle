@@ -4,7 +4,7 @@ import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 
 public record IntType() implements BasicType {
 	@Override
-	public void prettyPrint(PrettyPrinter p) {
+	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
 		p.add("int");
 	}
 }
