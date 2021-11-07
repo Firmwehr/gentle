@@ -3,7 +3,11 @@ package com.github.firmwehr.gentle.parser.ast.expression;
 import com.github.firmwehr.gentle.parser.tokens.Operator;
 
 import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public enum BinaryOperator {
 	ASSIGN("=", 0, Associativity.RIGHT, Operator.ASSIGN),
@@ -28,6 +32,10 @@ public enum BinaryOperator {
 	MODULO("%", 6, Associativity.LEFT, Operator.MODULO),
 	;
 
+	private static final Map<Operator, BinaryOperator> BINARY_OPERATOR_LOOKUP = Arrays.stream(values())
+		.collect(Collectors.toMap(BinaryOperator::getOperator, Function.identity(), (a, b) -> a,
+			() -> new EnumMap<>(Operator.class)));
+
 	private final String name;
 	private final int precedence;
 	private final Associativity associativity;
@@ -42,7 +50,7 @@ public enum BinaryOperator {
 	}
 
 	public static Optional<BinaryOperator> fromOperator(Operator operator) {
-		return Arrays.stream(values()).filter(binop -> binop.getOperator() == operator).findFirst();
+		return Optional.ofNullable(BINARY_OPERATOR_LOOKUP.get(operator));
 	}
 
 	public String getName() {
