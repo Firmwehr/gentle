@@ -68,31 +68,31 @@ public class Parser {
 	public Program parse() throws ParseException {
 		List<ClassDeclaration> classDeclarations = new ArrayList<>();
 
-		while (tokens.expectingKeyword(Keyword.CLASS).peek().isKeyword(Keyword.CLASS)) {
+		while (tokens.expecting(ExpectedToken.CLASS).peek().isKeyword(Keyword.CLASS)) {
 			classDeclarations.add(parseClassDeclaration());
 		}
 
-		tokens.expectEof();
+		tokens.expecting(ExpectedToken.EOF).takeEof();
 
 		return new Program(classDeclarations);
 	}
 
 
 	private ClassDeclaration parseClassDeclaration() throws ParseException {
-		tokens.expectKeyword(Keyword.CLASS);
+		tokens.expecting(ExpectedToken.CLASS).takeKeyword(Keyword.CLASS);
 
 		Ident name = parseIdent();
 
-		tokens.expectOperator(Operator.LEFT_BRACE);
+		tokens.expecting(ExpectedToken.LEFT_BRACE).takeOperator(Operator.LEFT_BRACE);
 
 		List<Field> fields = new ArrayList<>();
 		List<Method> methods = new ArrayList<>();
 		List<MainMethod> mainMethods = new ArrayList<>();
-		while (tokens.expectingKeyword(Keyword.PUBLIC).peek().isKeyword(Keyword.PUBLIC)) {
+		while (tokens.expecting(ExpectedToken.PUBLIC).peek().isKeyword(Keyword.PUBLIC)) {
 			parseClassMember(fields, methods, mainMethods);
 		}
 
-		tokens.expectOperator(Operator.RIGHT_BRACE);
+		tokens.expecting(ExpectedToken.RIGHT_BRACE).takeOperator(Operator.RIGHT_BRACE);
 
 		return new ClassDeclaration(name, fields, methods, mainMethods);
 	}
@@ -100,16 +100,16 @@ public class Parser {
 	private void parseClassMember(List<Field> fields, List<Method> methods, List<MainMethod> mainMethods)
 		throws ParseException {
 
-		tokens.expectKeyword(Keyword.PUBLIC);
+		tokens.expecting(ExpectedToken.PUBLIC).takeKeyword(Keyword.PUBLIC);
 
-		if (tokens.expectingKeyword(Keyword.STATIC).peek().isKeyword(Keyword.STATIC)) {
+		if (tokens.expecting(ExpectedToken.STATIC).peek().isKeyword(Keyword.STATIC)) {
 			mainMethods.add(parseMainMethodRest());
 		} else {
 			// This can either be a field or a method, and we don't know until after the ident
 			Type type = parseType();
 			Ident ident = parseIdent();
 
-			tokens.expectingOperator(Operator.SEMICOLON).expectingOperator(Operator.LEFT_PAREN);
+			tokens.expecting(ExpectedToken.SEMICOLON).expecting(ExpectedToken.LEFT_PAREN);
 			if (tokens.peek().isOperator(Operator.SEMICOLON)) {
 				tokens.take();
 				fields.add(new Field(type, ident));
@@ -119,20 +119,19 @@ public class Parser {
 				tokens.error();
 			}
 		}
-
 	}
 
 	private MainMethod parseMainMethodRest() throws ParseException {
-		tokens.expectKeyword(Keyword.STATIC);
-		tokens.expectKeyword(Keyword.VOID);
+		tokens.expecting(ExpectedToken.STATIC).takeKeyword(Keyword.STATIC);
+		tokens.expecting(ExpectedToken.VOID).takeKeyword(Keyword.VOID);
 
 		Ident name = parseIdent();
 
-		tokens.expectOperator(Operator.LEFT_PAREN);
+		tokens.expecting(ExpectedToken.LEFT_PAREN).takeOperator(Operator.LEFT_PAREN);
 
 		Parameter parameter = parseParameter();
 
-		tokens.expectOperator(Operator.RIGHT_PAREN);
+		tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
 		parseOptionalMethodRest();
 
 		Block block = parseBlock();
@@ -141,19 +140,19 @@ public class Parser {
 	}
 
 	private Method parseMethodRest(Type type, Ident ident) throws ParseException {
-		tokens.expectOperator(Operator.LEFT_PAREN);
+		tokens.expecting(ExpectedToken.LEFT_PAREN).takeOperator(Operator.LEFT_PAREN);
 
 		List<Parameter> parameters = new ArrayList<>();
-		if (!tokens.expectingOperator(Operator.RIGHT_PAREN).peek().isOperator(Operator.RIGHT_PAREN)) {
+		if (!tokens.expecting(ExpectedToken.RIGHT_PAREN).peek().isOperator(Operator.RIGHT_PAREN)) {
 			parameters.add(parseParameter());
 
-			while (tokens.expectingOperator(Operator.COMMA).peek().isOperator(Operator.COMMA)) {
+			while (tokens.expecting(ExpectedToken.COMMA).peek().isOperator(Operator.COMMA)) {
 				tokens.take();
 				parameters.add(parseParameter());
 			}
 		}
 
-		tokens.expectOperator(Operator.RIGHT_PAREN);
+		tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
 		parseOptionalMethodRest();
 
 		Block block = parseBlock();
@@ -168,21 +167,21 @@ public class Parser {
 	}
 
 	private void parseOptionalMethodRest() throws ParseException {
-		if (tokens.expectingKeyword(Keyword.THROWS).peek().isKeyword(Keyword.THROWS)) {
+		if (tokens.expecting(ExpectedToken.THROWS).peek().isKeyword(Keyword.THROWS)) {
 			tokens.take();
-			tokens.expectIdent();
+			tokens.expecting(ExpectedToken.IDENTIFIER).takeIdent();
 		}
 	}
 
 	private Block parseBlock() throws ParseException {
-		tokens.expectOperator(Operator.LEFT_BRACE);
+		tokens.expecting(ExpectedToken.LEFT_BRACE).takeOperator(Operator.LEFT_BRACE);
 
 		List<BlockStatement> statements = new ArrayList<>();
-		while (!tokens.expectingOperator(Operator.RIGHT_BRACE).peek().isOperator(Operator.RIGHT_BRACE)) {
+		while (!tokens.expecting(ExpectedToken.RIGHT_BRACE).peek().isOperator(Operator.RIGHT_BRACE)) {
 			statements.add(parseBlockStatement());
 		}
 
-		tokens.expectOperator(Operator.RIGHT_BRACE);
+		tokens.expecting(ExpectedToken.RIGHT_BRACE).takeOperator(Operator.RIGHT_BRACE);
 
 		return new Block(statements);
 	}
@@ -215,24 +214,24 @@ public class Parser {
 		Ident name = parseIdent();
 
 		Optional<Expression> value;
-		if (tokens.expectingOperator(Operator.ASSIGN).peek().isOperator(Operator.ASSIGN)) {
+		if (tokens.expecting(ExpectedToken.ASSIGN).peek().isOperator(Operator.ASSIGN)) {
 			tokens.take();
 			value = Optional.of(parseExpression());
 		} else {
 			value = Optional.empty();
 		}
 
-		tokens.expectOperator(Operator.SEMICOLON);
+		tokens.expecting(ExpectedToken.SEMICOLON).takeOperator(Operator.SEMICOLON);
 
 		return new LocalVariableDeclarationStatement(type, name, value);
 	}
 
 	private void expectingStatement() {
-		tokens.expectingOperator(Operator.LEFT_BRACE)
-			.expectingOperator(Operator.SEMICOLON)
-			.expectingKeyword(Keyword.IF)
-			.expectingKeyword(Keyword.WHILE)
-			.expectingKeyword(Keyword.RETURN);
+		tokens.expecting(ExpectedToken.LEFT_BRACE)
+			.expecting(ExpectedToken.SEMICOLON)
+			.expecting(ExpectedToken.IF)
+			.expecting(ExpectedToken.WHILE)
+			.expecting(ExpectedToken.RETURN);
 		expectingExpression();
 	}
 
@@ -257,17 +256,17 @@ public class Parser {
 	}
 
 	private IfStatement parseIfStatement() throws ParseException {
-		tokens.expectKeyword(Keyword.IF);
-		tokens.expectOperator(Operator.LEFT_PAREN);
+		tokens.expecting(ExpectedToken.IF).takeKeyword(Keyword.IF);
+		tokens.expecting(ExpectedToken.LEFT_PAREN).takeOperator(Operator.LEFT_PAREN);
 
 		Expression condition = parseExpression();
 
-		tokens.expectOperator(Operator.RIGHT_PAREN);
+		tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
 
 		Statement body = parseStatement();
 
 		Optional<Statement> elseBody;
-		if (tokens.expectingKeyword(Keyword.ELSE).peek().isKeyword(Keyword.ELSE)) {
+		if (tokens.expecting(ExpectedToken.ELSE).peek().isKeyword(Keyword.ELSE)) {
 			tokens.take();
 			elseBody = Optional.of(parseStatement());
 		} else {
@@ -278,12 +277,12 @@ public class Parser {
 	}
 
 	private WhileStatement parseWhileStatement() throws ParseException {
-		tokens.expectKeyword(Keyword.WHILE);
-		tokens.expectOperator(Operator.LEFT_PAREN);
+		tokens.expecting(ExpectedToken.WHILE).takeKeyword(Keyword.WHILE);
+		tokens.expecting(ExpectedToken.LEFT_PAREN).takeOperator(Operator.LEFT_PAREN);
 
 		Expression condition = parseExpression();
 
-		tokens.expectOperator(Operator.RIGHT_PAREN);
+		tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
 
 		Statement body = parseStatement();
 
@@ -291,16 +290,16 @@ public class Parser {
 	}
 
 	private ReturnStatement parseReturnStatement() throws ParseException {
-		tokens.expectKeyword(Keyword.RETURN);
+		tokens.expecting(ExpectedToken.RETURN).takeKeyword(Keyword.RETURN);
 
 		Optional<Expression> returnValue;
-		if (tokens.expectingOperator(Operator.SEMICOLON).peek().isOperator(Operator.SEMICOLON)) {
+		if (tokens.expecting(ExpectedToken.SEMICOLON).peek().isOperator(Operator.SEMICOLON)) {
 			returnValue = Optional.empty();
 		} else {
 			returnValue = Optional.of(parseExpression());
 		}
 
-		tokens.expectOperator(Operator.SEMICOLON);
+		tokens.expecting(ExpectedToken.SEMICOLON).takeOperator(Operator.SEMICOLON);
 
 		return new ReturnStatement(returnValue);
 	}
@@ -308,14 +307,14 @@ public class Parser {
 	private ExpressionStatement parseExpressionStatement() throws ParseException {
 		Expression expression = parseExpression();
 
-		tokens.expectOperator(Operator.SEMICOLON);
+		tokens.expecting(ExpectedToken.SEMICOLON).takeOperator(Operator.SEMICOLON);
 
 		return new ExpressionStatement(expression);
 	}
 
 	private void expectingExpression() {
 		expectingPrimaryExpression();
-		tokens.expectingOperator(Operator.LOGICAL_NOT).expectingOperator(Operator.MINUS);
+		tokens.expecting(ExpectedToken.LOGICAL_NOT).expecting(ExpectedToken.MINUS);
 	}
 
 	private Expression parseExpression() throws ParseException {
@@ -353,7 +352,7 @@ public class Parser {
 	}
 
 	private Optional<BinaryOperator> peekOptionalBinaryOperator() {
-		Token token = tokens.expecting("binary operator").peek();
+		Token token = tokens.expecting(ExpectedToken.BINARY_OPERATOR).peek();
 		if (token instanceof OperatorToken operatorToken) {
 			return BinaryOperator.fromOperator(operatorToken.operator());
 		} else {
@@ -390,12 +389,12 @@ public class Parser {
 	}
 
 	private Optional<Expression> parseOptionalPostfixOp(Expression expression) throws ParseException {
-		Token token = tokens.expectingOperator(Operator.DOT).expectingOperator(Operator.LEFT_BRACKET).peek();
+		Token token = tokens.expecting(ExpectedToken.DOT).expecting(ExpectedToken.LEFT_BRACKET).peek();
 
 		if (token.isOperator(Operator.DOT)) {
 			tokens.take();
 			Ident name = parseIdent();
-			if (tokens.expectingOperator(Operator.LEFT_PAREN).peek().isOperator(Operator.LEFT_PAREN)) {
+			if (tokens.expecting(ExpectedToken.LEFT_PAREN).peek().isOperator(Operator.LEFT_PAREN)) {
 				return Optional.of(new MethodInvocationExpression(expression, name, parseParenthesisedArguments()));
 			} else {
 				return Optional.of(new FieldAccessExpression(expression, name));
@@ -403,7 +402,7 @@ public class Parser {
 		} else if (token.isOperator(Operator.LEFT_BRACKET)) {
 			tokens.take();
 			Expression index = parseExpression();
-			tokens.expectOperator(Operator.RIGHT_BRACKET);
+			tokens.expecting(ExpectedToken.RIGHT_BRACKET).takeOperator(Operator.RIGHT_BRACKET);
 			return Optional.of(new ArrayAccessExpression(expression, index));
 		} else {
 			return Optional.empty();
@@ -411,31 +410,31 @@ public class Parser {
 	}
 
 	private List<Expression> parseParenthesisedArguments() throws ParseException {
-		tokens.expectOperator(Operator.LEFT_PAREN);
+		tokens.expecting(ExpectedToken.LEFT_PAREN).takeOperator(Operator.LEFT_PAREN);
 
 		List<Expression> arguments = new ArrayList<>();
-		if (!tokens.expectingOperator(Operator.RIGHT_PAREN).peek().isOperator(Operator.RIGHT_PAREN)) {
+		if (!tokens.expecting(ExpectedToken.RIGHT_PAREN).peek().isOperator(Operator.RIGHT_PAREN)) {
 			arguments.add(parseExpression());
 
-			while (tokens.expectingOperator(Operator.COMMA).peek().isOperator(Operator.COMMA)) {
+			while (tokens.expecting(ExpectedToken.COMMA).peek().isOperator(Operator.COMMA)) {
 				tokens.take();
 				arguments.add(parseExpression());
 			}
 		}
 
-		tokens.expectOperator(Operator.RIGHT_PAREN);
+		tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
 
 		return arguments;
 	}
 
 	private void expectingPrimaryExpression() {
-		tokens.expectingKeyword(Keyword.NULL)
-			.expecting("boolean literal")
-			.expectingIntegerLiteral()
-			.expectingIdent()
-			.expectingKeyword(Keyword.THIS)
-			.expectingOperator(Operator.LEFT_PAREN)
-			.expectingKeyword(Keyword.NEW);
+		tokens.expecting(ExpectedToken.NULL)
+			.expecting(ExpectedToken.BOOLEAN_LITERAL)
+			.expecting(ExpectedToken.INTEGER_LITERAL)
+			.expecting(ExpectedToken.IDENTIFIER)
+			.expecting(ExpectedToken.THIS)
+			.expecting(ExpectedToken.LEFT_PAREN)
+			.expecting(ExpectedToken.NEW);
 	}
 
 	private Expression parsePrimaryExpression() throws ParseException {
@@ -459,7 +458,7 @@ public class Parser {
 			return new IntegerLiteralExpression(integerLiteralToken.get().value());
 		} else if (identToken.isPresent()) {
 			tokens.take();
-			if (tokens.expectingOperator(Operator.LEFT_PAREN).peek().isOperator(Operator.LEFT_PAREN)) {
+			if (tokens.expecting(ExpectedToken.LEFT_PAREN).peek().isOperator(Operator.LEFT_PAREN)) {
 				return new LocalMethodCallExpression(Ident.fromToken(identToken.get()), parseParenthesisedArguments());
 			} else {
 				return new IdentExpression(Ident.fromToken(identToken.get()));
@@ -470,7 +469,7 @@ public class Parser {
 		} else if (token.isOperator(Operator.LEFT_PAREN)) {
 			tokens.take();
 			Expression expression = parseExpression();
-			tokens.expectOperator(Operator.RIGHT_PAREN);
+			tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
 			return expression;
 		} else if (token.isKeyword(Keyword.NEW)) {
 			return parseNewObjectExpressionOrNewArrayExpression();
@@ -480,22 +479,22 @@ public class Parser {
 	}
 
 	private Expression parseNewObjectExpressionOrNewArrayExpression() throws ParseException {
-		tokens.expectKeyword(Keyword.NEW);
+		tokens.expecting(ExpectedToken.NEW).takeKeyword(Keyword.NEW);
 
-		Token token = tokens.expectingIdent().expecting("basic type").peek();
+		Token token = tokens.expecting(ExpectedToken.IDENTIFIER).expecting(ExpectedToken.BASIC_TYPE).peek();
 		Optional<IdentToken> identToken = token.asIdentToken();
 
 		if (identToken.isPresent() && tokens.peek(1).isOperator(Operator.LEFT_PAREN)) {
 			tokens.take();
 			Ident name = Ident.fromToken(identToken.get());
-			tokens.expectOperator(Operator.LEFT_PAREN);
-			tokens.expectOperator(Operator.RIGHT_PAREN);
+			tokens.expecting(ExpectedToken.LEFT_PAREN).takeOperator(Operator.LEFT_PAREN);
+			tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
 			return new NewObjectExpression(name);
 		} else {
 			BasicType basicType = parseBasicType();
-			tokens.expectOperator(Operator.LEFT_BRACKET);
+			tokens.expecting(ExpectedToken.LEFT_BRACKET).takeOperator(Operator.LEFT_BRACKET);
 			Expression size = parseExpression();
-			tokens.expectOperator(Operator.RIGHT_BRACKET);
+			tokens.expecting(ExpectedToken.RIGHT_BRACKET).takeOperator(Operator.RIGHT_BRACKET);
 
 			int arrayLevel = 1;
 			// This loop checks for the closing bracket in addition to the opening bracket because if there is
@@ -504,7 +503,7 @@ public class Parser {
 			// For example, the expression `new int[1][2]` is parsed as a NewArrayExpression `new int[1]` followed by
 			// a PostfixExpression with ArrayAccess `[2]` as its single PostfixOp. This means that `new int[1][2]` is
 			// equivalent to `(new int[1])[2]`.
-			while (tokens.expectingOperator(Operator.LEFT_BRACKET).peek().isOperator(Operator.LEFT_BRACKET) &&
+			while (tokens.expecting(ExpectedToken.LEFT_BRACKET).peek().isOperator(Operator.LEFT_BRACKET) &&
 				tokens.peek(1).isOperator(Operator.RIGHT_BRACKET)) {
 
 				tokens.take();
@@ -520,9 +519,9 @@ public class Parser {
 		BasicType basicType = parseBasicType();
 
 		int arrayLevel = 0;
-		while (tokens.expectingOperator(Operator.LEFT_BRACKET).peek().isOperator(Operator.LEFT_BRACKET)) {
+		while (tokens.expecting(ExpectedToken.LEFT_BRACKET).peek().isOperator(Operator.LEFT_BRACKET)) {
 			tokens.take();
-			tokens.expectOperator(Operator.RIGHT_BRACKET);
+			tokens.expecting(ExpectedToken.RIGHT_BRACKET).takeOperator(Operator.RIGHT_BRACKET);
 			arrayLevel++;
 		}
 
@@ -530,11 +529,11 @@ public class Parser {
 	}
 
 	private void expectingBasicType() {
-		tokens.expectingIdent().expecting("basic type");
+		tokens.expecting(ExpectedToken.IDENTIFIER).expecting(ExpectedToken.BASIC_TYPE);
 	}
 
 	private BasicType parseBasicType() throws ParseException {
-		Token token = tokens.expectingIdent().expecting("basic type").peek();
+		Token token = tokens.expecting(ExpectedToken.IDENTIFIER).expecting(ExpectedToken.BASIC_TYPE).peek();
 		Optional<IdentToken> identToken = token.asIdentToken();
 
 		BasicType type;
@@ -555,6 +554,6 @@ public class Parser {
 	}
 
 	private Ident parseIdent() throws ParseException {
-		return Ident.fromToken(tokens.expectIdent());
+		return Ident.fromToken(tokens.expecting(ExpectedToken.IDENTIFIER).takeIdent());
 	}
 }
