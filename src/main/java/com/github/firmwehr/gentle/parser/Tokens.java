@@ -29,7 +29,7 @@ public class Tokens {
 		this.lastToken = lastToken;
 
 		index = 0;
-		expectedTokensAtIndex = EnumSet.allOf(ExpectedToken.class);
+		expectedTokensAtIndex = EnumSet.noneOf(ExpectedToken.class);
 	}
 
 	public static Tokens fromLexer(Source source, Lexer lexer) throws LexerException {
