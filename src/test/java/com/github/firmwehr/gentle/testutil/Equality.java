@@ -1,6 +1,6 @@
 package com.github.firmwehr.gentle.testutil;
 
-import com.github.firmwehr.gentle.source.SourcePosition;
+import com.github.firmwehr.gentle.source.SourceSpan;
 import com.google.common.base.Preconditions;
 import org.assertj.core.api.Condition;
 
@@ -26,6 +26,6 @@ public final class Equality {
 	}
 
 	public static <T> Condition<? super T> equalExceptSourcePosition(T obj) {
-		return equalExcept(obj, SourcePosition.class, true, true);
+		return equalExcept(obj, SourceSpan.class, true, true);
 	}
 }

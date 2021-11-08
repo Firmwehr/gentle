@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -74,6 +75,19 @@ public class EqualityChecker<T> implements Predicate<T> {
 		if (this.deepScanCollections && expectedAttribute instanceof Collection a &&
 			actualAttribute instanceof Collection b) {
 			return collectionsEqual(a, b);
+		}
+		// we need to handle Optional separately
+		if (this.deepScanRecords && expectedAttribute instanceof Optional<?> eO &&
+			actualAttribute instanceof Optional<?> aO) {
+			if (eO.isEmpty()) {
+				return aO.isEmpty();
+			}
+			Object nonOptionalExpectedAttribute = eO.get();
+			if (!nonOptionalExpectedAttribute.getClass().isRecord()) {
+				return nonOptionalExpectedAttribute.equals(aO.orElse(null));
+			}
+			return new EqualityChecker<>(nonOptionalExpectedAttribute, this.exceptTypes, true,
+				this.deepScanCollections).isEqual(aO.orElse(null));
 		}
 		// if we don't need to deeply scan records, we can just use normal equals here
 		if (!this.deepScanRecords ||
