@@ -16,7 +16,8 @@ public final class Equality {
 	) {
 		Preconditions.checkArgument(obj.getClass().isRecord(), "must be a record type comparison");
 		return new Condition<>(new EqualityChecker<>(obj, attributeTypes, deepScanRecords, deepScanCollections),
-			"a record ignoring following attributes " + (deepScanRecords ? "deeply " : "") + attributeTypes);
+			"a record ignoring following attributes " + (deepScanRecords ? "deeply " : "") + attributeTypes + "\n  " +
+				obj);
 	}
 
 	public static <T> Condition<? super T> equalExcept(
