@@ -17,6 +17,11 @@ public record SNormalType(
 		this(basicType, 0);
 	}
 
+	@Override
+	public SExprType asExprType() {
+		return this;
+	}
+
 	public Optional<SNormalType> withDecrementedLevel() {
 		if (arrayLevel > 0) {
 			return Optional.of(new SNormalType(basicType, arrayLevel - 1));

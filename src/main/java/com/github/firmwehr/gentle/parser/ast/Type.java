@@ -7,6 +7,7 @@ import com.github.firmwehr.gentle.parser.ast.basictype.IntType;
 import com.github.firmwehr.gentle.parser.ast.basictype.VoidType;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
+import com.github.firmwehr.gentle.source.SourceSpan;
 import com.google.common.base.Preconditions;
 
 public record Type(
@@ -30,7 +31,7 @@ public record Type(
 	}
 
 	public static Type newVoid() {
-		return new Type(new VoidType(), 0);
+		return new Type(new VoidType(new SourceSpan(0, 0)), 0);
 	}
 
 	public Type atLevel(int level) {

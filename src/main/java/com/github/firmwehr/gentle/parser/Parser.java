@@ -544,7 +544,7 @@ public class Parser {
 		} else if (token.isKeyword(Keyword.BOOLEAN)) {
 			type = new BooleanType();
 		} else if (token.isKeyword(Keyword.VOID)) {
-			type = new VoidType();
+			type = new VoidType(token.sourceSpan());
 		} else {
 			type = tokens.error();
 		}
