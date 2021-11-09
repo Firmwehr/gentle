@@ -1,7 +1,7 @@
 package com.github.firmwehr.gentle.semantic.ast.expression;
 
 import com.github.firmwehr.gentle.semantic.ast.SField;
-import com.github.firmwehr.gentle.semantic.ast.SType;
+import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 
 import java.util.Optional;
 
@@ -10,7 +10,7 @@ public record SFieldAccessExpression(
 	SField field
 ) implements SExpression {
 	@Override
-	public Optional<SType> approximateType() {
+	public Optional<SNormalType> approximateType() {
 		return Optional.of(field.type());
 	}
 }

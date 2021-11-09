@@ -1,6 +1,6 @@
 package com.github.firmwehr.gentle.semantic.ast.expression;
 
-import com.github.firmwehr.gentle.semantic.ast.SType;
+import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 
 import java.util.Optional;
 
@@ -15,7 +15,7 @@ public sealed interface SExpression
 	 *
 	 * @return the expression's type, or Optional.empty() if no useful type could be derived
 	 */
-	default Optional<SType> approximateType() {
+	default Optional<SNormalType> approximateType() {
 		return Optional.empty();
 	}
 }

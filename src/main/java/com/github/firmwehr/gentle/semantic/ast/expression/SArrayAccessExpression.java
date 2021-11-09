@@ -1,6 +1,6 @@
 package com.github.firmwehr.gentle.semantic.ast.expression;
 
-import com.github.firmwehr.gentle.semantic.ast.SType;
+import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 
 import java.util.Optional;
 
@@ -9,7 +9,7 @@ public record SArrayAccessExpression(
 	SExpression index
 ) implements SExpression {
 	@Override
-	public Optional<SType> approximateType() {
-		return expression.approximateType().flatMap(SType::withDecrementedLevel);
+	public Optional<SNormalType> approximateType() {
+		return expression.approximateType().flatMap(SNormalType::withDecrementedLevel);
 	}
 }
