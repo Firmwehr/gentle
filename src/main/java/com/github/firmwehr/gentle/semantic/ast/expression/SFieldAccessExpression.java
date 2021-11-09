@@ -1,16 +1,14 @@
 package com.github.firmwehr.gentle.semantic.ast.expression;
 
 import com.github.firmwehr.gentle.semantic.ast.SField;
-import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
-
-import java.util.Optional;
+import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
 
 public record SFieldAccessExpression(
 	SExpression expression,
 	SField field
 ) implements SExpression {
 	@Override
-	public Optional<SNormalType> approximateType() {
-		return Optional.of(field.type());
+	public SExprType type() {
+		return field.type();
 	}
 }

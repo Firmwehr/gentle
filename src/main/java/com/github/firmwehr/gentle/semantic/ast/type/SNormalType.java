@@ -13,6 +13,10 @@ public record SNormalType(
 		Preconditions.checkArgument(arrayLevel >= 0);
 	}
 
+	public SNormalType(SBasicType basicType) {
+		this(basicType, 0);
+	}
+
 	public Optional<SNormalType> withDecrementedLevel() {
 		if (arrayLevel > 0) {
 			return Optional.of(new SNormalType(basicType, arrayLevel - 1));
