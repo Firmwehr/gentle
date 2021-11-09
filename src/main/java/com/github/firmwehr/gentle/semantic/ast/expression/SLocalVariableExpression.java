@@ -1,15 +1,15 @@
 package com.github.firmwehr.gentle.semantic.ast.expression;
 
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
-import com.github.firmwehr.gentle.semantic.ast.Type;
+import com.github.firmwehr.gentle.semantic.ast.SType;
 
 import java.util.Optional;
 
-public record LocalVariableExpression(
+public record SLocalVariableExpression(
 	LocalVariableDeclaration localVariable
-) implements Expression {
+) implements SExpression {
 	@Override
-	public Optional<Type> approximateType() {
+	public Optional<SType> approximateType() {
 		return Optional.of(localVariable.getType());
 	}
 }

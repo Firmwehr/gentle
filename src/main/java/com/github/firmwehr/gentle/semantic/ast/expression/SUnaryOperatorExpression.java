@@ -2,8 +2,8 @@ package com.github.firmwehr.gentle.semantic.ast.expression;
 
 import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperator;
 
-public record UnaryOperatorExpression(
+public record SUnaryOperatorExpression(
 	UnaryOperator operator,
-	Expression expression
-) implements Expression {
+	SExpression expression
+) implements SExpression {
 }

@@ -1,6 +1,6 @@
 package com.github.firmwehr.gentle.semantic.ast.expression;
 
-public record BooleanValueExpression(
+public record SBooleanValueExpression(
 	boolean value
-) implements Expression {
+) implements SExpression {
 }

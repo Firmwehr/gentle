@@ -6,15 +6,15 @@ import java.util.Optional;
 
 @SuppressWarnings("ClassCanBeRecord")
 public class LocalVariableDeclaration {
-	private final Type type;
+	private final SType type;
 	private final Optional<Ident> declaration;
 
-	public LocalVariableDeclaration(Type type, Optional<Ident> declaration) {
+	public LocalVariableDeclaration(SType type, Optional<Ident> declaration) {
 		this.type = type;
 		this.declaration = declaration;
 	}
 
-	public Type getType() {
+	public SType getType() {
 		return type;
 	}
 

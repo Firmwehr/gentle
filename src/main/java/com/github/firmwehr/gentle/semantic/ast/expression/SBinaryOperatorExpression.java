@@ -2,9 +2,9 @@ package com.github.firmwehr.gentle.semantic.ast.expression;
 
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
 
-public record BinaryOperatorExpression(
-	Expression lhs,
-	Expression rhs,
+public record SBinaryOperatorExpression(
+	SExpression lhs,
+	SExpression rhs,
 	BinaryOperator operator
-) implements Expression {
+) implements SExpression {
 }

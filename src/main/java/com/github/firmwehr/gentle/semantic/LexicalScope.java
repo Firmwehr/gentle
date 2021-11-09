@@ -1,8 +1,8 @@
 package com.github.firmwehr.gentle.semantic;
 
 import com.github.firmwehr.gentle.parser.ast.Ident;
-import com.github.firmwehr.gentle.semantic.ast.ClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
+import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.source.Source;
 
 import java.util.HashMap;
@@ -11,15 +11,15 @@ import java.util.Optional;
 
 public class LexicalScope {
 	private final Source source;
-	private final Map<String, ClassDeclaration> classDeclarations;
-	private final Optional<ClassDeclaration> currentClass;
+	private final Map<String, SClassDeclaration> classDeclarations;
+	private final Optional<SClassDeclaration> currentClass;
 	private final Map<String, LocalVariableDeclaration> currentVariables;
 	private final Optional<LexicalScope> parent;
 
 	private LexicalScope(
 		Source source,
-		Map<String, ClassDeclaration> classes,
-		Optional<ClassDeclaration> currentClass,
+		Map<String, SClassDeclaration> classes,
+		Optional<SClassDeclaration> currentClass,
 		Optional<LexicalScope> parent
 	) {
 		this.source = source;
@@ -30,13 +30,13 @@ public class LexicalScope {
 	}
 
 	public LexicalScope(
-		Source source, Map<String, ClassDeclaration> classes, Optional<ClassDeclaration> currentClass
+		Source source, Map<String, SClassDeclaration> classes, Optional<SClassDeclaration> currentClass
 	) {
 		this(source, classes, currentClass, Optional.empty());
 	}
 
-	public ClassDeclaration getClass(Ident name) throws SemanticException {
-		ClassDeclaration declaration = classDeclarations.get(name.ident());
+	public SClassDeclaration getClass(Ident name) throws SemanticException {
+		SClassDeclaration declaration = classDeclarations.get(name.ident());
 		if (declaration == null) {
 			throw new SemanticException(source, name.sourceSpan(), "class not found");
 		}

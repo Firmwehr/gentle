@@ -1,4 +1,4 @@
 package com.github.firmwehr.gentle.semantic.ast.basictype;
 
-public record IntType() implements BasicType {
+public record SIntType() implements SBasicType {
 }
