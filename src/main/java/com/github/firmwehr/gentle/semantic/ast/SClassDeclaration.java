@@ -1,12 +1,11 @@
 package com.github.firmwehr.gentle.semantic.ast;
 
 import com.github.firmwehr.gentle.parser.ast.Ident;
-
-import java.util.Map;
+import com.github.firmwehr.gentle.semantic.Namespace;
 
 public record SClassDeclaration(
 	Ident name,
-	Map<String, SField> fields,
-	Map<String, SMethod> methods
+	Namespace<SField> fields,
+	Namespace<SMethod> methods
 ) {
 }

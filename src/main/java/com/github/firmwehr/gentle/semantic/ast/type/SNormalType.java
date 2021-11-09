@@ -8,7 +8,7 @@ import java.util.Optional;
 public record SNormalType(
 	SBasicType basicType,
 	int arrayLevel
-) implements SExprType {
+) implements SExprType, SVoidyType {
 	public SNormalType {
 		Preconditions.checkArgument(arrayLevel >= 0);
 	}
