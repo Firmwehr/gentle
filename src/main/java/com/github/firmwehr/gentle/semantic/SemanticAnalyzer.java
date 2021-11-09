@@ -40,7 +40,6 @@ public class SemanticAnalyzer {
 	}
 
 	SProgram analyze() throws SemanticException {
-		// TODO Add String class to namespace
 		Namespace<SClassDeclaration> classes = new Namespace<>(source);
 
 		addClasses(classes);
@@ -58,6 +57,12 @@ public class SemanticAnalyzer {
 	private void addClasses(Namespace<SClassDeclaration> classes) throws SemanticException {
 		for (ClassDeclaration classDecl : program.classes()) {
 			Ident name = classDecl.name();
+
+			if (name.ident().equals("String")) {
+				throw new SemanticException(source, name.sourceSpan(),
+					"invalid name, already defined by built-in class");
+			}
+
 			SClassDeclaration sClassDecl =
 				new SClassDeclaration(name, new Namespace<>(source), new Namespace<>(source));
 			classes.put(name, sClassDecl);
