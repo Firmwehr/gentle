@@ -315,8 +315,13 @@ public record FunctionScope(
 		return new SNullExpression();
 	}
 
-	SExpression convert(ThisExpression expr) {
-		return null; // TODO Implement
+	SThisExpression convert(ThisExpression expr) throws SemanticException {
+		if (currentClass.isEmpty()) {
+			// TODO Get rid of null here
+			throw new SemanticException(source, null, "using 'this' in static context");
+		}
+
+		return new SThisExpression(currentClass.get());
 	}
 
 	SExpression convert(UnaryOperatorExpression expr) {
