@@ -42,6 +42,7 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SBinaryOperatorExpress
 import com.github.firmwehr.gentle.semantic.ast.expression.SBooleanValueExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SFieldAccessExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SIntegerValueExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SThisExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SBlock;
@@ -251,8 +252,13 @@ public record FunctionScope(
 		}
 	}
 
-	SExpression convert(IntegerLiteralExpression expr) {
-		return null; // TODO Implement
+	SIntegerValueExpression convert(IntegerLiteralExpression expr) throws SemanticException {
+		try {
+			return new SIntegerValueExpression(expr.value().intValueExact());
+		} catch (ArithmeticException e) {
+			// TODO Get rid of null here
+			throw new SemanticException(source, null, "integer literal too large");
+		}
 	}
 
 	SExpression convert(LocalMethodCallExpression expr) {
