@@ -38,6 +38,7 @@ import com.github.firmwehr.gentle.semantic.ast.basictype.SClassType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SIntType;
 import com.github.firmwehr.gentle.semantic.ast.expression.SArrayAccessExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SBinaryOperatorExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SBooleanValueExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SBlock;
@@ -210,8 +211,8 @@ public record FunctionScope(
 		return new SBinaryOperatorExpression(lhs, rhs, expr.operator(), type);
 	}
 
-	SExpression convert(BooleanLiteralExpression expr) {
-		return null; // TODO Implement
+	SBooleanValueExpression convert(BooleanLiteralExpression expr) {
+		return new SBooleanValueExpression(expr.value());
 	}
 
 	SExpression convert(FieldAccessExpression expr) {
