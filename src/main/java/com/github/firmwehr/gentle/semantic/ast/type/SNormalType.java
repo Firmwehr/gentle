@@ -22,6 +22,20 @@ public record SNormalType(
 		return this;
 	}
 
+	@Override
+	public Optional<SNormalType> asNormalType() {
+		return Optional.of(this);
+	}
+
+	@Override
+	public boolean isAssignableTo(SExprType other) {
+		// FIXME: Respect array level
+		if (!(other instanceof SNormalType)) {
+			return false;
+		}
+		return basicType().isAssignableFrom(((SNormalType) other).basicType());
+	}
+
 	public Optional<SNormalType> withDecrementedLevel() {
 		if (arrayLevel > 0) {
 			return Optional.of(new SNormalType(basicType, arrayLevel - 1));
