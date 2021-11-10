@@ -44,6 +44,7 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SFieldAccessExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SIntegerValueExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SMethodInvocationExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SThisExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SBlock;
 import com.github.firmwehr.gentle.semantic.ast.statement.SExpressionStatement;
@@ -261,8 +262,22 @@ public record FunctionScope(
 		}
 	}
 
-	SExpression convert(LocalMethodCallExpression expr) {
-		return null; // TODO Implement
+	SMethodInvocationExpression convert(LocalMethodCallExpression expr) throws SemanticException {
+		if (currentClass.isEmpty()) {
+			throw new SemanticException(source, expr.name().sourceSpan(), "calling local method in static context");
+		}
+
+		SMethod method = currentClass.get().methods().get(expr.name());
+		if (method.isStatic()) {
+			throw new SemanticException(source, expr.name().sourceSpan(), "calling main method");
+		}
+
+		List<SExpression> arguments = new ArrayList<>();
+		for (Expression argument : expr.arguments()) {
+			arguments.add(convert(argument));
+		}
+
+		return new SMethodInvocationExpression(new SThisExpression(currentClass.get()), method, arguments);
 	}
 
 	SExpression convert(MethodInvocationExpression expr) {
