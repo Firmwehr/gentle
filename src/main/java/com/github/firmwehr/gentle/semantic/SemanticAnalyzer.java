@@ -47,6 +47,7 @@ public class SemanticAnalyzer {
 
 		checkTypes(classes);
 		checkSideEffects(classes);
+		checkAssignments(classes);
 		checkReturnPaths(classes);
 
 		SMethod mainMethod = findMainMethod(classes);
@@ -160,6 +161,10 @@ public class SemanticAnalyzer {
 
 	void checkSideEffects(Namespace<SClassDeclaration> classes) {
 		// TODO Check if all ExpressionStatements have side effects
+	}
+
+	void checkAssignments(Namespace<SClassDeclaration> classes) {
+		// TODO Check if all assignments assign to an lvalue
 	}
 
 	void checkReturnPaths(Namespace<SClassDeclaration> classes) {

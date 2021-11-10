@@ -191,6 +191,8 @@ public record FunctionScope(
 		};
 
 		if (type.isEmpty()) {
+			// TODO Give expressions a SourceSpan
+			// TODO Get rid of null here
 			throw new SemanticException(source, null, "expected array");
 		}
 
