@@ -6,6 +6,8 @@ import com.github.firmwehr.gentle.source.Source;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class Namespace<T> {
 	private final Source source;
@@ -33,6 +35,10 @@ public class Namespace<T> {
 		} else {
 			content.put(name.ident(), new Entry<>(name, t));
 		}
+	}
+
+	public Set<T> getAll() {
+		return content.values().stream().map(Entry::value).collect(Collectors.toSet());
 	}
 
 	private static record Entry<T>(
