@@ -43,6 +43,7 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SBooleanValueExpressio
 import com.github.firmwehr.gentle.semantic.ast.expression.SExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SFieldAccessExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SThisExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SBlock;
 import com.github.firmwehr.gentle.semantic.ast.statement.SExpressionStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
@@ -237,8 +238,17 @@ public record FunctionScope(
 		return new SFieldAccessExpression(expression, field);
 	}
 
-	SExpression convert(IdentExpression expr) {
-		return null; // TODO Implement
+	SExpression convert(IdentExpression expr) throws SemanticException {
+		if (currentClass.isPresent()) {
+			if (localVariables.getOpt(expr.name()).isPresent()) {
+				return new SLocalVariableExpression(localVariables.getOpt(expr.name()).get());
+			} else {
+				SField field = currentClass.get().fields().get(expr.name());
+				return new SFieldAccessExpression(new SThisExpression(currentClass.get()), field);
+			}
+		} else {
+			return new SLocalVariableExpression(localVariables().get(expr.name()));
+		}
 	}
 
 	SExpression convert(IntegerLiteralExpression expr) {
