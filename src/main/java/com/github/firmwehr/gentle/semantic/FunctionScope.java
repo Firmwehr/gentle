@@ -227,15 +227,13 @@ public record FunctionScope(
 	SFieldAccessExpression convert(FieldAccessExpression expr) throws SemanticException {
 		SExpression expression = convert(expr.expression());
 
-		SField field;
-		if (expression.type() instanceof SNormalType t && t.arrayLevel() == 0 &&
-			t.basicType() instanceof SClassType classType) {
-
-			field = classType.classDecl().fields().get(expr.name());
-		} else {
+		Optional<SClassType> classType = typeToClassType(expression.type());
+		if (classType.isEmpty()) {
 			// TODO Get rid of null here
 			throw new SemanticException(source, null, "expected object");
 		}
+
+		SField field = classType.get().classDecl().fields().get(expr.name());
 
 		return new SFieldAccessExpression(expression, field);
 	}
@@ -280,8 +278,26 @@ public record FunctionScope(
 		return new SMethodInvocationExpression(new SThisExpression(currentClass.get()), method, arguments);
 	}
 
-	SExpression convert(MethodInvocationExpression expr) {
-		return null; // TODO Implement
+	SMethodInvocationExpression convert(MethodInvocationExpression expr) throws SemanticException {
+		SExpression expression = convert(expr.expression());
+
+		Optional<SClassType> classType = typeToClassType(expression.type());
+		if (classType.isEmpty()) {
+			// TODO Get rid of null here
+			throw new SemanticException(source, null, "expected object");
+		}
+
+		SMethod method = classType.get().classDecl().methods().get(expr.name());
+		if (method.isStatic()) {
+			throw new SemanticException(source, expr.name().sourceSpan(), "calling main method");
+		}
+
+		List<SExpression> arguments = new ArrayList<>();
+		for (Expression argument : expr.arguments()) {
+			arguments.add(convert(argument));
+		}
+
+		return new SMethodInvocationExpression(expression, method, arguments);
 	}
 
 	SExpression convert(NewArrayExpression expr) {
@@ -304,4 +320,11 @@ public record FunctionScope(
 		return null; // TODO Implement
 	}
 
+	Optional<SClassType> typeToClassType(SExprType type) {
+		if (type instanceof SNormalType t && t.arrayLevel() == 0 && t.basicType() instanceof SClassType classType) {
+			return Optional.of(classType);
+		} else {
+			return Optional.empty();
+		}
+	}
 }
