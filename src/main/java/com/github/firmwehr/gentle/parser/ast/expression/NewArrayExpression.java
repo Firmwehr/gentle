@@ -2,11 +2,13 @@ package com.github.firmwehr.gentle.parser.ast.expression;
 
 import com.github.firmwehr.gentle.parser.ast.Type;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
+import com.github.firmwehr.gentle.source.SourceSpan;
 import com.google.common.base.Preconditions;
 
 public record NewArrayExpression(
 	Type type,
-	Expression size
+	Expression size,
+	SourceSpan sourceSpan
 ) implements Expression {
 	public NewArrayExpression {
 		Preconditions.checkArgument(type.arrayLevel() >= 1);
