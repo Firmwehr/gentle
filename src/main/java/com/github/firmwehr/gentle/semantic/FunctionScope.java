@@ -49,6 +49,7 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SNewArrayExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNewObjectExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNullExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SThisExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SUnaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SBlock;
 import com.github.firmwehr.gentle.semantic.ast.statement.SExpressionStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
@@ -324,8 +325,8 @@ public record FunctionScope(
 		return new SThisExpression(currentClass.get());
 	}
 
-	SExpression convert(UnaryOperatorExpression expr) {
-		return null; // TODO Implement
+	SUnaryOperatorExpression convert(UnaryOperatorExpression expr) throws SemanticException {
+		return new SUnaryOperatorExpression(expr.operator(), convert(expr.expression()));
 	}
 
 	Optional<SClassType> typeToClassType(SExprType type) {
