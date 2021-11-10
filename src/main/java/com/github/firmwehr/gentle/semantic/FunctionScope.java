@@ -46,6 +46,7 @@ import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SReturnStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
+import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
 import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 import com.github.firmwehr.gentle.source.Source;
 
@@ -195,8 +196,18 @@ public record FunctionScope(
 		return new SArrayAccessExpression(expression, index, type.get());
 	}
 
-	SExpression convert(BinaryOperatorExpression expr) {
-		return null; // TODO Implement
+	SBinaryOperatorExpression convert(BinaryOperatorExpression expr) throws SemanticException {
+		SExpression rhs = convert(expr.rhs());
+		SExpression lhs = convert(expr.lhs());
+
+		SExprType type = switch (expr.operator()) {
+			case ASSIGN -> rhs.type();
+			case LOGICAL_OR, LOGICAL_AND, EQUAL, NOT_EQUAL, LESS_THAN, LESS_OR_EQUAL, GREATER_THAN, GREATER_OR_EQUAL -> new SNormalType(
+				new SBooleanType());
+			case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> new SNormalType(new SIntType());
+		};
+
+		return new SBinaryOperatorExpression(lhs, rhs, expr.operator(), type);
 	}
 
 	SExpression convert(BooleanLiteralExpression expr) {
