@@ -31,6 +31,7 @@ import com.github.firmwehr.gentle.parser.ast.statement.Statement;
 import com.github.firmwehr.gentle.parser.ast.statement.WhileStatement;
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
+import com.github.firmwehr.gentle.semantic.ast.SField;
 import com.github.firmwehr.gentle.semantic.ast.SMethod;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SBasicType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SBooleanType;
@@ -40,6 +41,7 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SArrayAccessExpression
 import com.github.firmwehr.gentle.semantic.ast.expression.SBinaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SBooleanValueExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SFieldAccessExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SBlock;
 import com.github.firmwehr.gentle.semantic.ast.statement.SExpressionStatement;
@@ -219,8 +221,20 @@ public record FunctionScope(
 		return new SBooleanValueExpression(expr.value());
 	}
 
-	SExpression convert(FieldAccessExpression expr) {
-		return null; // TODO Implement
+	SFieldAccessExpression convert(FieldAccessExpression expr) throws SemanticException {
+		SExpression expression = convert(expr.expression());
+
+		SField field;
+		if (expression.type() instanceof SNormalType t && t.arrayLevel() == 0 &&
+			t.basicType() instanceof SClassType classType) {
+
+			field = classType.classDecl().fields().get(expr.name());
+		} else {
+			// TODO Get rid of null here
+			throw new SemanticException(source, null, "expected object");
+		}
+
+		return new SFieldAccessExpression(expression, field);
 	}
 
 	SExpression convert(IdentExpression expr) {
