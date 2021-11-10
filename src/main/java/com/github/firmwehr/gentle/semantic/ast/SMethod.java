@@ -1,7 +1,7 @@
 package com.github.firmwehr.gentle.semantic.ast;
 
 import com.github.firmwehr.gentle.parser.ast.Ident;
-import com.github.firmwehr.gentle.parser.ast.statement.Statement;
+import com.github.firmwehr.gentle.semantic.ast.statement.SStatement;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidyType;
 
 import java.util.ArrayList;
@@ -14,7 +14,7 @@ public record SMethod(
 	SVoidyType returnType,
 	List<LocalVariableDeclaration> parameters,
 	List<LocalVariableDeclaration> localVariables,
-	List<Statement> body
+	List<SStatement> body
 ) {
 	public static SMethod newMethod(
 		SClassDeclaration classDecl,

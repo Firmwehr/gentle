@@ -46,6 +46,7 @@ public class SemanticAnalyzer {
 		addFunctionBodies(classes);
 
 		checkTypes(classes);
+		checkSideEffects(classes);
 		checkReturnPaths(classes);
 
 		SMethod mainMethod = findMainMethod(classes);
@@ -133,13 +134,31 @@ public class SemanticAnalyzer {
 		}
 	}
 
-	void addFunctionBodies(Namespace<SClassDeclaration> classes) {
-		// TODO Implement
+	void addFunctionBodies(Namespace<SClassDeclaration> classes) throws SemanticException {
+		for (ClassDeclaration classDecl : program.classes()) {
+			SClassDeclaration sClassDecl = classes.get(classDecl.name());
+
+			for (Method method : classDecl.methods()) {
+				SMethod sMethod = sClassDecl.methods().get(method.name());
+				FunctionScope scope = FunctionScope.fromMethod(source, classes, sMethod);
+				sMethod.body().addAll(scope.convert(method.body()).statements());
+			}
+
+			for (MainMethod mainMethod : classDecl.mainMethods()) {
+				SMethod sMethod = sClassDecl.methods().get(mainMethod.name());
+				FunctionScope scope = FunctionScope.fromMethod(source, classes, sMethod);
+				sMethod.body().addAll(scope.convert(mainMethod.body()).statements());
+			}
+		}
 	}
 
 	void checkTypes(Namespace<SClassDeclaration> classes) {
 		// TODO Implement
 		// TODO Don't forget the String type
+	}
+
+	void checkSideEffects(Namespace<SClassDeclaration> classes) {
+		// TODO Check if all ExpressionStatements have side effects
 	}
 
 	void checkReturnPaths(Namespace<SClassDeclaration> classes) {
