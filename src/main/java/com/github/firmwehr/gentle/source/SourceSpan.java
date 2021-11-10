@@ -11,10 +11,13 @@ public record SourceSpan(
 	int startOffset,
 	int endOffset
 ) {
-
 	public SourceSpan {
 		if (startOffset > endOffset) {
 			throw new IllegalArgumentException("start must not be later than end");
 		}
+	}
+
+	public static SourceSpan dummy() {
+		return new SourceSpan(0, 0);
 	}
 }

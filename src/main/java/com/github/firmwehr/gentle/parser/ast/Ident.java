@@ -17,7 +17,7 @@ public record Ident(
 	 * A dummy identifier with bogus SourcePosition, meant only to be used in tests.
 	 */
 	public static Ident dummy(String name) {
-		return new Ident(name, new SourceSpan(0, 0));
+		return new Ident(name, SourceSpan.dummy());
 	}
 
 	@Override

@@ -31,7 +31,7 @@ public record Type(
 	}
 
 	public static Type newVoid() {
-		return new Type(new VoidType(new SourceSpan(0, 0)), 0);
+		return new Type(new VoidType(SourceSpan.dummy()), 0);
 	}
 
 	public Type atLevel(int level) {
