@@ -1,7 +1,11 @@
 package com.github.firmwehr.gentle.semantic.ast.expression;
 
 import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperator;
+import com.github.firmwehr.gentle.semantic.SemanticException;
+import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
+
+import java.util.Optional;
 
 public record SUnaryOperatorExpression(
 	UnaryOperator operator,
@@ -10,5 +14,10 @@ public record SUnaryOperatorExpression(
 	@Override
 	public SExprType type() {
 		return expression.type();
+	}
+
+	@Override
+	public <T> Optional<T> accept(Visitor<T> visitor) throws SemanticException {
+		return visitor.visit(this);
 	}
 }
