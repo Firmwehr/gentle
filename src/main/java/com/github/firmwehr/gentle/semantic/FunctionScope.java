@@ -202,9 +202,7 @@ public record FunctionScope(
 		};
 
 		if (type.isEmpty()) {
-			// TODO Give expressions a SourceSpan
-			// TODO Get rid of null here
-			throw new SemanticException(source, null, "expected array");
+			throw new SemanticException(source, expr.sourceSpan(), "expected array");
 		}
 
 		return new SArrayAccessExpression(expression, index, type.get());
@@ -233,8 +231,7 @@ public record FunctionScope(
 
 		Optional<SClassType> classType = typeToClassType(expression.type());
 		if (classType.isEmpty()) {
-			// TODO Get rid of null here
-			throw new SemanticException(source, null, "expected object");
+			throw new SemanticException(source, expr.sourceSpan(), "expected object");
 		}
 
 		SField field = classType.get().classDecl().fields().get(expr.name());
@@ -259,8 +256,7 @@ public record FunctionScope(
 		try {
 			return new SIntegerValueExpression(expr.value().intValueExact());
 		} catch (ArithmeticException e) {
-			// TODO Get rid of null here
-			throw new SemanticException(source, null, "integer literal too large");
+			throw new SemanticException(source, expr.sourceSpan(), "integer literal too large");
 		}
 	}
 
@@ -287,8 +283,7 @@ public record FunctionScope(
 
 		Optional<SClassType> classType = typeToClassType(expression.type());
 		if (classType.isEmpty()) {
-			// TODO Get rid of null here
-			throw new SemanticException(source, null, "expected object");
+			throw new SemanticException(source, expr.sourceSpan(), "expected object");
 		}
 
 		SMethod method = classType.get().classDecl().methods().get(expr.name());
@@ -318,8 +313,7 @@ public record FunctionScope(
 
 	SThisExpression convert(ThisExpression expr) throws SemanticException {
 		if (currentClass.isEmpty()) {
-			// TODO Get rid of null here
-			throw new SemanticException(source, null, "using 'this' in static context");
+			throw new SemanticException(source, expr.sourceSpan(), "using 'this' in static context");
 		}
 
 		return new SThisExpression(currentClass.get());
