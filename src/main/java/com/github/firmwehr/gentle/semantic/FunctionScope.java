@@ -36,6 +36,7 @@ import com.github.firmwehr.gentle.semantic.ast.basictype.SBasicType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SBooleanType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SClassType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SIntType;
+import com.github.firmwehr.gentle.semantic.ast.expression.SArrayAccessExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SBinaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
@@ -102,7 +103,7 @@ public record FunctionScope(
 		};
 	}
 
-	SExpressionStatement convert(ExpressionStatement statement) {
+	SExpressionStatement convert(ExpressionStatement statement) throws SemanticException {
 		return new SExpressionStatement(convert(statement.expression()));
 	}
 
@@ -133,7 +134,7 @@ public record FunctionScope(
 		}
 	}
 
-	SReturnStatement convert(ReturnStatement statement) {
+	SReturnStatement convert(ReturnStatement statement) throws SemanticException {
 		Optional<SExpression> returnValue;
 		if (statement.returnValue().isPresent()) {
 			returnValue = Optional.of(convert(statement.returnValue().get()));
@@ -160,7 +161,7 @@ public record FunctionScope(
 		return new SNormalType(basicType, type.arrayLevel());
 	}
 
-	SExpression convert(Expression expr) {
+	SExpression convert(Expression expr) throws SemanticException {
 		return switch (expr) {
 			case ArrayAccessExpression e -> convert(e);
 			case BinaryOperatorExpression e -> convert(e);
@@ -178,8 +179,20 @@ public record FunctionScope(
 		};
 	}
 
-	SExpression convert(ArrayAccessExpression expr) {
-		return null; // TODO Implement
+	SArrayAccessExpression convert(ArrayAccessExpression expr) throws SemanticException {
+		SExpression expression = convert(expr.expression());
+		SExpression index = convert(expr.index());
+
+		Optional<SNormalType> type = switch (expression.type()) {
+			case SNormalType t -> t.withDecrementedLevel();
+			default -> Optional.empty();
+		};
+
+		if (type.isEmpty()) {
+			throw new SemanticException(source, null, "expected array");
+		}
+
+		return new SArrayAccessExpression(expression, index, type.get());
 	}
 
 	SExpression convert(BinaryOperatorExpression expr) {
