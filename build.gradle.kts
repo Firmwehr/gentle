@@ -68,6 +68,9 @@ dependencies {
 	implementation("io.github.jbock-java:jbock:$jbock")
 	annotationProcessor("io.github.jbock-java:jbock-compiler:$jbock")
 
+	// Persistent collections
+	implementation("org.javimmutable:javimmutable-collections:3.2.1")
+
 	// junit
 	val junitVersion = "5.8.1"
 	testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
