@@ -46,6 +46,7 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SIntegerValueExpressio
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SMethodInvocationExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNewArrayExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SNewObjectExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SThisExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SBlock;
 import com.github.firmwehr.gentle.semantic.ast.statement.SExpressionStatement;
@@ -305,8 +306,8 @@ public record FunctionScope(
 		return new SNewArrayExpression(convertNormal(expr.type()), convert(expr.size()));
 	}
 
-	SExpression convert(NewObjectExpression expr) {
-		return null; // TODO Implement
+	SNewObjectExpression convert(NewObjectExpression expr) throws SemanticException {
+		return new SNewObjectExpression(classes.get(expr.name()));
 	}
 
 	SExpression convert(NullExpression expr) {
