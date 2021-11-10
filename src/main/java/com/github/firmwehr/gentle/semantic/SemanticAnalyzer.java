@@ -69,7 +69,7 @@ public class SemanticAnalyzer {
 		}
 	}
 
-	private SNormalType normalTypeFromAstType(Namespace<SClassDeclaration> classes, Type type)
+	private SNormalType normalTypeFromParserType(Namespace<SClassDeclaration> classes, Type type)
 		throws SemanticException {
 
 		SBasicType basicType = switch (type.basicType()) {
@@ -82,7 +82,8 @@ public class SemanticAnalyzer {
 		return new SNormalType(basicType, type.arrayLevel());
 	}
 
-	private SVoidyType voidyTypeFromAstType(Namespace<SClassDeclaration> classes, Type type) throws SemanticException {
+	private SVoidyType voidyTypeFromParserType(Namespace<SClassDeclaration> classes, Type type)
+		throws SemanticException {
 		return switch (type.basicType()) {
 			case BooleanType t -> new SNormalType(new SBooleanType(), type.arrayLevel());
 			case IdentType t -> new SNormalType(new SClassType(classes.get(t.name())), type.arrayLevel());
@@ -102,18 +103,18 @@ public class SemanticAnalyzer {
 
 			for (Field field : classDecl.fields()) {
 				Ident name = field.name();
-				SNormalType type = normalTypeFromAstType(classes, field.type());
+				SNormalType type = normalTypeFromParserType(classes, field.type());
 				SField sField = new SField(sClassDecl, name, type);
 				sClassDecl.fields().put(name, sField);
 			}
 
 			for (Method method : classDecl.methods()) {
 				Ident name = method.name();
-				SVoidyType returnType = voidyTypeFromAstType(classes, method.returnType());
+				SVoidyType returnType = voidyTypeFromParserType(classes, method.returnType());
 
 				List<LocalVariableDeclaration> parameters = new ArrayList<>();
 				for (Parameter parameter : method.parameters()) {
-					SNormalType type = normalTypeFromAstType(classes, parameter.type());
+					SNormalType type = normalTypeFromParserType(classes, parameter.type());
 					parameters.add(new LocalVariableDeclaration(type, parameter.name()));
 				}
 
@@ -124,7 +125,7 @@ public class SemanticAnalyzer {
 			for (MainMethod mainMethod : classDecl.mainMethods()) {
 				Ident name = mainMethod.name();
 
-				SNormalType paramType = normalTypeFromAstType(classes, mainMethod.parameter().type());
+				SNormalType paramType = normalTypeFromParserType(classes, mainMethod.parameter().type());
 				Ident paramName = mainMethod.parameter().name();
 				LocalVariableDeclaration parameter = new LocalVariableDeclaration(paramType, paramName);
 
