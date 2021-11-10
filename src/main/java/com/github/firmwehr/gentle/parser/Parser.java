@@ -47,7 +47,10 @@ import com.github.firmwehr.gentle.parser.tokens.Operator;
 import com.github.firmwehr.gentle.parser.tokens.OperatorToken;
 import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.source.Source;
+import com.github.firmwehr.gentle.source.SourceSpan;
+import com.github.firmwehr.gentle.util.Pair;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -216,7 +219,7 @@ public class Parser {
 		Optional<Expression> value;
 		if (tokens.expecting(ExpectedToken.ASSIGN).peek().isOperator(Operator.ASSIGN)) {
 			tokens.take();
-			value = Optional.of(parseExpression());
+			value = Optional.of(parseExpression().expression());
 		} else {
 			value = Optional.empty();
 		}
@@ -259,7 +262,7 @@ public class Parser {
 		tokens.expecting(ExpectedToken.IF).takeKeyword(Keyword.IF);
 		tokens.expecting(ExpectedToken.LEFT_PAREN).takeOperator(Operator.LEFT_PAREN);
 
-		Expression condition = parseExpression();
+		Expression condition = parseExpression().expression();
 
 		tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
 
@@ -280,7 +283,7 @@ public class Parser {
 		tokens.expecting(ExpectedToken.WHILE).takeKeyword(Keyword.WHILE);
 		tokens.expecting(ExpectedToken.LEFT_PAREN).takeOperator(Operator.LEFT_PAREN);
 
-		Expression condition = parseExpression();
+		Expression condition = parseExpression().expression();
 
 		tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
 
@@ -296,7 +299,7 @@ public class Parser {
 		if (tokens.expecting(ExpectedToken.SEMICOLON).peek().isOperator(Operator.SEMICOLON)) {
 			returnValue = Optional.empty();
 		} else {
-			returnValue = Optional.of(parseExpression());
+			returnValue = Optional.of(parseExpression().expression());
 		}
 
 		tokens.expecting(ExpectedToken.SEMICOLON).takeOperator(Operator.SEMICOLON);
@@ -305,11 +308,11 @@ public class Parser {
 	}
 
 	private ExpressionStatement parseExpressionStatement() throws ParseException {
-		Expression expression = parseExpression();
+		ExprWithParens expression = parseExpression();
 
 		tokens.expecting(ExpectedToken.SEMICOLON).takeOperator(Operator.SEMICOLON);
 
-		return new ExpressionStatement(expression);
+		return new ExpressionStatement(expression.expression());
 	}
 
 	private void expectingExpression() {
@@ -317,13 +320,13 @@ public class Parser {
 		tokens.expecting(ExpectedToken.LOGICAL_NOT).expecting(ExpectedToken.MINUS);
 	}
 
-	private Expression parseExpression() throws ParseException {
+	private ExprWithParens parseExpression() throws ParseException {
 		return parseExpressionWithPrecedence(0);
 	}
 
 	@SuppressWarnings("InfiniteRecursion")
-	private Expression parseExpressionWithPrecedence(int precedence) throws ParseException {
-		Expression expression = parseUnaryExpression();
+	private ExprWithParens parseExpressionWithPrecedence(int precedence) throws ParseException {
+		ExprWithParens expression = parseUnaryExpression();
 
 		while (true) {
 			Optional<BinaryOperator> operator = peekOptionalBinaryOperator();
@@ -343,9 +346,11 @@ public class Parser {
 				case LEFT -> opPrec + 1;
 				case RIGHT -> opPrec;
 			};
-			Expression rhs = parseExpressionWithPrecedence(newPrecedence);
+			ExprWithParens rhs = parseExpressionWithPrecedence(newPrecedence);
 
-			expression = new BinaryOperatorExpression(expression, rhs, operator.get());
+			SourceSpan span = SourceSpan.from(expression.parenSourceSpan(), rhs.parenSourceSpan());
+			expression = new ExprWithParens(
+				new BinaryOperatorExpression(expression.expression(), rhs.expression(), operator.get(), span));
 		}
 
 		return expression;
@@ -360,26 +365,32 @@ public class Parser {
 		}
 	}
 
-	private Expression parseUnaryExpression() throws ParseException {
+	private ExprWithParens parseUnaryExpression() throws ParseException {
 		expectingExpression();
 		if (tokens.peek().isOperator(Operator.LOGICAL_NOT)) {
-			tokens.take();
-			return new UnaryOperatorExpression(UnaryOperator.LOGICAL_NOT, parseUnaryExpression());
+			Token start = tokens.take();
+			ExprWithParens expression = parseUnaryExpression();
+			SourceSpan span = SourceSpan.from(start.sourceSpan(), expression.parenSourceSpan());
+			return new ExprWithParens(
+				new UnaryOperatorExpression(UnaryOperator.LOGICAL_NOT, expression.expression(), span));
 		} else if (tokens.peek().isOperator(Operator.MINUS)) {
-			tokens.take();
-			return new UnaryOperatorExpression(UnaryOperator.NEGATION, parseUnaryExpression());
+			Token start = tokens.take();
+			ExprWithParens expression = parseUnaryExpression();
+			SourceSpan span = SourceSpan.from(start.sourceSpan(), expression.parenSourceSpan());
+			return new ExprWithParens(
+				new UnaryOperatorExpression(UnaryOperator.NEGATION, expression.expression(), span));
 		} else {
 			return parsePostfixExpression();
 		}
 	}
 
-	private Expression parsePostfixExpression() throws ParseException {
-		Expression expression = parsePrimaryExpression();
+	private ExprWithParens parsePostfixExpression() throws ParseException {
+		ExprWithParens expression = parsePrimaryExpression();
 
 		while (true) {
 			Optional<Expression> postfixedExpression = parseOptionalPostfixOp(expression);
 			if (postfixedExpression.isPresent()) {
-				expression = postfixedExpression.get();
+				expression = new ExprWithParens(postfixedExpression.get());
 			} else {
 				break;
 			}
@@ -388,43 +399,47 @@ public class Parser {
 		return expression;
 	}
 
-	private Optional<Expression> parseOptionalPostfixOp(Expression expression) throws ParseException {
+	private Optional<Expression> parseOptionalPostfixOp(ExprWithParens expression) throws ParseException {
 		Token token = tokens.expecting(ExpectedToken.DOT).expecting(ExpectedToken.LEFT_BRACKET).peek();
 
 		if (token.isOperator(Operator.DOT)) {
 			tokens.take();
 			Ident name = parseIdent();
 			if (tokens.expecting(ExpectedToken.LEFT_PAREN).peek().isOperator(Operator.LEFT_PAREN)) {
-				return Optional.of(new MethodInvocationExpression(expression, name, parseParenthesisedArguments()));
+				Pair<List<Expression>, SourceSpan> pair = parseParenthesisedArguments();
+				SourceSpan span = SourceSpan.from(expression.parenSourceSpan(), pair.second());
+				return Optional.of(new MethodInvocationExpression(expression.expression(), name, pair.first(), span));
 			} else {
-				return Optional.of(new FieldAccessExpression(expression, name));
+				SourceSpan span = SourceSpan.from(expression.parenSourceSpan(), name.sourceSpan());
+				return Optional.of(new FieldAccessExpression(expression.expression(), name, span));
 			}
 		} else if (token.isOperator(Operator.LEFT_BRACKET)) {
 			tokens.take();
-			Expression index = parseExpression();
-			tokens.expecting(ExpectedToken.RIGHT_BRACKET).takeOperator(Operator.RIGHT_BRACKET);
-			return Optional.of(new ArrayAccessExpression(expression, index));
+			Expression index = parseExpression().expression();
+			Token end = tokens.expecting(ExpectedToken.RIGHT_BRACKET).takeOperator(Operator.RIGHT_BRACKET);
+			SourceSpan span = SourceSpan.from(expression.parenSourceSpan(), end.sourceSpan());
+			return Optional.of(new ArrayAccessExpression(expression.expression(), index, span));
 		} else {
 			return Optional.empty();
 		}
 	}
 
-	private List<Expression> parseParenthesisedArguments() throws ParseException {
-		tokens.expecting(ExpectedToken.LEFT_PAREN).takeOperator(Operator.LEFT_PAREN);
+	private Pair<List<Expression>, SourceSpan> parseParenthesisedArguments() throws ParseException {
+		Token start = tokens.expecting(ExpectedToken.LEFT_PAREN).takeOperator(Operator.LEFT_PAREN);
 
 		List<Expression> arguments = new ArrayList<>();
 		if (!tokens.expecting(ExpectedToken.RIGHT_PAREN).peek().isOperator(Operator.RIGHT_PAREN)) {
-			arguments.add(parseExpression());
+			arguments.add(parseExpression().expression());
 
 			while (tokens.expecting(ExpectedToken.COMMA).peek().isOperator(Operator.COMMA)) {
 				tokens.take();
-				arguments.add(parseExpression());
+				arguments.add(parseExpression().expression());
 			}
 		}
 
-		tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
+		Token end = tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
 
-		return arguments;
+		return new Pair<>(arguments, SourceSpan.from(start.sourceSpan(), end.sourceSpan()));
 	}
 
 	private void expectingPrimaryExpression() {
@@ -437,7 +452,7 @@ public class Parser {
 			.expecting(ExpectedToken.NEW);
 	}
 
-	private Expression parsePrimaryExpression() throws ParseException {
+	private ExprWithParens parsePrimaryExpression() throws ParseException {
 		expectingPrimaryExpression();
 
 		Token token = tokens.peek();
@@ -446,40 +461,44 @@ public class Parser {
 
 		if (token.isKeyword(Keyword.NULL)) {
 			tokens.take();
-			return new NullExpression();
+			return new ExprWithParens(new NullExpression(token.sourceSpan()));
 		} else if (token.isKeyword(Keyword.TRUE)) {
 			tokens.take();
-			return new BooleanLiteralExpression(true);
+			return new ExprWithParens(new BooleanLiteralExpression(true, token.sourceSpan()));
 		} else if (token.isKeyword(Keyword.FALSE)) {
 			tokens.take();
-			return new BooleanLiteralExpression(false);
+			return new ExprWithParens(new BooleanLiteralExpression(false, token.sourceSpan()));
 		} else if (integerLiteralToken.isPresent()) {
 			tokens.take();
-			return new IntegerLiteralExpression(integerLiteralToken.get().value());
+			BigInteger value = integerLiteralToken.get().value();
+			return new ExprWithParens(new IntegerLiteralExpression(value, token.sourceSpan()));
 		} else if (identToken.isPresent()) {
 			tokens.take();
+			Ident name = Ident.fromToken(identToken.get());
 			if (tokens.expecting(ExpectedToken.LEFT_PAREN).peek().isOperator(Operator.LEFT_PAREN)) {
-				return new LocalMethodCallExpression(Ident.fromToken(identToken.get()), parseParenthesisedArguments());
+				Pair<List<Expression>, SourceSpan> pair = parseParenthesisedArguments();
+				SourceSpan span = SourceSpan.from(name.sourceSpan(), pair.second());
+				return new ExprWithParens(new LocalMethodCallExpression(name, pair.first(), span));
 			} else {
-				return new IdentExpression(Ident.fromToken(identToken.get()));
+				return new ExprWithParens(new IdentExpression(name));
 			}
 		} else if (token.isKeyword(Keyword.THIS)) {
 			tokens.take();
-			return new ThisExpression();
+			return new ExprWithParens(new ThisExpression(token.sourceSpan()));
 		} else if (token.isOperator(Operator.LEFT_PAREN)) {
-			tokens.take();
-			Expression expression = parseExpression();
-			tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
-			return expression;
+			Token start = tokens.take();
+			Expression expression = parseExpression().expression();
+			Token end = tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
+			return new ExprWithParens(expression, SourceSpan.from(start.sourceSpan(), end.sourceSpan()));
 		} else if (token.isKeyword(Keyword.NEW)) {
-			return parseNewObjectExpressionOrNewArrayExpression();
+			return new ExprWithParens(parseNewObjectExpressionOrNewArrayExpression());
 		} else {
 			return tokens.error();
 		}
 	}
 
 	private Expression parseNewObjectExpressionOrNewArrayExpression() throws ParseException {
-		tokens.expecting(ExpectedToken.NEW).takeKeyword(Keyword.NEW);
+		Token start = tokens.expecting(ExpectedToken.NEW).takeKeyword(Keyword.NEW);
 
 		Token token = tokens.expecting(ExpectedToken.IDENTIFIER).expecting(ExpectedToken.BASIC_TYPE).peek();
 		Optional<IdentToken> identToken = token.asIdentToken();
@@ -488,13 +507,13 @@ public class Parser {
 			tokens.take();
 			Ident name = Ident.fromToken(identToken.get());
 			tokens.expecting(ExpectedToken.LEFT_PAREN).takeOperator(Operator.LEFT_PAREN);
-			tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
-			return new NewObjectExpression(name);
+			Token end = tokens.expecting(ExpectedToken.RIGHT_PAREN).takeOperator(Operator.RIGHT_PAREN);
+			return new NewObjectExpression(name, SourceSpan.from(start.sourceSpan(), end.sourceSpan()));
 		} else {
 			BasicType basicType = parseBasicType();
 			tokens.expecting(ExpectedToken.LEFT_BRACKET).takeOperator(Operator.LEFT_BRACKET);
-			Expression size = parseExpression();
-			tokens.expecting(ExpectedToken.RIGHT_BRACKET).takeOperator(Operator.RIGHT_BRACKET);
+			Expression size = parseExpression().expression();
+			Token end = tokens.expecting(ExpectedToken.RIGHT_BRACKET).takeOperator(Operator.RIGHT_BRACKET);
 
 			int arrayLevel = 1;
 			// This loop checks for the closing bracket in addition to the opening bracket because if there is
@@ -507,11 +526,12 @@ public class Parser {
 				tokens.peek(1).isOperator(Operator.RIGHT_BRACKET)) {
 
 				tokens.take();
-				tokens.take();
+				end = tokens.take();
 				arrayLevel++;
 			}
 
-			return new NewArrayExpression(new Type(basicType, arrayLevel), size);
+			SourceSpan span = SourceSpan.from(start.sourceSpan(), end.sourceSpan());
+			return new NewArrayExpression(new Type(basicType, arrayLevel), size, span);
 		}
 	}
 

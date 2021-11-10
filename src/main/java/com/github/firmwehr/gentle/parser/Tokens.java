@@ -5,7 +5,9 @@ import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.parser.tokens.EofToken;
 import com.github.firmwehr.gentle.parser.tokens.IdentToken;
 import com.github.firmwehr.gentle.parser.tokens.Keyword;
+import com.github.firmwehr.gentle.parser.tokens.KeywordToken;
 import com.github.firmwehr.gentle.parser.tokens.Operator;
+import com.github.firmwehr.gentle.parser.tokens.OperatorToken;
 import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.source.Source;
 
@@ -77,29 +79,36 @@ public class Tokens {
 		return this;
 	}
 
-	public void take() {
+	public Token take() {
+		Token token = peek();
+
 		if (index < tokens.size()) {
 			index++;
 		}
 		expectedTokensAtIndex.clear();
+
+		return token;
 	}
 
 
-	public void takeKeyword(Keyword keyword) throws ParseException {
-		if (peek().isKeyword(keyword)) {
+	public KeywordToken takeKeyword(Keyword keyword) throws ParseException {
+		if (peek() instanceof KeywordToken t && t.isKeyword(keyword)) {
 			take();
+			return t;
 		} else {
-			error();
+			return error();
 		}
 	}
 
-	public void takeOperator(Operator operator) throws ParseException {
-		if (peek().isOperator(operator)) {
+	public OperatorToken takeOperator(Operator operator) throws ParseException {
+		if (peek() instanceof OperatorToken t && t.isOperator(operator)) {
 			take();
+			return t;
 		} else {
-			error();
+			return error();
 		}
 	}
+
 
 	public IdentToken takeIdent() throws ParseException {
 		Optional<IdentToken> identToken = peek().asIdentToken();
