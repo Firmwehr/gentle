@@ -66,16 +66,13 @@ public class LexicalScope {
 	}
 
 	public void addLocalVariable(LocalVariableDeclaration localVarDecl) throws SemanticException {
-		Ident localVarIdent = localVarDecl.getDeclaration()
-			.orElseThrow(() -> new IllegalArgumentException("adding 'this' declaration to local variables"));
+		Ident localVarIdent = localVarDecl.getDeclaration();
 
 		Optional<LocalVariableDeclaration> currentVarDecl =
 			Optional.ofNullable(currentVariables.get(localVarIdent.ident()));
 
 		if (currentVarDecl.isPresent()) {
-			Ident currentVarIdent = currentVarDecl.get()
-				.getDeclaration()
-				.orElseThrow(() -> new IllegalStateException("'this' declaration in local variables"));
+			Ident currentVarIdent = currentVarDecl.get().getDeclaration();
 
 			throw new SemanticException(source, localVarIdent.sourceSpan(), "duplicate variable name",
 				currentVarIdent.sourceSpan(), "already declared here");

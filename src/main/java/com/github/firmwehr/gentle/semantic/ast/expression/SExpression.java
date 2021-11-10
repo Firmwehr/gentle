@@ -6,7 +6,7 @@ public sealed interface SExpression
 	permits SArrayAccessExpression, SBinaryOperatorExpression, SBooleanValueExpression, SFieldAccessExpression,
 	        SIntegerValueExpression, SLocalVariableExpression, SMethodInvocationExpression, SNewArrayExpression,
 	        SNewObjectExpression, SNullExpression, SSystemInReadExpression, SSystemOutFlushExpression,
-	        SSystemOutPrinlnExpression, SSystemOutWriteExpression, SUnaryOperatorExpression {
+	        SSystemOutPrinlnExpression, SSystemOutWriteExpression, SThisExpression, SUnaryOperatorExpression {
 
 	SExprType type();
 }

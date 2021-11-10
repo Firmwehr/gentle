@@ -28,7 +28,6 @@ import com.github.firmwehr.gentle.source.Source;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class SemanticAnalyzer {
 	private final Source source;
@@ -110,21 +109,25 @@ public class SemanticAnalyzer {
 			for (Method method : classDecl.methods()) {
 				Ident name = method.name();
 				SVoidyType returnType = voidyTypeFromAstType(classes, method.returnType());
+
 				List<LocalVariableDeclaration> parameters = new ArrayList<>();
 				for (Parameter parameter : method.parameters()) {
 					SNormalType type = normalTypeFromAstType(classes, parameter.type());
-					parameters.add(new LocalVariableDeclaration(type, Optional.of(parameter.name())));
+					parameters.add(new LocalVariableDeclaration(type, parameter.name()));
 				}
-				SMethod sMethod = SMethod.newMethod(sClassDecl, name, returnType, parameters);
+
+				SMethod sMethod = SMethod.newMethod(sClassDecl, false, name, returnType, parameters);
 				sClassDecl.methods().put(name, sMethod);
 			}
 
 			for (MainMethod mainMethod : classDecl.mainMethods()) {
 				Ident name = mainMethod.name();
+
 				SNormalType paramType = normalTypeFromAstType(classes, mainMethod.parameter().type());
 				Ident paramName = mainMethod.parameter().name();
-				LocalVariableDeclaration parameter = new LocalVariableDeclaration(paramType, Optional.of(paramName));
-				SMethod sMethod = SMethod.newMainMethod(sClassDecl, name, new SVoidType(), List.of(parameter));
+				LocalVariableDeclaration parameter = new LocalVariableDeclaration(paramType, paramName);
+
+				SMethod sMethod = SMethod.newMethod(sClassDecl, true, name, new SVoidType(), List.of(parameter));
 				sClassDecl.methods().put(name, sMethod);
 			}
 		}
