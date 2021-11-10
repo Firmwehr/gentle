@@ -76,8 +76,9 @@ public record FunctionScope(
 	}
 
 	public SBlock convert(Block block) throws SemanticException {
-		List<SStatement> statements = new ArrayList<>();
+		localVariables.enterScope();
 
+		List<SStatement> statements = new ArrayList<>();
 		for (BlockStatement statement : block.statements()) {
 			switch (statement) {
 				case Block s -> statements.add(convert(s));
@@ -91,6 +92,7 @@ public record FunctionScope(
 			}
 		}
 
+		localVariables.leaveScope();
 		return new SBlock(statements);
 	}
 
