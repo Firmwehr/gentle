@@ -187,6 +187,7 @@ public record FunctionScope(
 			default -> Optional.empty();
 		};
 
+		//noinspection ConstantConditions
 		if (type.isEmpty()) {
 			throw new SemanticException(source, expr.sourceSpan(), "expected array");
 		}
