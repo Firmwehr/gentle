@@ -9,7 +9,6 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SBinaryOperatorExpress
 import com.github.firmwehr.gentle.semantic.ast.expression.SExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SMethodInvocationExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNewArrayExpression;
-import com.github.firmwehr.gentle.semantic.ast.expression.SNewObjectExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutPrintlnExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutWriteExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SUnaryOperatorExpression;
@@ -17,7 +16,7 @@ import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SReturnStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
 import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
-import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
+import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import com.github.firmwehr.gentle.source.Source;
 
 import java.util.List;
@@ -26,19 +25,17 @@ import java.util.Optional;
 /**
  * Verifies the program typechecks by ensuring:
  * <ul>
- *     <li>If and while conditions are boolean</li>
+ *     <li>If and while conditions are booleans</li>
  *     <li>Array access indices are integers</li>
- *     <li>Array size is integer</li>
- *     <li>Unary logical operators operate on booleans</li>
- *     <li>System out/println receive integers</li>
- *     <li>No instances of String objects are created</li>
+ *     <li>Array sizes are integers</li>
+ *     <li>Unary operators operate on correct types</li>
  *     <li>The rhs of an assignment is assignable to the lhs</li>
  *     <li>Either the lhs is assignable to the rhs or vice versa for equality comparisons</li>
- *     <li>Logical binary expressions operate on booleans</li>
- *     <li>Mathematical expressions operate on integers</li>
+ *     <li>Binary operators operate on correct types</li>
+ *     <li>System out/println receive integers</li>
  *     <li>There are as many method call arguments as parameters and the argument types are assignable to the
  *     parameter types</li>
- *     <li>Void method return nothing</li>
+ *     <li>Void methods return nothing</li>
  *     <li>The returned value is assignable to the return type</li>
  * </ul>
  */
@@ -88,7 +85,8 @@ public class TypecheckVisitor implements Visitor<Void> {
 	@Override
 	public Optional<Void> visit(SUnaryOperatorExpression unaryOperatorExpression) throws SemanticException {
 		switch (unaryOperatorExpression.operator()) {
-			case LOGICAL_NOT, NEGATION -> assertIsBoolean(unaryOperatorExpression.expression());
+			case LOGICAL_NOT -> assertIsBoolean(unaryOperatorExpression.expression());
+			case NEGATION -> assertIsInt(unaryOperatorExpression.expression());
 		}
 
 		return Visitor.super.visit(unaryOperatorExpression);
@@ -161,12 +159,9 @@ public class TypecheckVisitor implements Visitor<Void> {
 
 	@Override
 	public Optional<Void> visit(SReturnStatement returnStatement) throws SemanticException {
-		if (currentMethod == null) {
-			throw new IllegalStateException("Return outside of method");
-		}
 		Optional<SExpression> returnStatementValue = returnStatement.returnValue();
 
-		if (currentMethod.returnType().asExprType().asVoidType().isPresent()) {
+		if (currentMethod.returnType() instanceof SVoidType) {
 			if (returnStatementValue.isPresent()) {
 				throw new SemanticException(source, null, "Void method must not return anything");
 			}
@@ -184,39 +179,14 @@ public class TypecheckVisitor implements Visitor<Void> {
 		return Visitor.super.visit(returnStatement);
 	}
 
-	@Override
-	public Optional<Void> visit(SNewObjectExpression newObjectExpression) throws SemanticException {
-		Optional<SNormalType> normalType = newObjectExpression.type().asNormalType();
-
-		if (normalType.isPresent() && normalType.get().arrayLevel() == 0) {
-			if (normalType.get().basicType().asStringType().isPresent()) {
-				throw new SemanticException(source, null, "Can not create instances of String");
-			}
-		}
-
-		return Visitor.super.visit(newObjectExpression);
-	}
-
 	private void assertIsBoolean(SExpression expression) throws SemanticException {
-		Optional<SNormalType> normalType = expression.type().asNormalType();
-
-		if (normalType.isEmpty() || normalType.get().arrayLevel() != 0) {
-			throw new SemanticException(source, null, "Condition must be a boolean");
-		}
-
-		if (normalType.get().basicType().asBooleanType().isEmpty()) {
+		if (expression.type().asBooleanType().isEmpty()) {
 			throw new SemanticException(source, null, "Condition must be a boolean");
 		}
 	}
 
 	private void assertIsInt(SExpression expression) throws SemanticException {
-		Optional<SNormalType> normalType = expression.type().asNormalType();
-
-		if (normalType.isEmpty() || normalType.get().arrayLevel() != 0) {
-			throw new SemanticException(source, null, "Expression must be an integer");
-		}
-
-		if (normalType.get().basicType().asIntType().isEmpty()) {
+		if (expression.type().asIntType().isEmpty()) {
 			throw new SemanticException(source, null, "Expression must be an integer");
 		}
 	}
