@@ -32,7 +32,6 @@ public record SNormalType(
 		if (!(other instanceof SNormalType normalOther)) {
 			return false;
 		}
-
 		if (normalOther.arrayLevel() != arrayLevel()) {
 			return false;
 		}

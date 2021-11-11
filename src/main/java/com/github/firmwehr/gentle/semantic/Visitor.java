@@ -16,7 +16,7 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SNewObjectExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNullExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SSystemInReadExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutFlushExpression;
-import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutPrinlnExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutPrintlnExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutWriteExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SThisExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SUnaryOperatorExpression;
@@ -89,8 +89,8 @@ public interface Visitor<T> {
 		return Optional.empty();
 	}
 
-	default Optional<T> visit(SSystemOutPrinlnExpression systemOutPrinlnExpression) throws SemanticException {
-		systemOutPrinlnExpression.argument().accept(this);
+	default Optional<T> visit(SSystemOutPrintlnExpression systemOutPrintlnExpression) throws SemanticException {
+		systemOutPrintlnExpression.argument().accept(this);
 		return Optional.empty();
 	}
 

@@ -5,6 +5,7 @@ import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SMethod;
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
+import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import com.github.firmwehr.gentle.source.Source;
 
 import java.util.Optional;
@@ -40,13 +41,14 @@ public class MainMethodLookupVisitor implements Visitor<Void> {
 		if (!method.name().ident().equals("main")) {
 			throw new SemanticException(source, null, "Only 'main' is allowed for static method names");
 		}
-		if (method.returnType().asExprType().asVoidType().isEmpty()) {
-			throw new SemanticException(source, null, "The main method must have a void return type");
-		}
 
+		if (!(method.returnType() instanceof SVoidType)) {
+			throw new IllegalArgumentException("The main method must have a void return type");
+		}
 		if (method.parameters().size() != 1) {
 			throw new IllegalArgumentException("The main method must have exactly one parameter");
 		}
+
 		LocalVariableDeclaration parameter = method.parameters().get(0);
 
 		if (parameter.getType().arrayLevel() != 1) {

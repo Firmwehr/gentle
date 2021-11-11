@@ -11,9 +11,9 @@ public record SNullType() implements SExprType {
 
 	@Override
 	public boolean isAssignableTo(SExprType other) {
-		if (other instanceof SNormalType type) {
-			return type.basicType().asClassType().isPresent() || type.basicType().asStringType().isPresent();
+		if (other.asNormalType().isPresent() && other.asNormalType().get().arrayLevel() > 0) {
+			return true;
 		}
-		return other instanceof SNullType;
+		return other.asClassType().isPresent() || other.asStringType().isPresent() || other.asNullType().isPresent();
 	}
 }

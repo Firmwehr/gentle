@@ -13,7 +13,6 @@ public record SClassType(SClassDeclaration classDecl) implements SBasicType {
 
 	@Override
 	public boolean isAssignableFrom(SBasicType other) {
-		// TODO: Is Singleton?
 		return other.asClassType().map(classType -> classType.classDecl() == classDecl()).orElse(false);
 	}
 }

@@ -16,9 +16,9 @@ import java.util.Optional;
  * <br>
  * This is implemented using a simple algorithm:
  * <ol>
- *     <li>For every statement in a method or block, check whether it always returns. If it always returns, the
- *     method always returns as any potentially following code is unreachable.</li>
- *     <li>If we reached the end of the method body the method doesn't always return and we throw an exception.</li>>
+ *     <li>If any statement in a method or block always returns, that method or block always returns. All following
+ *     statements are unreachable.</li>
+ *     <li>Otherwise, the method or block doesn't always return.</li>
  * </ol>
  * Additionally, the {@link SReturnStatement} is marked to always return and acts as the starting point.
  */

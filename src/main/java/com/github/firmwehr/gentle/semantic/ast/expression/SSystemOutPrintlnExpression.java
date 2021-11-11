@@ -7,7 +7,7 @@ import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 
 import java.util.Optional;
 
-public record SSystemOutPrinlnExpression(
+public record SSystemOutPrintlnExpression(
 	SExpression argument
 ) implements SExpression {
 	@Override

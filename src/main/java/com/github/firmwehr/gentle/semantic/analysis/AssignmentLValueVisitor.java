@@ -36,11 +36,11 @@ public class AssignmentLValueVisitor implements Visitor<Void> {
 
 		SExpression lhs = binaryOperatorExpression.lhs();
 
-		boolean isVariableOrFieldAccess =
-			lhs instanceof SLocalVariableExpression || lhs instanceof SFieldAccessExpression;
+		boolean isVariableAccess = lhs instanceof SLocalVariableExpression;
+		boolean isFieldAccess = lhs instanceof SFieldAccessExpression;
 		boolean isArrayAccess = lhs instanceof SArrayAccessExpression;
 
-		if (!isVariableOrFieldAccess && !isArrayAccess) {
+		if (!(isVariableAccess || isFieldAccess || isArrayAccess)) {
 			throw new SemanticException(source, null, "You can only assign to lvalues");
 		}
 

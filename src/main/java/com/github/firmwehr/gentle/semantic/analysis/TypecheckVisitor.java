@@ -10,7 +10,7 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SMethodInvocationExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNewArrayExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNewObjectExpression;
-import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutPrinlnExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutPrintlnExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutWriteExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SUnaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
@@ -134,10 +134,10 @@ public class TypecheckVisitor implements Visitor<Void> {
 	}
 
 	@Override
-	public Optional<Void> visit(SSystemOutPrinlnExpression systemOutPrinlnExpression) throws SemanticException {
-		assertIsInt(systemOutPrinlnExpression.argument());
+	public Optional<Void> visit(SSystemOutPrintlnExpression systemOutPrintlnExpression) throws SemanticException {
+		assertIsInt(systemOutPrintlnExpression.argument());
 
-		return Visitor.super.visit(systemOutPrinlnExpression);
+		return Visitor.super.visit(systemOutPrintlnExpression);
 	}
 
 	@Override
