@@ -12,6 +12,7 @@ import com.github.firmwehr.gentle.parser.ast.basictype.BooleanType;
 import com.github.firmwehr.gentle.parser.ast.basictype.IdentType;
 import com.github.firmwehr.gentle.parser.ast.basictype.IntType;
 import com.github.firmwehr.gentle.parser.ast.basictype.VoidType;
+import com.github.firmwehr.gentle.semantic.analysis.AssignmentLValueVisitor;
 import com.github.firmwehr.gentle.semantic.analysis.MainMethodLookupVisitor;
 import com.github.firmwehr.gentle.semantic.analysis.SideEffectVisitor;
 import com.github.firmwehr.gentle.semantic.analysis.TypecheckVisitor;
@@ -190,8 +191,19 @@ public class SemanticAnalyzer {
 		}
 	}
 
-	void checkAssignments(Namespace<SClassDeclaration> classes) {
-		// TODO Check if all assignments assign to an lvalue
+	/**
+	 * Checks that assignment expressions only assign to lvalues.
+	 *
+	 * @param classes the classes to analyze
+	 *
+	 * @throws SemanticException if any assignment assigns to something else
+	 */
+	void checkAssignments(Namespace<SClassDeclaration> classes) throws SemanticException {
+		Visitor<Void> visitor = new AssignmentLValueVisitor(source);
+
+		for (SClassDeclaration declaration : classes.getAll()) {
+			visitor.visit(declaration);
+		}
 	}
 
 	void checkReturnPaths(Namespace<SClassDeclaration> classes) {
