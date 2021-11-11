@@ -16,6 +16,7 @@ import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SReturnStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
 import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
+import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import com.github.firmwehr.gentle.source.Source;
 
@@ -70,7 +71,21 @@ public class TypecheckVisitor implements Visitor<Void> {
 
 	@Override
 	public Optional<Void> visit(SArrayAccessExpression arrayExpression) throws SemanticException {
-		assertIsInt(arrayExpression.expression());
+		SExpression expression = arrayExpression.expression();
+
+		Optional<SNormalType> hasType = expression.type().asNormalType();
+		SNormalType expectedType = arrayExpression.type();
+
+		if (hasType.isEmpty() || hasType.get().arrayLevel() == 0 ||
+			hasType.get().arrayLevel() != expectedType.arrayLevel() + 1 ||
+			!hasType.get().basicType().equals(expectedType.basicType())) {
+
+			throw new SemanticException(source, arrayExpression.sourceSpan(), "invalid array access",
+				expression.sourceSpan(),
+				"has type " + expression.type().format() + ", expected type " + expectedType.format());
+		}
+
+		assertIsInt(arrayExpression.index());
 
 		return Visitor.super.visit(arrayExpression);
 	}
