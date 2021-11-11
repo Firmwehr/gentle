@@ -28,3 +28,4 @@ include:
 exclude:
   - name: JavaAnnotator # Counter - Hours wasted: 4
   - name: OptionalUsedAsFieldOrParameterType
+  - name: ClassCanBeRecord # Can't be configured adequately in here
