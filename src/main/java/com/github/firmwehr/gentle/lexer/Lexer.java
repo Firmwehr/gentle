@@ -58,7 +58,7 @@ public class Lexer {
 				}
 				continue;
 			}
-			tokens.add(readOperator("Expected an operator, integer, identifier or comment"));
+			tokens.add(readOperator("Expected keyword, operator, identifier, integer or comment"));
 		}
 		tokens.add(new EofToken(new SourceSpan(reader.getPosition(), reader.getPosition())));
 
