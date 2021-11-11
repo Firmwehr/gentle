@@ -1,8 +1,10 @@
 package com.github.firmwehr.gentle.source;
 
-import com.github.firmwehr.gentle.util.Pair;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public record Source(String content) {
+	private static final int TAB_WIDTH = 4;
 
 	/**
 	 * Find the beginning of the line a certain character is in. If the character is part of a linebreak, it belongs to
@@ -72,20 +74,9 @@ public record Source(String content) {
 		return (int) content.substring(0, offset)
 			.replace("\r\n", "\n")
 			.replace("\r", "\n")
-			.codePoints()
+			.chars()
 			.filter(it -> it == '\n')
 			.count();
-	}
-
-	public Pair<SourcePosition, String> positionAndLineFromOffset(int offset) {
-		int lineStart = startOfLine(offset);
-		int lineEnd = endOfLine(lineStart);
-		String line = content.substring(lineStart, lineEnd);
-
-		int column = offset - lineStart + 1; // Columns are 1-indexed
-		int row = linebreaksUntil(lineStart) + 1; // Rows are 1-indexed
-
-		return new Pair<>(new SourcePosition(offset, row, column), line);
 	}
 
 	private boolean isLineBreakChar(int offset) {
@@ -96,34 +87,150 @@ public record Source(String content) {
 		return content.charAt(offset) == '\r' && content.charAt(offset + 1) == '\n';
 	}
 
-	public String formatMessagePointingTo(int offset, String message) {
-		Pair<SourcePosition, String> positionAndLine = positionAndLineFromOffset(offset);
-		SourcePosition position = positionAndLine.first();
-		String line = positionAndLine.second();
+	public SourcePosition positionFromOffset(int offset) {
+		int lineStart = startOfLine(offset);
+
+		int column = offset - lineStart + 1; // Columns are 1-indexed
+		int row = linebreaksUntil(lineStart) + 1; // Rows are 1-indexed
+
+		return new SourcePosition(offset, row, column);
+	}
+
+	public String getLine(int row) {
+		return content.lines().skip(row - 1).findFirst().orElse("");
+	}
+
+	private List<String> getLines(int startRow, int amount) {
+		return content.lines().skip(startRow - 1).limit(amount).collect(Collectors.toList());
+	}
+
+	public String formatMessageAt(SourceSpan span, String message) {
+		SourcePosition start = positionFromOffset(span.startOffset());
+		SourcePosition end = positionFromOffset(span.endOffset());
+
+		if (start.line() == end.line()) {
+			return formatSingleLineMessage(start.line(), start.column(), end.column(), message);
+		} else {
+			int amount = end.line() - start.line() + 1;
+			return formatMultilineMessage(start.line(), amount, start.column(), end.column(), message);
+		}
+	}
+
+	private static void appendRespectingTab(StringBuilder builder, char guide, char toAppend) {
+		if (toAppend == '\t') {
+			toAppend = ' ';
+		}
+
+		if (guide == '\t') {
+			builder.append(Character.toString(toAppend).repeat(TAB_WIDTH));
+		} else {
+			builder.append(toAppend);
+		}
+	}
+
+	private String formatSingleLineMessage(int lineNr, int start, int end, String message) {
+		String line = getLine(lineNr);
+
+		StringBuilder codeLine = new StringBuilder();
+		StringBuilder noteLine = new StringBuilder();
+
+		String lineNrStr = Integer.toString(lineNr);
+		codeLine.append(lineNrStr).append(" | ");
+		noteLine.append(" ".repeat(lineNrStr.length())).append(" | ");
+
+		for (int i = 0; i < line.length(); i++) {
+			char c = line.charAt(i);
+
+			appendRespectingTab(codeLine, c, c);
+
+			if (i < start - 1) {
+				appendRespectingTab(noteLine, c, ' ');
+			} else if (i < end - 1) {
+				appendRespectingTab(noteLine, c, '^');
+			}
+		}
+
+		noteLine.append(" ").append(message);
+
+		return codeLine.append("\n").append(noteLine).toString();
+	}
+
+	private String formatMultilineMessage(int startLineNr, int lineAmount, int start, int end, String message) {
+		List<String> lines = getLines(startLineNr, lineAmount);
+		if (lines.size() < 2) {
+			throw new IllegalArgumentException("too few lines");
+		}
+
+		int endLineNr = startLineNr + lineAmount - 1;
+		int lineNrWidth = Integer.toString(startLineNr + lineAmount - 1).length();
 
 		StringBuilder builder = new StringBuilder();
-		builder.append("[line ")
-			.append(position.line())
-			.append("]")
-			.append("\n#")
-			.append("\n# ")
-			.append(line)
-			.append("\n# ");
 
-		line.chars().limit(position.column() - 1).map(it -> {
-			if (it == ' ' || it == '\t') {
-				return it;
-			} else {
-				return ' ';
-			}
-		}).forEach(it -> builder.append((char) it));
+		// First line
+		formatFirstLineOfMultilineMessage(builder, lines.get(0), lineNrWidth, startLineNr, start);
+		builder.append("\n");
 
-		builder.append("^ ").append(message);
+		// Middle lines
+		for (int i = 1; i < lines.size() - 1; i++) {
+			int lineNr = startLineNr + i;
+			formatMiddleLineOfMultilineMessage(builder, lines.get(i), lineNrWidth, lineNr);
+			builder.append("\n");
+		}
+
+		// Last line
+		formatLastLineOfMultilineMessage(builder, lines.get(lines.size() - 1), lineNrWidth, endLineNr, end);
+
+		builder.append(" ").append(message);
 
 		return builder.toString();
 	}
 
-	public String formatErrorAt(String description, int offset, String message) {
-		return description + "\n" + formatMessagePointingTo(offset, message);
+	private void formatFirstLineOfMultilineMessage(
+		StringBuilder builder, String line, int lineNrWidth, int startLineNr, int start
+	) {
+		StringBuilder codeLine = new StringBuilder();
+		StringBuilder noteLine = new StringBuilder();
+
+		codeLine.append(("%" + lineNrWidth + "d").formatted(startLineNr)).append(" |   ");
+		noteLine.append(" ".repeat(lineNrWidth)).append(" | ,-");
+
+		for (int i = 0; i < line.length(); i++) {
+			char c = line.charAt(i);
+
+			boolean highlighting = start - 1 <= i;
+			char highlight = highlighting ? '^' : '-';
+
+			appendRespectingTab(codeLine, c, c);
+			appendRespectingTab(noteLine, c, highlight);
+		}
+
+		builder.append(codeLine).append("\n").append(noteLine);
+	}
+
+	private void formatMiddleLineOfMultilineMessage(StringBuilder builder, String line, int lineNrWidth, int lineNr) {
+		builder.append(("%" + lineNrWidth + "d").formatted(lineNr)).append(" | | ");
+		for (int i = 0; i < line.length(); i++) {
+			char c = line.charAt(i);
+			appendRespectingTab(builder, c, c);
+		}
+	}
+
+	private void formatLastLineOfMultilineMessage(
+		StringBuilder builder, String line, int lineNrWidth, int endLineNr, int end
+	) {
+		StringBuilder codeLine = new StringBuilder();
+		StringBuilder noteLine = new StringBuilder();
+
+		codeLine.append(("%" + lineNrWidth + "d").formatted(endLineNr)).append(" | | ");
+		noteLine.append(" ".repeat(lineNrWidth)).append(" | `-");
+
+		for (int i = 0; i < line.length() && i < end - 1; i++) {
+			char c = line.charAt(i);
+
+			appendRespectingTab(codeLine, c, c);
+			appendRespectingTab(noteLine, c, '^');
+		}
+
+		builder.append(codeLine).append("\n").append(noteLine);
 	}
 }

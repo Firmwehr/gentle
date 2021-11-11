@@ -57,8 +57,7 @@ public class SemanticException extends Exception {
 		description.ifPresent(s -> builder.append("\n").append(s));
 
 		for (Pair<SourceSpan, String> annotation : annotations) {
-			builder.append("\n")
-				.append(source.formatMessagePointingTo(annotation.first().startOffset(), annotation.second()));
+			builder.append("\n").append(source.formatMessageAt(annotation.first(), annotation.second()));
 		}
 
 		return builder.toString();
