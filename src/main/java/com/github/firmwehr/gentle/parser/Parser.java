@@ -293,7 +293,7 @@ public class Parser {
 	}
 
 	private ReturnStatement parseReturnStatement() throws ParseException {
-		tokens.expecting(ExpectedToken.RETURN).takeKeyword(Keyword.RETURN);
+		Token start = tokens.expecting(ExpectedToken.RETURN).takeKeyword(Keyword.RETURN);
 
 		Optional<Expression> returnValue;
 		if (tokens.expecting(ExpectedToken.SEMICOLON).peek().isOperator(Operator.SEMICOLON)) {
@@ -302,9 +302,9 @@ public class Parser {
 			returnValue = Optional.of(parseExpression().expression());
 		}
 
-		tokens.expecting(ExpectedToken.SEMICOLON).takeOperator(Operator.SEMICOLON);
+		Token end = tokens.expecting(ExpectedToken.SEMICOLON).takeOperator(Operator.SEMICOLON);
 
-		return new ReturnStatement(returnValue);
+		return new ReturnStatement(returnValue, SourceSpan.from(start.sourceSpan(), end.sourceSpan()));
 	}
 
 	private ExpressionStatement parseExpressionStatement() throws ParseException {
