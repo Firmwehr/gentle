@@ -14,6 +14,7 @@ import com.github.firmwehr.gentle.parser.ast.basictype.IntType;
 import com.github.firmwehr.gentle.parser.ast.basictype.VoidType;
 import com.github.firmwehr.gentle.semantic.analysis.AssignmentLValueVisitor;
 import com.github.firmwehr.gentle.semantic.analysis.MainMethodLookupVisitor;
+import com.github.firmwehr.gentle.semantic.analysis.MethodReturnsVisitor;
 import com.github.firmwehr.gentle.semantic.analysis.SideEffectVisitor;
 import com.github.firmwehr.gentle.semantic.analysis.TypecheckVisitor;
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
@@ -206,8 +207,19 @@ public class SemanticAnalyzer {
 		}
 	}
 
-	void checkReturnPaths(Namespace<SClassDeclaration> classes) {
-		// TODO Implement
+	/**
+	 * Checks that a method is either void or always returns.
+	 *
+	 * @param classes the classes to analyze
+	 *
+	 * @throws SemanticException if any path of a non void method does not return
+	 */
+	void checkReturnPaths(Namespace<SClassDeclaration> classes) throws SemanticException {
+		var visitor = new MethodReturnsVisitor(source);
+
+		for (SClassDeclaration declaration : classes.getAll()) {
+			visitor.visit(declaration);
+		}
 	}
 
 	/**
