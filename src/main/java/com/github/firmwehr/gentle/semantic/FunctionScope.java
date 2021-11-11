@@ -187,7 +187,8 @@ public record FunctionScope(
 
 		//noinspection ConstantConditions
 		if (type.isEmpty()) {
-			throw new SemanticException(source, expr.sourceSpan(), "expected array");
+			throw new SemanticException(source, expr.sourceSpan(), "invalid array access", expression.sourceSpan(),
+				"has type " + expression.type().format() + ", expected an array");
 		}
 
 		return new SArrayAccessExpression(expression, index, type.get(), expr.sourceSpan());
@@ -209,7 +210,8 @@ public record FunctionScope(
 
 		Optional<SClassType> classType = typeToClassType(expression.type());
 		if (classType.isEmpty()) {
-			throw new SemanticException(source, expr.sourceSpan(), "expected object");
+			throw new SemanticException(source, expr.sourceSpan(), "invalid field access", expression.sourceSpan(),
+				"has type " + expression.type().format() + ", expected an object");
 		}
 
 		SField field = classType.get().classDecl().fields().get(expr.name());
@@ -243,12 +245,12 @@ public record FunctionScope(
 
 	SMethodInvocationExpression convert(LocalMethodCallExpression expr) throws SemanticException {
 		if (currentClass.isEmpty()) {
-			throw new SemanticException(source, expr.name().sourceSpan(), "calling local method in static context");
+			throw new SemanticException(source, expr.sourceSpan(), "calling local method in static context");
 		}
 
 		SMethod method = currentClass.get().methods().get(expr.name());
 		if (method.isStatic()) {
-			throw new SemanticException(source, expr.name().sourceSpan(), "calling main method");
+			throw new SemanticException(source, expr.sourceSpan(), "calling main method");
 		}
 
 		List<SExpression> arguments = new ArrayList<>();
@@ -267,12 +269,13 @@ public record FunctionScope(
 
 		Optional<SClassType> classType = typeToClassType(expression.type());
 		if (classType.isEmpty()) {
-			throw new SemanticException(source, expr.sourceSpan(), "expected object");
+			throw new SemanticException(source, expr.sourceSpan(), "invalid method call", expression.sourceSpan(),
+				"has type " + expression.type().format() + ", expected an object");
 		}
 
 		SMethod method = classType.get().classDecl().methods().get(expr.name());
 		if (method.isStatic()) {
-			throw new SemanticException(source, expr.name().sourceSpan(), "calling main method");
+			throw new SemanticException(source, expr.sourceSpan(), "calling main method");
 		}
 
 		List<SExpression> arguments = new ArrayList<>();
@@ -289,6 +292,9 @@ public record FunctionScope(
 	}
 
 	SNewObjectExpression convert(NewObjectExpression expr) throws SemanticException {
+		if (expr.name().ident().equals("String")) {
+			throw new SemanticException(source, expr.sourceSpan(), "creating instance of built-in class");
+		}
 		return new SNewObjectExpression(classes.get(expr.name()), expr.sourceSpan());
 	}
 
