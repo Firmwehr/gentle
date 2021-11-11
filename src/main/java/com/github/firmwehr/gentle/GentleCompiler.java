@@ -11,6 +11,8 @@ import com.github.firmwehr.gentle.parser.Parser;
 import com.github.firmwehr.gentle.parser.ast.Program;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 import com.github.firmwehr.gentle.parser.tokens.Token;
+import com.github.firmwehr.gentle.semantic.SemanticAnalyzer;
+import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.source.Source;
 
 import java.io.ByteArrayOutputStream;
@@ -43,6 +45,9 @@ public class GentleCompiler {
 		if (arguments.printAst()) {
 			flagsSet++;
 		}
+		if (arguments.check()) {
+			flagsSet++;
+		}
 
 		if (flagsSet != 1) {
 			LOGGER.error("Conflicting flags");
@@ -55,7 +60,10 @@ public class GentleCompiler {
 			parseTestCommand(arguments.path());
 		} else if (arguments.printAst()) {
 			printAstCommand(arguments.path());
+		} else if (arguments.check()) {
+			checkCommand(arguments.path());
 		} else {
+			// This can never be reached
 			runCommand(arguments.path());
 		}
 
@@ -100,7 +108,7 @@ public class GentleCompiler {
 			Source source = new Source(Files.readString(path, FILE_CHARSET));
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
-			parser.parse(); // result ignored for now
+			parser.parse(); // Result ignored
 		} catch (MalformedInputException e) {
 			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
 			System.exit(1);
@@ -127,6 +135,25 @@ public class GentleCompiler {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
 			System.exit(1);
 		} catch (LexerException | ParseException e) {
+			UserOutput.userError(e);
+			System.exit(1);
+		}
+	}
+
+	private static void checkCommand(Path path) {
+		try {
+			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			Lexer lexer = new Lexer(source, true);
+			Parser parser = Parser.fromLexer(source, lexer);
+			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer(source, parser.parse());
+			semanticAnalyzer.analyze(); // Result ignored
+		} catch (MalformedInputException e) {
+			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			System.exit(1);
+		} catch (IOException e) {
+			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
+			System.exit(1);
+		} catch (LexerException | ParseException | SemanticException e) {
 			UserOutput.userError(e);
 			System.exit(1);
 		}

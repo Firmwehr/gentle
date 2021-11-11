@@ -35,7 +35,7 @@ public class SemanticAnalyzer {
 		this.program = program;
 	}
 
-	SProgram analyze() throws SemanticException {
+	public SProgram analyze() throws SemanticException {
 		Namespace<SClassDeclaration> classes = new Namespace<>(source);
 
 		addClasses(classes);
