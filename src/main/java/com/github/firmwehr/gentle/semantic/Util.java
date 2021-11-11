@@ -24,7 +24,7 @@ public final class Util {
 		Source source, Namespace<SClassDeclaration> classes, Type type
 	) throws SemanticException {
 		SBasicType basicType = switch (type.basicType()) {
-			case BooleanType t -> new SBooleanType();
+			case BooleanType ignored -> new SBooleanType();
 			case IdentType t -> {
 				if (t.name().ident().equals("String")) {
 					yield new SStringType();

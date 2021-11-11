@@ -180,6 +180,7 @@ public record FunctionScope(
 		SExpression expression = convert(expr.expression());
 		SExpression index = convert(expr.index());
 
+		//noinspection SwitchStatementWithTooFewBranches
 		Optional<SNormalType> type = switch (expression.type()) {
 			case SNormalType t -> t.withDecrementedLevel();
 			default -> Optional.empty();
