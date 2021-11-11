@@ -6,11 +6,13 @@ import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SClassType;
 import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
 import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
 import java.util.Optional;
 
 public record SNewObjectExpression(
-	SClassDeclaration classDecl
+	SClassDeclaration classDecl,
+	SourceSpan sourceSpan
 ) implements SExpression {
 	@Override
 	public SExprType type() {

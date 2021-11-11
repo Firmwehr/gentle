@@ -3,6 +3,7 @@ package com.github.firmwehr.gentle.semantic.ast.expression;
 import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
 import java.util.Optional;
 
@@ -11,6 +12,8 @@ public sealed interface SExpression
 	        SIntegerValueExpression, SLocalVariableExpression, SMethodInvocationExpression, SNewArrayExpression,
 	        SNewObjectExpression, SNullExpression, SSystemInReadExpression, SSystemOutFlushExpression,
 	        SSystemOutPrintlnExpression, SSystemOutWriteExpression, SThisExpression, SUnaryOperatorExpression {
+
+	SourceSpan sourceSpan();
 
 	SExprType type();
 

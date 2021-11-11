@@ -21,6 +21,7 @@ import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidyType;
 import com.github.firmwehr.gentle.source.Source;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -73,21 +74,23 @@ public class SemanticAnalyzer {
 			for (Field field : classDecl.fields()) {
 				Ident name = field.name();
 				SNormalType type = Util.normalTypeFromParserType(source, classes, field.type());
-				SField sField = new SField(sClassDecl, name, type);
+				SField sField = new SField(sClassDecl, name, type, field.type().sourceSpan());
 				sClassDecl.fields().put(name, sField);
 			}
 
 			for (Method method : classDecl.methods()) {
 				Ident name = method.name();
 				SVoidyType returnType = Util.voidyTypeFromParserType(source, classes, method.returnType());
+				SourceSpan returnTypeSpan = method.returnType().sourceSpan();
 
 				List<LocalVariableDeclaration> parameters = new ArrayList<>();
 				for (Parameter parameter : method.parameters()) {
 					SNormalType type = Util.normalTypeFromParserType(source, classes, parameter.type());
-					parameters.add(new LocalVariableDeclaration(type, parameter.name()));
+					SourceSpan typeSpan = parameter.type().sourceSpan();
+					parameters.add(new LocalVariableDeclaration(type, typeSpan, parameter.name()));
 				}
 
-				SMethod sMethod = SMethod.newMethod(sClassDecl, false, name, returnType, parameters);
+				SMethod sMethod = SMethod.newMethod(sClassDecl, false, name, returnType, returnTypeSpan, parameters);
 				sClassDecl.methods().put(name, sMethod);
 			}
 
@@ -95,10 +98,12 @@ public class SemanticAnalyzer {
 				Ident name = mainMethod.name();
 
 				SNormalType paramType = Util.normalTypeFromParserType(source, classes, mainMethod.parameter().type());
+				SourceSpan paramTypeSpan = mainMethod.parameter().type().sourceSpan();
 				Ident paramName = mainMethod.parameter().name();
-				LocalVariableDeclaration parameter = new LocalVariableDeclaration(paramType, paramName);
+				LocalVariableDeclaration parameter = new LocalVariableDeclaration(paramType, paramTypeSpan, paramName);
 
-				SMethod sMethod = SMethod.newMethod(sClassDecl, true, name, new SVoidType(), List.of(parameter));
+				SMethod sMethod = SMethod.newMethod(sClassDecl, true, name, new SVoidType(), mainMethod.voidSpan(),
+					List.of(parameter));
 				sClassDecl.methods().put(name, sMethod);
 			}
 		}

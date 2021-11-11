@@ -126,7 +126,7 @@ public class Parser {
 
 	private MainMethod parseMainMethodRest() throws ParseException {
 		tokens.expecting(ExpectedToken.STATIC).takeKeyword(Keyword.STATIC);
-		tokens.expecting(ExpectedToken.VOID).takeKeyword(Keyword.VOID);
+		Token voidToken = tokens.expecting(ExpectedToken.VOID).takeKeyword(Keyword.VOID);
 
 		Ident name = parseIdent();
 
@@ -139,7 +139,7 @@ public class Parser {
 
 		Block block = parseBlock();
 
-		return new MainMethod(name, parameter, block);
+		return new MainMethod(name, voidToken.sourceSpan(), parameter, block);
 	}
 
 	private Method parseMethodRest(Type type, Ident ident) throws ParseException {
@@ -216,10 +216,10 @@ public class Parser {
 		Type type = parseType();
 		Ident name = parseIdent();
 
-		Optional<Expression> value;
+		Optional<ExprWithParens> value;
 		if (tokens.expecting(ExpectedToken.ASSIGN).peek().isOperator(Operator.ASSIGN)) {
 			tokens.take();
-			value = Optional.of(parseExpression().expression());
+			value = Optional.of(parseExpression());
 		} else {
 			value = Optional.empty();
 		}

@@ -4,10 +4,11 @@ import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
 import com.github.firmwehr.gentle.semantic.ast.type.SNullType;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
 import java.util.Optional;
 
-public record SNullExpression() implements SExpression {
+public record SNullExpression(SourceSpan sourceSpan) implements SExpression {
 	@Override
 	public SExprType type() {
 		return new SNullType();

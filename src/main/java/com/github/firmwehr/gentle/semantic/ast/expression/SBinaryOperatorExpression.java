@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
 import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
 import java.util.Optional;
 
@@ -11,7 +12,8 @@ public record SBinaryOperatorExpression(
 	SExpression lhs,
 	SExpression rhs,
 	BinaryOperator operator,
-	SExprType type
+	SExprType type,
+	SourceSpan sourceSpan
 ) implements SExpression {
 	@Override
 	public <T> Optional<T> accept(Visitor<T> visitor) throws SemanticException {

@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.parser.ast.statement;
 
 import com.github.firmwehr.gentle.parser.ast.expression.Expression;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,11 +31,11 @@ public sealed interface Statement extends PrettyPrint
 	}
 
 	static ReturnStatement newReturn() {
-		return new ReturnStatement(Optional.empty());
+		return new ReturnStatement(Optional.empty(), SourceSpan.dummy());
 	}
 
 	static ReturnStatement newReturn(Expression returnValue) {
-		return new ReturnStatement(Optional.of(returnValue));
+		return new ReturnStatement(Optional.of(returnValue), SourceSpan.dummy());
 	}
 
 	static WhileStatement newWhile(Expression condition, Statement body) {

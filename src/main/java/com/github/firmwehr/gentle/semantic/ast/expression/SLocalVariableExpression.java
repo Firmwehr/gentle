@@ -4,11 +4,13 @@ import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
 import java.util.Optional;
 
 public record SLocalVariableExpression(
-	LocalVariableDeclaration localVariable
+	LocalVariableDeclaration localVariable,
+	SourceSpan sourceSpan
 ) implements SExpression {
 	@Override
 	public SExprType type() {

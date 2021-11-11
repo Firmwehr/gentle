@@ -4,12 +4,14 @@ import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperator;
 import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
 import java.util.Optional;
 
 public record SUnaryOperatorExpression(
 	UnaryOperator operator,
-	SExpression expression
+	SExpression expression,
+	SourceSpan sourceSpan
 ) implements SExpression {
 	@Override
 	public SExprType type() {

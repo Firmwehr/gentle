@@ -53,6 +53,7 @@ import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
 import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
 import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 import com.github.firmwehr.gentle.source.Source;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -127,15 +128,17 @@ public record FunctionScope(
 
 	Optional<SExpressionStatement> convert(LocalVariableDeclarationStatement statement) throws SemanticException {
 		SNormalType type = Util.normalTypeFromParserType(source, classes, statement.type());
-		LocalVariableDeclaration decl = new LocalVariableDeclaration(type, statement.name());
+		LocalVariableDeclaration decl =
+			new LocalVariableDeclaration(type, statement.type().sourceSpan(), statement.name());
 
 		localVariables.put(decl.getDeclaration(), decl);
 
 		if (statement.value().isPresent()) {
-			SExpression lhs = new SLocalVariableExpression(decl);
-			SExpression rhs = convert(statement.value().get());
+			SExpression lhs = new SLocalVariableExpression(decl, statement.name().sourceSpan());
+			SExpression rhs = convert(statement.value().get().expression());
+			SourceSpan span = SourceSpan.from(lhs.sourceSpan(), statement.value().get().parenSourceSpan());
 			return Optional.of(new SExpressionStatement(
-				new SBinaryOperatorExpression(lhs, rhs, BinaryOperator.ASSIGN, decl.getType())));
+				new SBinaryOperatorExpression(lhs, rhs, BinaryOperator.ASSIGN, decl.getType(), span)));
 		} else {
 			return Optional.empty();
 		}
@@ -149,7 +152,7 @@ public record FunctionScope(
 			returnValue = Optional.empty();
 		}
 
-		return new SReturnStatement(returnValue);
+		return new SReturnStatement(returnValue, statement.sourceSpan());
 	}
 
 	SWhileStatement convert(WhileStatement statement) throws SemanticException {
@@ -187,7 +190,7 @@ public record FunctionScope(
 			throw new SemanticException(source, expr.sourceSpan(), "expected array");
 		}
 
-		return new SArrayAccessExpression(expression, index, type.get());
+		return new SArrayAccessExpression(expression, index, type.get(), expr.sourceSpan());
 	}
 
 	SBinaryOperatorExpression convert(BinaryOperatorExpression expr) throws SemanticException {
@@ -201,11 +204,11 @@ public record FunctionScope(
 			case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> new SNormalType(new SIntType());
 		};
 
-		return new SBinaryOperatorExpression(lhs, rhs, expr.operator(), type);
+		return new SBinaryOperatorExpression(lhs, rhs, expr.operator(), type, expr.sourceSpan());
 	}
 
 	SBooleanValueExpression convert(BooleanLiteralExpression expr) {
-		return new SBooleanValueExpression(expr.value());
+		return new SBooleanValueExpression(expr.value(), expr.sourceSpan());
 	}
 
 	SFieldAccessExpression convert(FieldAccessExpression expr) throws SemanticException {
@@ -218,25 +221,28 @@ public record FunctionScope(
 
 		SField field = classType.get().classDecl().fields().get(expr.name());
 
-		return new SFieldAccessExpression(expression, field);
+		return new SFieldAccessExpression(expression, field, expr.sourceSpan());
 	}
 
 	SExpression convert(IdentExpression expr) throws SemanticException {
 		if (currentClass.isPresent()) {
 			if (localVariables.getOpt(expr.name()).isPresent()) {
-				return new SLocalVariableExpression(localVariables.getOpt(expr.name()).get());
+				return new SLocalVariableExpression(localVariables.getOpt(expr.name()).get(), expr.sourceSpan());
 			} else {
 				SField field = currentClass.get().fields().get(expr.name());
-				return new SFieldAccessExpression(new SThisExpression(currentClass.get()), field);
+				// The SThisExpression doesn't really have a proper SourceSpan. Giving it the IdentExpression's span
+				// probably makes the most sense.
+				return new SFieldAccessExpression(new SThisExpression(currentClass.get(), expr.sourceSpan()), field,
+					expr.sourceSpan());
 			}
 		} else {
-			return new SLocalVariableExpression(localVariables().get(expr.name()));
+			return new SLocalVariableExpression(localVariables().get(expr.name()), expr.sourceSpan());
 		}
 	}
 
 	SIntegerValueExpression convert(IntegerLiteralExpression expr) throws SemanticException {
 		try {
-			return new SIntegerValueExpression(expr.value().intValueExact());
+			return new SIntegerValueExpression(expr.value().intValueExact(), expr.sourceSpan());
 		} catch (ArithmeticException e) {
 			throw new SemanticException(source, expr.sourceSpan(), "integer literal too large");
 		}
@@ -257,7 +263,10 @@ public record FunctionScope(
 			arguments.add(convert(argument));
 		}
 
-		return new SMethodInvocationExpression(new SThisExpression(currentClass.get()), method, arguments);
+		// The SThisExpression doesn't really have a proper SourceSpan. Giving it the SMethodInvocationExpression's
+		// span probably makes the most sense.
+		return new SMethodInvocationExpression(new SThisExpression(currentClass.get(), expr.sourceSpan()), method,
+			arguments, expr.sourceSpan());
 	}
 
 	SMethodInvocationExpression convert(MethodInvocationExpression expr) throws SemanticException {
@@ -278,20 +287,20 @@ public record FunctionScope(
 			arguments.add(convert(argument));
 		}
 
-		return new SMethodInvocationExpression(expression, method, arguments);
+		return new SMethodInvocationExpression(expression, method, arguments, expr.sourceSpan());
 	}
 
 	SNewArrayExpression convert(NewArrayExpression expr) throws SemanticException {
 		SNormalType type = Util.normalTypeFromParserType(source, classes, expr.type());
-		return new SNewArrayExpression(type, convert(expr.size()));
+		return new SNewArrayExpression(type, convert(expr.size()), expr.sourceSpan());
 	}
 
 	SNewObjectExpression convert(NewObjectExpression expr) throws SemanticException {
-		return new SNewObjectExpression(classes.get(expr.name()));
+		return new SNewObjectExpression(classes.get(expr.name()), expr.sourceSpan());
 	}
 
 	SNullExpression convert(NullExpression expr) {
-		return new SNullExpression();
+		return new SNullExpression(expr.sourceSpan());
 	}
 
 	SThisExpression convert(ThisExpression expr) throws SemanticException {
@@ -299,11 +308,11 @@ public record FunctionScope(
 			throw new SemanticException(source, expr.sourceSpan(), "using 'this' in static context");
 		}
 
-		return new SThisExpression(currentClass.get());
+		return new SThisExpression(currentClass.get(), expr.sourceSpan());
 	}
 
 	SUnaryOperatorExpression convert(UnaryOperatorExpression expr) throws SemanticException {
-		return new SUnaryOperatorExpression(expr.operator(), convert(expr.expression()));
+		return new SUnaryOperatorExpression(expr.operator(), convert(expr.expression()), expr.sourceSpan());
 	}
 
 	Optional<SClassType> typeToClassType(SExprType type) {
