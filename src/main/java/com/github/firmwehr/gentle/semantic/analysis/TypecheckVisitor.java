@@ -164,16 +164,20 @@ public class TypecheckVisitor implements Visitor<Void> {
 		if (currentMethod == null) {
 			throw new IllegalStateException("Return outside of method");
 		}
-		Optional<SExpression> returnValue = returnStatement.returnValue();
+		Optional<SExpression> returnStatementValue = returnStatement.returnValue();
 
-		if (returnValue.isEmpty()) {
-			if (returnStatement.returnValue().isPresent()) {
+		if (currentMethod.returnType().asExprType().asVoidType().isPresent()) {
+			if (returnStatementValue.isPresent()) {
 				throw new SemanticException(source, null, "Void method must not return anything");
 			}
 			return Visitor.super.visit(returnStatement);
 		}
 
-		if (!returnValue.get().type().isAssignableTo(currentMethod.returnType().asExprType())) {
+		if (returnStatementValue.isEmpty()) {
+			throw new SemanticException(source, null, "Non-void methods need to return a value");
+		}
+
+		if (!returnStatementValue.get().type().isAssignableTo(currentMethod.returnType().asExprType())) {
 			throw new SemanticException(source, null, "Not assignable to return type");
 		}
 
