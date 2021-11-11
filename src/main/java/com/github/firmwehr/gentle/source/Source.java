@@ -126,11 +126,4 @@ public record Source(String content) {
 	public String formatErrorAt(String description, int offset, String message) {
 		return description + "\n" + formatMessagePointingTo(offset, message);
 	}
-
-	public String formatErrorWithReferenceAt(
-		String description, int offset, String message, int referenceOffset, String referenceMessage
-	) {
-		return description + "\n" + formatMessagePointingTo(offset, message) + "\n\n" +
-			formatMessagePointingTo(referenceOffset, referenceMessage);
-	}
 }
