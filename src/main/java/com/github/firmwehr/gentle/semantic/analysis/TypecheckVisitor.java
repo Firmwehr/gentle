@@ -100,7 +100,10 @@ public class TypecheckVisitor implements Visitor<Void> {
 				SExprType lhsType = binaryOperatorExpression.lhs().type();
 
 				if (!rhsType.isAssignableTo(lhsType)) {
-					throw new SemanticException(source, null, "Assignment of incompatible type");
+					throw new SemanticException(source, binaryOperatorExpression.sourceSpan(),
+						"invalid assignment, incompatible types", binaryOperatorExpression.lhs().sourceSpan(),
+						"has type " + lhsType.format(), binaryOperatorExpression.rhs().sourceSpan(),
+						"has type " + rhsType.format());
 				}
 			}
 			case EQUAL, NOT_EQUAL -> {
@@ -108,7 +111,10 @@ public class TypecheckVisitor implements Visitor<Void> {
 				SExprType lhsType = binaryOperatorExpression.lhs().type();
 
 				if (!lhsType.isAssignableTo(rhsType) && !rhsType.isAssignableTo(lhsType)) {
-					throw new SemanticException(source, null, "Incompatible types in comparison");
+					throw new SemanticException(source, binaryOperatorExpression.sourceSpan(),
+						"invalid comparison, incompatible types", binaryOperatorExpression.lhs().sourceSpan(),
+						"has type " + lhsType.format(), binaryOperatorExpression.rhs().sourceSpan(),
+						"has type " + rhsType.format());
 				}
 			}
 			case LOGICAL_OR, LOGICAL_AND -> {
@@ -163,17 +169,22 @@ public class TypecheckVisitor implements Visitor<Void> {
 
 		if (currentMethod.returnType() instanceof SVoidType) {
 			if (returnStatementValue.isPresent()) {
-				throw new SemanticException(source, null, "Void method must not return anything");
+				throw new SemanticException(source, returnStatementValue.get().sourceSpan(), "cannot return a value",
+					currentMethod.returnTypeSpan(), "method returns nothing");
 			}
 			return Visitor.super.visit(returnStatement);
 		}
 
 		if (returnStatementValue.isEmpty()) {
-			throw new SemanticException(source, null, "Non-void methods need to return a value");
+			throw new SemanticException(source, returnStatement.sourceSpan(), "must return a value",
+				currentMethod.returnTypeSpan(), "method returns something");
 		}
 
 		if (!returnStatementValue.get().type().isAssignableTo(currentMethod.returnType().asExprType())) {
-			throw new SemanticException(source, null, "Not assignable to return type");
+			throw new SemanticException(source, returnStatement.sourceSpan(), "invalid return, incompatible types",
+				returnStatementValue.get().sourceSpan(), "has type " + returnStatementValue.get().type().format(),
+				currentMethod.returnTypeSpan(),
+				"method returns type " + currentMethod.returnType().asExprType().format());
 		}
 
 		return Visitor.super.visit(returnStatement);
@@ -181,13 +192,13 @@ public class TypecheckVisitor implements Visitor<Void> {
 
 	private void assertIsBoolean(SExpression expression) throws SemanticException {
 		if (expression.type().asBooleanType().isEmpty()) {
-			throw new SemanticException(source, null, "Condition must be a boolean");
+			throw new SemanticException(source, expression.sourceSpan(), "expected type boolean");
 		}
 	}
 
 	private void assertIsInt(SExpression expression) throws SemanticException {
 		if (expression.type().asIntType().isEmpty()) {
-			throw new SemanticException(source, null, "Expression must be an integer");
+			throw new SemanticException(source, expression.sourceSpan(), "expected type int");
 		}
 	}
 

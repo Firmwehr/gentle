@@ -3,6 +3,10 @@ package com.github.firmwehr.gentle.semantic.ast.basictype;
 import java.util.Optional;
 
 public record SBooleanType() implements SBasicType {
+	@Override
+	public String format() {
+		return "boolean";
+	}
 
 	@Override
 	public Optional<SBooleanType> asBooleanType() {

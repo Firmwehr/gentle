@@ -3,6 +3,10 @@ package com.github.firmwehr.gentle.semantic.ast.type;
 import java.util.Optional;
 
 public record SNullType() implements SExprType {
+	@Override
+	public String format() {
+		return "null";
+	}
 
 	@Override
 	public Optional<SNullType> asNullType() {

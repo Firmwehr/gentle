@@ -3,6 +3,7 @@ package com.github.firmwehr.gentle.semantic.ast.basictype;
 import java.util.Optional;
 
 public sealed interface SBasicType permits SBooleanType, SClassType, SIntType, SStringType {
+	String format();
 
 	default Optional<SBooleanType> asBooleanType() {
 		return Optional.empty();

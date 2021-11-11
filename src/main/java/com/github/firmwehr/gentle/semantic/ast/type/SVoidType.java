@@ -4,6 +4,11 @@ import java.util.Optional;
 
 public record SVoidType() implements SExprType, SVoidyType {
 	@Override
+	public String format() {
+		return "void";
+	}
+
+	@Override
 	public SExprType asExprType() {
 		return this;
 	}

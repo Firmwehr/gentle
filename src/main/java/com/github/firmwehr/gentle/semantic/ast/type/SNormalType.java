@@ -18,6 +18,11 @@ public record SNormalType(
 	}
 
 	@Override
+	public String format() {
+		return basicType.format() + "[]".repeat(arrayLevel);
+	}
+
+	@Override
 	public SExprType asExprType() {
 		return this;
 	}

@@ -41,7 +41,8 @@ public class AssignmentLValueVisitor implements Visitor<Void> {
 		boolean isArrayAccess = lhs instanceof SArrayAccessExpression;
 
 		if (!(isVariableAccess || isFieldAccess || isArrayAccess)) {
-			throw new SemanticException(source, null, "You can only assign to lvalues");
+			throw new SemanticException(source, binaryOperatorExpression.sourceSpan(), "invalid assignment",
+				lhs.sourceSpan(), "not an lvalue");
 		}
 
 		return Visitor.super.visit(binaryOperatorExpression);

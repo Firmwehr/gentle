@@ -5,6 +5,10 @@ import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import java.util.Optional;
 
 public record SClassType(SClassDeclaration classDecl) implements SBasicType {
+	@Override
+	public String format() {
+		return classDecl.name().ident();
+	}
 
 	@Override
 	public Optional<SClassType> asClassType() {

@@ -29,7 +29,7 @@ public class SideEffectVisitor implements Visitor<Void> {
 		return switch (expression) {
 			case SMethodInvocationExpression ignored -> Optional.empty();
 			case SBinaryOperatorExpression op && op.operator() == BinaryOperator.ASSIGN -> Optional.empty();
-			default -> throw new SemanticException(source, null, "Expression must have side effects");
+			default -> throw new SemanticException(source, expression.sourceSpan(), "must have side effects");
 		};
 	}
 }

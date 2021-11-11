@@ -3,6 +3,10 @@ package com.github.firmwehr.gentle.semantic.ast.basictype;
 import java.util.Optional;
 
 public record SStringType() implements SBasicType {
+	@Override
+	public String format() {
+		return "String";
+	}
 
 	@Override
 	public Optional<SStringType> asStringType() {

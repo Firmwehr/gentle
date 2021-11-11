@@ -52,11 +52,8 @@ public class MainMethodLookupVisitor implements Visitor<Void> {
 
 		LocalVariableDeclaration parameter = method.parameters().get(0);
 
-		if (parameter.getType().arrayLevel() != 1) {
-			throw new SemanticException(source, null, "The main method must have a String[] parameter");
-		}
-		if (parameter.getType().basicType().asStringType().isEmpty()) {
-			throw new SemanticException(source, null, "The main method must have a String[] parameter");
+		if (parameter.getType().arrayLevel() != 1 || parameter.getType().basicType().asStringType().isEmpty()) {
+			throw new SemanticException(source, parameter.getTypeSpan(), "expected String[]");
 		}
 
 		this.foundMainMethod = Optional.of(method);
@@ -70,13 +67,14 @@ public class MainMethodLookupVisitor implements Visitor<Void> {
 		LocalVariableDeclaration localVariable = localVariableExpression.localVariable();
 
 		if (mainMethodParameter.map(it -> it == localVariable).orElse(false)) {
-			throw new SemanticException(source, null, "Usage of main method parameter is forbidden");
+			throw new SemanticException(source, localVariableExpression.sourceSpan(),
+				"illegal use of main method parameter", localVariable.getDeclaration().sourceSpan(), "declared here");
 		}
 
 		return Visitor.super.visit(localVariableExpression);
 	}
 
 	public SMethod getFoundMainMethod() throws SemanticException {
-		return foundMainMethod.orElseThrow(() -> new SemanticException(source, null, "Did not find a main method :/"));
+		return foundMainMethod.orElseThrow(() -> new SemanticException(source, "no main method found"));
 	}
 }

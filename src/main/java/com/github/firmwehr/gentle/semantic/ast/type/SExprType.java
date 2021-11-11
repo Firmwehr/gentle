@@ -9,6 +9,7 @@ import com.github.firmwehr.gentle.semantic.ast.basictype.SStringType;
 import java.util.Optional;
 
 public sealed interface SExprType permits SNormalType, SNullType, SVoidType {
+	String format();
 
 	boolean isAssignableTo(SExprType other);
 
