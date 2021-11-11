@@ -86,7 +86,7 @@ public record FunctionScope(
 		for (BlockStatement statement : block.statements()) {
 			switch (statement) {
 				case Block s -> statements.add(convert(s));
-				case EmptyStatement s -> {
+				case EmptyStatement ignored -> {
 				}
 				case ExpressionStatement s -> statements.add(convert(s));
 				case IfStatement s -> statements.add(convert(s));
@@ -103,7 +103,7 @@ public record FunctionScope(
 	public SStatement convert(Statement statement) throws SemanticException {
 		return switch (statement) {
 			case Block s -> convert(s);
-			case EmptyStatement s -> new SBlock();
+			case EmptyStatement ignored -> new SBlock();
 			case ExpressionStatement s -> convert(s);
 			case IfStatement s -> convert(s);
 			case ReturnStatement s -> convert(s);
