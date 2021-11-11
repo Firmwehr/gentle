@@ -92,6 +92,12 @@ public class TypecheckVisitor implements Visitor<Void> {
 
 	@Override
 	public Optional<Void> visit(SNewArrayExpression newArrayExpression) throws SemanticException {
+		// This shouldn't happen since the parser should never produce a NewArrayExpression with array level 0, but
+		// better check again to be sure
+		if (newArrayExpression.type().arrayLevel() == 0) {
+			throw new IllegalArgumentException("Creating non-array array");
+		}
+
 		assertIsInt(newArrayExpression.size());
 
 		return Visitor.super.visit(newArrayExpression);
