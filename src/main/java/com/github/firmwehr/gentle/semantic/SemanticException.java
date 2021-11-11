@@ -6,6 +6,7 @@ import com.github.firmwehr.gentle.util.Pair;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class SemanticException extends Exception {
 	private final Source source;
@@ -56,9 +57,9 @@ public class SemanticException extends Exception {
 
 		description.ifPresent(s -> builder.append("\n").append(s));
 
-		for (Pair<SourceSpan, String> annotation : annotations) {
-			builder.append("\n").append(source.formatMessageAt(annotation.first(), annotation.second()));
-		}
+		builder.append(annotations.stream()
+			.map(annotation -> "\n" + source.formatMessageAt(annotation.first(), annotation.second()))
+			.collect(Collectors.joining("\n")));
 
 		return builder.toString();
 	}
