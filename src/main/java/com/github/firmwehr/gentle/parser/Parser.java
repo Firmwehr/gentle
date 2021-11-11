@@ -530,22 +530,24 @@ public class Parser {
 				arrayLevel++;
 			}
 
+			SourceSpan typeSpan = SourceSpan.from(basicType.sourceSpan(), end.sourceSpan());
 			SourceSpan span = SourceSpan.from(start.sourceSpan(), end.sourceSpan());
-			return new NewArrayExpression(new Type(basicType, arrayLevel), size, span);
+			return new NewArrayExpression(new Type(basicType, arrayLevel, typeSpan), size, span);
 		}
 	}
 
 	private Type parseType() throws ParseException {
 		BasicType basicType = parseBasicType();
 
+		SourceSpan end = basicType.sourceSpan();
 		int arrayLevel = 0;
 		while (tokens.expecting(ExpectedToken.LEFT_BRACKET).peek().isOperator(Operator.LEFT_BRACKET)) {
 			tokens.take();
-			tokens.expecting(ExpectedToken.RIGHT_BRACKET).takeOperator(Operator.RIGHT_BRACKET);
+			end = tokens.expecting(ExpectedToken.RIGHT_BRACKET).takeOperator(Operator.RIGHT_BRACKET).sourceSpan();
 			arrayLevel++;
 		}
 
-		return new Type(basicType, arrayLevel);
+		return new Type(basicType, arrayLevel, SourceSpan.from(basicType.sourceSpan(), end));
 	}
 
 	private void expectingBasicType() {
@@ -560,9 +562,9 @@ public class Parser {
 		if (identToken.isPresent()) {
 			type = new IdentType(Ident.fromToken(identToken.get()));
 		} else if (token.isKeyword(Keyword.INT)) {
-			type = new IntType();
+			type = new IntType(token.sourceSpan());
 		} else if (token.isKeyword(Keyword.BOOLEAN)) {
-			type = new BooleanType();
+			type = new BooleanType(token.sourceSpan());
 		} else if (token.isKeyword(Keyword.VOID)) {
 			type = new VoidType(token.sourceSpan());
 		} else {
