@@ -10,6 +10,7 @@ import com.github.firmwehr.gentle.semantic.ast.basictype.SBasicType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SBooleanType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SClassType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SIntType;
+import com.github.firmwehr.gentle.semantic.ast.basictype.SStringType;
 import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidyType;
@@ -24,7 +25,13 @@ public final class Util {
 	) throws SemanticException {
 		SBasicType basicType = switch (type.basicType()) {
 			case BooleanType t -> new SBooleanType();
-			case IdentType t -> new SClassType(classes.get(t.name()));
+			case IdentType t -> {
+				if (t.name().ident().equals("String")) {
+					yield new SStringType();
+				} else {
+					yield new SClassType(classes.get(t.name()));
+				}
+			}
 			case IntType t -> new SIntType();
 			case VoidType t -> throw new SemanticException(source, t.sourceSpan(), "void not allowed here");
 		};
@@ -35,16 +42,10 @@ public final class Util {
 	public static SVoidyType voidyTypeFromParserType(
 		Source source, Namespace<SClassDeclaration> classes, Type type
 	) throws SemanticException {
-		return switch (type.basicType()) {
-			case BooleanType t -> new SNormalType(new SBooleanType(), type.arrayLevel());
-			case IdentType t -> new SNormalType(new SClassType(classes.get(t.name())), type.arrayLevel());
-			case IntType t -> new SNormalType(new SIntType(), type.arrayLevel());
-			case VoidType t -> {
-				if (type.arrayLevel() > 0) {
-					throw new SemanticException(source, t.sourceSpan(), "void not allowed here");
-				}
-				yield new SVoidType();
-			}
-		};
+		if (type.arrayLevel() == 0 && type.basicType() instanceof VoidType) {
+			return new SVoidType();
+		} else {
+			return normalTypeFromParserType(source, classes, type);
+		}
 	}
 }
