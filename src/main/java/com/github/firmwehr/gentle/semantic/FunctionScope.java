@@ -29,9 +29,7 @@ import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SField;
 import com.github.firmwehr.gentle.semantic.ast.SMethod;
-import com.github.firmwehr.gentle.semantic.ast.basictype.SBooleanType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SClassType;
-import com.github.firmwehr.gentle.semantic.ast.basictype.SIntType;
 import com.github.firmwehr.gentle.semantic.ast.expression.SArrayAccessExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SBinaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SBooleanValueExpression;
@@ -138,8 +136,8 @@ public record FunctionScope(
 			SExpression lhs = new SLocalVariableExpression(decl, statement.name().sourceSpan());
 			SExpression rhs = convert(statement.value().get().expression());
 			SourceSpan span = SourceSpan.from(lhs.sourceSpan(), statement.value().get().parenSourceSpan());
-			return Optional.of(new SExpressionStatement(
-				new SBinaryOperatorExpression(lhs, rhs, BinaryOperator.ASSIGN, decl.getType(), span)));
+			return Optional.of(
+				new SExpressionStatement(new SBinaryOperatorExpression(lhs, rhs, BinaryOperator.ASSIGN, span)));
 		} else {
 			return Optional.empty();
 		}
@@ -199,14 +197,7 @@ public record FunctionScope(
 		SExpression rhs = convert(expr.rhs());
 		SExpression lhs = convert(expr.lhs());
 
-		SExprType type = switch (expr.operator()) {
-			case ASSIGN -> rhs.type();
-			case LOGICAL_OR, LOGICAL_AND, EQUAL, NOT_EQUAL, LESS_THAN, LESS_OR_EQUAL, GREATER_THAN, GREATER_OR_EQUAL -> new SNormalType(
-				new SBooleanType());
-			case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> new SNormalType(new SIntType());
-		};
-
-		return new SBinaryOperatorExpression(lhs, rhs, expr.operator(), type, expr.sourceSpan());
+		return new SBinaryOperatorExpression(lhs, rhs, expr.operator(), expr.sourceSpan());
 	}
 
 	SBooleanValueExpression convert(BooleanLiteralExpression expr) {
