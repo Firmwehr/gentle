@@ -4,7 +4,6 @@ import com.github.firmwehr.gentle.parser.ast.Ident;
 import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 import com.github.firmwehr.gentle.source.SourceSpan;
 
-@SuppressWarnings("ClassCanBeRecord")
 public class LocalVariableDeclaration {
 	private final SNormalType type;
 	private final SourceSpan typeSpan;

@@ -20,7 +20,6 @@ import java.util.Optional;
  *     <li>An array access, i.e. {@code foo[20] = 20}</li>
  * </ul>
  */
-@SuppressWarnings("ClassCanBeRecord")
 public class AssignmentLValueVisitor implements Visitor<Void> {
 	private final Source source;
 

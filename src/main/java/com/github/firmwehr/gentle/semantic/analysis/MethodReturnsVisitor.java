@@ -7,6 +7,7 @@ import com.github.firmwehr.gentle.semantic.ast.statement.SBlock;
 import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SReturnStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SStatement;
+import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
 import com.github.firmwehr.gentle.source.Source;
 
 import java.util.Optional;
@@ -22,7 +23,6 @@ import java.util.Optional;
  * </ol>
  * Additionally, the {@link SReturnStatement} is marked to always return and acts as the starting point.
  */
-@SuppressWarnings("ClassCanBeRecord")
 public class MethodReturnsVisitor implements Visitor<MethodReturnsVisitor.Returns> {
 	private final Source source;
 
@@ -58,6 +58,13 @@ public class MethodReturnsVisitor implements Visitor<MethodReturnsVisitor.Return
 			return Optional.empty();
 		}
 		return ifStatement.elseBody().get().accept(this);
+	}
+
+	@Override
+	public Optional<Returns> visit(SWhileStatement whileStatement) throws SemanticException {
+		// We do not need to visit a "while" statement as the condition might be false and therefore it won't
+		// *definitely* return.
+		return Optional.empty();
 	}
 
 	@Override

@@ -55,7 +55,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-@SuppressWarnings("ClassCanBeRecord")
 public class Parser {
 
 	private final Tokens tokens;

@@ -14,7 +14,6 @@ import java.util.Optional;
 /**
  * Ensures every {@link SExpressionStatement} has a side effect.
  */
-@SuppressWarnings("ClassCanBeRecord")
 public class SideEffectVisitor implements Visitor<Void> {
 	private final Source source;
 
