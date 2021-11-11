@@ -15,7 +15,6 @@ public record SMethod(
 	SVoidyType returnType,
 	SourceSpan returnTypeSpan,
 	List<LocalVariableDeclaration> parameters,
-	List<LocalVariableDeclaration> localVariables,
 	List<SStatement> body
 ) {
 	public static SMethod newMethod(
@@ -26,7 +25,6 @@ public record SMethod(
 		SourceSpan returnTypeSpan,
 		List<LocalVariableDeclaration> parameters
 	) {
-		return new SMethod(classDecl, isStatic, name, returnType, returnTypeSpan, parameters, new ArrayList<>(),
-			new ArrayList<>());
+		return new SMethod(classDecl, isStatic, name, returnType, returnTypeSpan, parameters, new ArrayList<>());
 	}
 }
