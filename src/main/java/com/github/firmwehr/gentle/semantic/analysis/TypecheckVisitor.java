@@ -67,18 +67,21 @@ public class TypecheckVisitor implements Visitor<Void> {
 	@Override
 	public Optional<Void> visit(SWhileStatement whileStatement) throws SemanticException {
 		assertIsBoolean(whileStatement.condition());
+
 		return Visitor.super.visit(whileStatement);
 	}
 
 	@Override
 	public Optional<Void> visit(SArrayAccessExpression arrayExpression) throws SemanticException {
 		assertIsInt(arrayExpression.expression());
+
 		return Visitor.super.visit(arrayExpression);
 	}
 
 	@Override
 	public Optional<Void> visit(SNewArrayExpression newArrayExpression) throws SemanticException {
 		assertIsInt(newArrayExpression.size());
+
 		return Visitor.super.visit(newArrayExpression);
 	}
 
@@ -87,6 +90,7 @@ public class TypecheckVisitor implements Visitor<Void> {
 		switch (unaryOperatorExpression.operator()) {
 			case LOGICAL_NOT, NEGATION -> assertIsBoolean(unaryOperatorExpression.expression());
 		}
+
 		return Visitor.super.visit(unaryOperatorExpression);
 	}
 
@@ -96,6 +100,7 @@ public class TypecheckVisitor implements Visitor<Void> {
 			case ASSIGN -> {
 				SExprType rhsType = binaryOperatorExpression.rhs().type();
 				SExprType lhsType = binaryOperatorExpression.lhs().type();
+
 				if (!rhsType.isAssignableTo(lhsType)) {
 					throw new SemanticException(source, null, "Assignment of incompatible type");
 				}
@@ -117,24 +122,26 @@ public class TypecheckVisitor implements Visitor<Void> {
 				assertIsInt(binaryOperatorExpression.rhs());
 			}
 		}
+
 		return Visitor.super.visit(binaryOperatorExpression);
 	}
 
 	@Override
 	public Optional<Void> visit(SSystemOutWriteExpression systemOutWriteExpression) throws SemanticException {
 		assertIsInt(systemOutWriteExpression.argument());
+
 		return Visitor.super.visit(systemOutWriteExpression);
 	}
 
 	@Override
 	public Optional<Void> visit(SSystemOutPrinlnExpression systemOutPrinlnExpression) throws SemanticException {
 		assertIsInt(systemOutPrinlnExpression.argument());
+
 		return Visitor.super.visit(systemOutPrinlnExpression);
 	}
 
 	@Override
 	public Optional<Void> visit(SMethodInvocationExpression methodInvocationExpression) throws SemanticException {
-
 		SMethod target = methodInvocationExpression.method();
 		List<LocalVariableDeclaration> parameters = target.parameters();
 		List<SExpression> arguments = methodInvocationExpression.arguments();
