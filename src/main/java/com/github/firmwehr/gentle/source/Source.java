@@ -117,14 +117,12 @@ public record Source(String content) {
 	}
 
 	private static void appendRespectingTab(StringBuilder builder, char guide, char toAppend) {
-		if (toAppend == '\t') {
-			toAppend = ' ';
-		}
+		char nonTabToAppend = (toAppend == '\t') ? ' ' : toAppend;
 
 		if (guide == '\t') {
-			builder.append(Character.toString(toAppend).repeat(TAB_WIDTH));
+			builder.append(Character.toString(nonTabToAppend).repeat(TAB_WIDTH));
 		} else {
-			builder.append(toAppend);
+			builder.append(nonTabToAppend);
 		}
 	}
 
