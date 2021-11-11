@@ -9,10 +9,14 @@ import com.github.firmwehr.gentle.source.SourceSpan;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * @param postfixSpan span from the beginning of the name to the closing parenthesis
+ */
 public record SMethodInvocationExpression(
 	SExpression expression,
 	SMethod method,
 	List<SExpression> arguments,
+	SourceSpan postfixSpan,
 	SourceSpan sourceSpan
 ) implements SExpression {
 	@Override

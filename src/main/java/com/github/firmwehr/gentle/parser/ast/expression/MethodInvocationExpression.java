@@ -10,6 +10,7 @@ public record MethodInvocationExpression(
 	Expression expression,
 	Ident name,
 	List<Expression> arguments,
+	SourceSpan postfixSpan,
 	SourceSpan sourceSpan
 ) implements Expression {
 	@Override

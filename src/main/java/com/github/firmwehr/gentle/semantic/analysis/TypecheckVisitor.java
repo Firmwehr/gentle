@@ -150,13 +150,23 @@ public class TypecheckVisitor implements Visitor<Void> {
 		List<LocalVariableDeclaration> parameters = target.parameters();
 		List<SExpression> arguments = methodInvocationExpression.arguments();
 
-		if (parameters.size() != arguments.size()) {
-			throw new SemanticException(source, null, "Received wrong number of arguments");
+		if (arguments.size() < parameters.size()) {
+			throw new SemanticException(source, methodInvocationExpression.postfixSpan(), "too few arguments",
+				target.name().sourceSpan(), "has " + parameters.size() + " parameters");
+		}
+		if (arguments.size() > parameters.size()) {
+			throw new SemanticException(source, methodInvocationExpression.postfixSpan(), "too many arguments",
+				target.name().sourceSpan(), "has " + parameters.size() + " parameters");
 		}
 
 		for (int i = 0; i < parameters.size(); i++) {
-			if (!arguments.get(i).type().isAssignableTo(parameters.get(i).getType())) {
-				throw new SemanticException(source, null, "Mismatched types at index " + i);
+			SExpression argument = arguments.get(i);
+			LocalVariableDeclaration parameter = parameters.get(i);
+
+			if (!argument.type().isAssignableTo(parameter.getType())) {
+				throw new SemanticException(source, methodInvocationExpression.postfixSpan(),
+					"invalid call, incompatible types", argument.sourceSpan(), "has type " + argument.type().format(),
+					parameter.getTypeSpan(), "expected this type");
 			}
 		}
 

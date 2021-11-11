@@ -266,7 +266,7 @@ public record FunctionScope(
 		// The SThisExpression doesn't really have a proper SourceSpan. Giving it the SMethodInvocationExpression's
 		// span probably makes the most sense.
 		return new SMethodInvocationExpression(new SThisExpression(currentClass.get(), expr.sourceSpan()), method,
-			arguments, expr.sourceSpan());
+			arguments, expr.sourceSpan(), expr.sourceSpan());
 	}
 
 	SMethodInvocationExpression convert(MethodInvocationExpression expr) throws SemanticException {
@@ -287,7 +287,7 @@ public record FunctionScope(
 			arguments.add(convert(argument));
 		}
 
-		return new SMethodInvocationExpression(expression, method, arguments, expr.sourceSpan());
+		return new SMethodInvocationExpression(expression, method, arguments, expr.postfixSpan(), expr.sourceSpan());
 	}
 
 	SNewArrayExpression convert(NewArrayExpression expr) throws SemanticException {

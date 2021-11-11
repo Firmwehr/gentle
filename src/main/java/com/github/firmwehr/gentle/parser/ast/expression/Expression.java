@@ -56,7 +56,8 @@ public sealed interface Expression extends PrettyPrint
 	}
 
 	default MethodInvocationExpression withCall(String name, Expression... arguments) {
-		return new MethodInvocationExpression(this, Ident.dummy(name), Arrays.asList(arguments), SourceSpan.dummy());
+		return new MethodInvocationExpression(this, Ident.dummy(name), Arrays.asList(arguments), SourceSpan.dummy(),
+			SourceSpan.dummy());
 	}
 
 	default ArrayAccessExpression withArrayAccess(Expression index) {

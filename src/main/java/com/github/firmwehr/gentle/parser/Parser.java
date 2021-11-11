@@ -407,8 +407,10 @@ public class Parser {
 			Ident name = parseIdent();
 			if (tokens.expecting(ExpectedToken.LEFT_PAREN).peek().isOperator(Operator.LEFT_PAREN)) {
 				Pair<List<Expression>, SourceSpan> pair = parseParenthesisedArguments();
+				SourceSpan postfixSpan = SourceSpan.from(name.sourceSpan(), pair.second());
 				SourceSpan span = SourceSpan.from(expression.parenSourceSpan(), pair.second());
-				return Optional.of(new MethodInvocationExpression(expression.expression(), name, pair.first(), span));
+				return Optional.of(
+					new MethodInvocationExpression(expression.expression(), name, pair.first(), postfixSpan, span));
 			} else {
 				SourceSpan span = SourceSpan.from(expression.parenSourceSpan(), name.sourceSpan());
 				return Optional.of(new FieldAccessExpression(expression.expression(), name, span));
