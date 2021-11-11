@@ -45,7 +45,7 @@ public class MethodReturnsVisitor implements Visitor<MethodReturnsVisitor.Return
 			}
 		}
 
-		throw new SemanticException(source, null, "Found path not leading to return");
+		throw new SemanticException(source, method.name().sourceSpan(), "missing return statement");
 	}
 
 	@Override

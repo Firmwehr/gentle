@@ -36,10 +36,11 @@ public class MainMethodLookupVisitor implements Visitor<Void> {
 			return Optional.empty();
 		}
 		if (this.foundMainMethod.isPresent()) {
-			throw new SemanticException(source, null, "Found second main method!");
+			throw new SemanticException(source, method.name().sourceSpan(), "duplicate main method",
+				foundMainMethod.get().name().sourceSpan(), "already defined here");
 		}
 		if (!method.name().ident().equals("main")) {
-			throw new SemanticException(source, null, "Only 'main' is allowed for static method names");
+			throw new SemanticException(source, method.name().sourceSpan(), "main method must be named 'main'");
 		}
 
 		if (!(method.returnType() instanceof SVoidType)) {
