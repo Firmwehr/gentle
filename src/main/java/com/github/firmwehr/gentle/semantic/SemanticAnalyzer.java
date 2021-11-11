@@ -7,11 +7,6 @@ import com.github.firmwehr.gentle.parser.ast.MainMethod;
 import com.github.firmwehr.gentle.parser.ast.Method;
 import com.github.firmwehr.gentle.parser.ast.Parameter;
 import com.github.firmwehr.gentle.parser.ast.Program;
-import com.github.firmwehr.gentle.parser.ast.Type;
-import com.github.firmwehr.gentle.parser.ast.basictype.BooleanType;
-import com.github.firmwehr.gentle.parser.ast.basictype.IdentType;
-import com.github.firmwehr.gentle.parser.ast.basictype.IntType;
-import com.github.firmwehr.gentle.parser.ast.basictype.VoidType;
 import com.github.firmwehr.gentle.semantic.analysis.AssignmentLValueVisitor;
 import com.github.firmwehr.gentle.semantic.analysis.MainMethodLookupVisitor;
 import com.github.firmwehr.gentle.semantic.analysis.MethodReturnsVisitor;
@@ -22,10 +17,6 @@ import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SField;
 import com.github.firmwehr.gentle.semantic.ast.SMethod;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
-import com.github.firmwehr.gentle.semantic.ast.basictype.SBasicType;
-import com.github.firmwehr.gentle.semantic.ast.basictype.SBooleanType;
-import com.github.firmwehr.gentle.semantic.ast.basictype.SClassType;
-import com.github.firmwehr.gentle.semantic.ast.basictype.SIntType;
 import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidyType;
@@ -75,52 +66,24 @@ public class SemanticAnalyzer {
 		}
 	}
 
-	private SNormalType normalTypeFromParserType(Namespace<SClassDeclaration> classes, Type type)
-		throws SemanticException {
-
-		SBasicType basicType = switch (type.basicType()) {
-			case BooleanType t -> new SBooleanType();
-			case IdentType t -> new SClassType(classes.get(t.name()));
-			case IntType t -> new SIntType();
-			case VoidType t -> throw new SemanticException(source, t.sourceSpan(), "void not allowed here");
-		};
-
-		return new SNormalType(basicType, type.arrayLevel());
-	}
-
-	private SVoidyType voidyTypeFromParserType(Namespace<SClassDeclaration> classes, Type type)
-		throws SemanticException {
-		return switch (type.basicType()) {
-			case BooleanType t -> new SNormalType(new SBooleanType(), type.arrayLevel());
-			case IdentType t -> new SNormalType(new SClassType(classes.get(t.name())), type.arrayLevel());
-			case IntType t -> new SNormalType(new SIntType(), type.arrayLevel());
-			case VoidType t -> {
-				if (type.arrayLevel() > 0) {
-					throw new SemanticException(source, t.sourceSpan(), "void not allowed here");
-				}
-				yield new SVoidType();
-			}
-		};
-	}
-
 	private void addFieldsAndFunctions(Namespace<SClassDeclaration> classes) throws SemanticException {
 		for (ClassDeclaration classDecl : program.classes()) {
 			SClassDeclaration sClassDecl = classes.get(classDecl.name());
 
 			for (Field field : classDecl.fields()) {
 				Ident name = field.name();
-				SNormalType type = normalTypeFromParserType(classes, field.type());
+				SNormalType type = Util.normalTypeFromParserType(source, classes, field.type());
 				SField sField = new SField(sClassDecl, name, type);
 				sClassDecl.fields().put(name, sField);
 			}
 
 			for (Method method : classDecl.methods()) {
 				Ident name = method.name();
-				SVoidyType returnType = voidyTypeFromParserType(classes, method.returnType());
+				SVoidyType returnType = Util.voidyTypeFromParserType(source, classes, method.returnType());
 
 				List<LocalVariableDeclaration> parameters = new ArrayList<>();
 				for (Parameter parameter : method.parameters()) {
-					SNormalType type = normalTypeFromParserType(classes, parameter.type());
+					SNormalType type = Util.normalTypeFromParserType(source, classes, parameter.type());
 					parameters.add(new LocalVariableDeclaration(type, parameter.name()));
 				}
 
@@ -131,7 +94,7 @@ public class SemanticAnalyzer {
 			for (MainMethod mainMethod : classDecl.mainMethods()) {
 				Ident name = mainMethod.name();
 
-				SNormalType paramType = normalTypeFromParserType(classes, mainMethod.parameter().type());
+				SNormalType paramType = Util.normalTypeFromParserType(source, classes, mainMethod.parameter().type());
 				Ident paramName = mainMethod.parameter().name();
 				LocalVariableDeclaration parameter = new LocalVariableDeclaration(paramType, paramName);
 

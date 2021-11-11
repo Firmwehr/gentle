@@ -1,10 +1,5 @@
 package com.github.firmwehr.gentle.semantic;
 
-import com.github.firmwehr.gentle.parser.ast.Type;
-import com.github.firmwehr.gentle.parser.ast.basictype.BooleanType;
-import com.github.firmwehr.gentle.parser.ast.basictype.IdentType;
-import com.github.firmwehr.gentle.parser.ast.basictype.IntType;
-import com.github.firmwehr.gentle.parser.ast.basictype.VoidType;
 import com.github.firmwehr.gentle.parser.ast.expression.ArrayAccessExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperatorExpression;
@@ -33,7 +28,6 @@ import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SField;
 import com.github.firmwehr.gentle.semantic.ast.SMethod;
-import com.github.firmwehr.gentle.semantic.ast.basictype.SBasicType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SBooleanType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SClassType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SIntType;
@@ -132,8 +126,8 @@ public record FunctionScope(
 	}
 
 	Optional<SExpressionStatement> convert(LocalVariableDeclarationStatement statement) throws SemanticException {
-		LocalVariableDeclaration decl = new LocalVariableDeclaration(convertNormal(statement.type()),
-			statement.name());
+		SNormalType type = Util.normalTypeFromParserType(source, classes, statement.type());
+		LocalVariableDeclaration decl = new LocalVariableDeclaration(type, statement.name());
 
 		localVariables.put(decl.getDeclaration(), decl);
 
@@ -160,18 +154,6 @@ public record FunctionScope(
 
 	SWhileStatement convert(WhileStatement statement) throws SemanticException {
 		return new SWhileStatement(convert(statement.condition()), convert(statement.body()));
-	}
-
-	SNormalType convertNormal(Type type) throws SemanticException {
-		// TODO Reduce code duplication with SemanticAnalyzer?
-		SBasicType basicType = switch (type.basicType()) {
-			case BooleanType t -> new SBooleanType();
-			case IdentType t -> new SClassType(classes.get(t.name()));
-			case IntType t -> new SIntType();
-			case VoidType t -> throw new SemanticException(source, t.sourceSpan(), "void not allowed here");
-		};
-
-		return new SNormalType(basicType, type.arrayLevel());
 	}
 
 	SExpression convert(Expression expr) throws SemanticException {
@@ -300,7 +282,8 @@ public record FunctionScope(
 	}
 
 	SNewArrayExpression convert(NewArrayExpression expr) throws SemanticException {
-		return new SNewArrayExpression(convertNormal(expr.type()), convert(expr.size()));
+		SNormalType type = Util.normalTypeFromParserType(source, classes, expr.type());
+		return new SNewArrayExpression(type, convert(expr.size()));
 	}
 
 	SNewObjectExpression convert(NewObjectExpression expr) throws SemanticException {
