@@ -4,7 +4,6 @@ import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.Visitor;
 
 import java.util.List;
-import java.util.Optional;
 
 public record SBlock(List<SStatement> statements) implements SStatement {
 	public SBlock() {
@@ -12,7 +11,7 @@ public record SBlock(List<SStatement> statements) implements SStatement {
 	}
 
 	@Override
-	public <T> Optional<T> accept(Visitor<T> visitor) throws SemanticException {
+	public <T> T accept(Visitor<T> visitor) throws SemanticException {
 		return visitor.visit(this);
 	}
 }

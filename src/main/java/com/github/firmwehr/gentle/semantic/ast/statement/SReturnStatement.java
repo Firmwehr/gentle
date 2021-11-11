@@ -12,7 +12,7 @@ public record SReturnStatement(
 	SourceSpan sourceSpan
 ) implements SStatement {
 	@Override
-	public <T> Optional<T> accept(Visitor<T> visitor) throws SemanticException {
+	public <T> T accept(Visitor<T> visitor) throws SemanticException {
 		return visitor.visit(this);
 	}
 }

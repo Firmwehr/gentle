@@ -6,8 +6,6 @@ import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import com.github.firmwehr.gentle.source.SourceSpan;
 
-import java.util.Optional;
-
 public record SSystemOutPrintlnExpression(
 	SExpression argument,
 	SourceSpan sourceSpan
@@ -18,7 +16,7 @@ public record SSystemOutPrintlnExpression(
 	}
 
 	@Override
-	public <T> Optional<T> accept(Visitor<T> visitor) throws SemanticException {
+	public <T> T accept(Visitor<T> visitor) throws SemanticException {
 		return visitor.visit(this);
 	}
 }

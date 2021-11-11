@@ -27,136 +27,136 @@ import com.github.firmwehr.gentle.semantic.ast.statement.SReturnStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
 
-import java.util.Optional;
-
 public interface Visitor<T> {
 
+	T defaultReturnValue();
+
 	//<editor-fold desc="Expressions">
-	default Optional<T> visit(SArrayAccessExpression arrayExpression) throws SemanticException {
+	default T visit(SArrayAccessExpression arrayExpression) throws SemanticException {
 		arrayExpression.expression().accept(this);
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SBinaryOperatorExpression binaryOperatorExpression) throws SemanticException {
+	default T visit(SBinaryOperatorExpression binaryOperatorExpression) throws SemanticException {
 		binaryOperatorExpression.lhs().accept(this);
 		binaryOperatorExpression.rhs().accept(this);
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SBooleanValueExpression booleanValueExpression) throws SemanticException {
-		return Optional.empty();
+	default T visit(SBooleanValueExpression booleanValueExpression) throws SemanticException {
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SFieldAccessExpression fieldAccessExpression) throws SemanticException {
+	default T visit(SFieldAccessExpression fieldAccessExpression) throws SemanticException {
 		fieldAccessExpression.expression().accept(this);
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SIntegerValueExpression integerValueExpression) throws SemanticException {
-		return Optional.empty();
+	default T visit(SIntegerValueExpression integerValueExpression) throws SemanticException {
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SLocalVariableExpression localVariableExpression) throws SemanticException {
-		return Optional.empty();
+	default T visit(SLocalVariableExpression localVariableExpression) throws SemanticException {
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SMethodInvocationExpression methodInvocationExpression) throws SemanticException {
+	default T visit(SMethodInvocationExpression methodInvocationExpression) throws SemanticException {
 		methodInvocationExpression.expression().accept(this);
 		for (SExpression argument : methodInvocationExpression.arguments()) {
 			argument.accept(this);
 		}
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SNewArrayExpression newArrayExpression) throws SemanticException {
+	default T visit(SNewArrayExpression newArrayExpression) throws SemanticException {
 		newArrayExpression.size().accept(this);
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SNewObjectExpression newObjectExpression) throws SemanticException {
-		return Optional.empty();
+	default T visit(SNewObjectExpression newObjectExpression) throws SemanticException {
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SNullExpression nullExpression) throws SemanticException {
-		return Optional.empty();
+	default T visit(SNullExpression nullExpression) throws SemanticException {
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SSystemInReadExpression systemInReadExpression) throws SemanticException {
-		return Optional.empty();
+	default T visit(SSystemInReadExpression systemInReadExpression) throws SemanticException {
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SSystemOutFlushExpression systemOutFlushExpression) throws SemanticException {
-		return Optional.empty();
+	default T visit(SSystemOutFlushExpression systemOutFlushExpression) throws SemanticException {
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SSystemOutPrintlnExpression systemOutPrintlnExpression) throws SemanticException {
+	default T visit(SSystemOutPrintlnExpression systemOutPrintlnExpression) throws SemanticException {
 		systemOutPrintlnExpression.argument().accept(this);
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SSystemOutWriteExpression systemOutWriteExpression) throws SemanticException {
+	default T visit(SSystemOutWriteExpression systemOutWriteExpression) throws SemanticException {
 		systemOutWriteExpression.argument().accept(this);
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SThisExpression thisExpression) throws SemanticException {
-		return Optional.empty();
+	default T visit(SThisExpression thisExpression) throws SemanticException {
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SUnaryOperatorExpression unaryOperatorExpression) throws SemanticException {
+	default T visit(SUnaryOperatorExpression unaryOperatorExpression) throws SemanticException {
 		unaryOperatorExpression.expression().accept(this);
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 	//</editor-fold>
 
 	//<editor-fold desc="Statements">
-	default Optional<T> visit(SBlock block) throws SemanticException {
+	default T visit(SBlock block) throws SemanticException {
 		for (SStatement sStatement : block.statements()) {
 			sStatement.accept(this);
 		}
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SExpressionStatement expressionStatement) throws SemanticException {
+	default T visit(SExpressionStatement expressionStatement) throws SemanticException {
 		expressionStatement.expression().accept(this);
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SIfStatement ifStatement) throws SemanticException {
+	default T visit(SIfStatement ifStatement) throws SemanticException {
 		ifStatement.condition().accept(this);
 		ifStatement.body().accept(this);
 		if (ifStatement.elseBody().isPresent()) {
 			ifStatement.elseBody().get().accept(this);
 		}
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SReturnStatement returnStatement) throws SemanticException {
+	default T visit(SReturnStatement returnStatement) throws SemanticException {
 		if (returnStatement.returnValue().isPresent()) {
 			returnStatement.returnValue().get().accept(this);
 		}
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SWhileStatement whileStatement) throws SemanticException {
+	default T visit(SWhileStatement whileStatement) throws SemanticException {
 		whileStatement.condition().accept(this);
 		whileStatement.body().accept(this);
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 	//</editor-fold>
 
-	default Optional<T> visit(SMethod method) throws SemanticException {
+	default T visit(SMethod method) throws SemanticException {
 		for (SStatement sStatement : method.body()) {
 			sStatement.accept(this);
 		}
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SField field) {
-		return Optional.empty();
+	default T visit(SField field) {
+		return defaultReturnValue();
 	}
 
-	default Optional<T> visit(SClassDeclaration classDeclaration) throws SemanticException {
+	default T visit(SClassDeclaration classDeclaration) throws SemanticException {
 		for (SField sField : classDeclaration.fields().getAll()) {
 			visit(sField);
 		}
@@ -164,6 +164,6 @@ public interface Visitor<T> {
 			visit(sMethod);
 		}
 
-		return Optional.empty();
+		return defaultReturnValue();
 	}
 }

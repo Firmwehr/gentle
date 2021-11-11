@@ -7,8 +7,6 @@ import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
 import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 import com.github.firmwehr.gentle.source.SourceSpan;
 
-import java.util.Optional;
-
 public record SIntegerValueExpression(
 	int value,
 	SourceSpan sourceSpan
@@ -19,7 +17,7 @@ public record SIntegerValueExpression(
 	}
 
 	@Override
-	public <T> Optional<T> accept(Visitor<T> visitor) throws SemanticException {
+	public <T> T accept(Visitor<T> visitor) throws SemanticException {
 		return visitor.visit(this);
 	}
 }

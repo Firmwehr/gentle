@@ -40,13 +40,18 @@ import java.util.Optional;
  *     <li>The returned value is assignable to the return type</li>
  * </ul>
  */
-public class TypecheckVisitor implements Visitor<Void> {
+public class TypecheckVisitor implements Visitor<Optional<Void>> {
 	private final Source source;
 
 	private SMethod currentMethod;
 
 	public TypecheckVisitor(Source source) {
 		this.source = source;
+	}
+
+	@Override
+	public Optional<Void> defaultReturnValue() {
+		return Optional.empty();
 	}
 
 	@Override

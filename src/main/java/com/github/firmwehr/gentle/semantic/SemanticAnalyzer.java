@@ -25,6 +25,7 @@ import com.github.firmwehr.gentle.source.SourceSpan;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class SemanticAnalyzer {
 	private final Source source;
@@ -138,7 +139,7 @@ public class SemanticAnalyzer {
 	 * @throws SemanticException if any type error is detected.
 	 */
 	void checkTypes(Namespace<SClassDeclaration> classes) throws SemanticException {
-		Visitor<Void> visitor = new TypecheckVisitor(source);
+		Visitor<Optional<Void>> visitor = new TypecheckVisitor(source);
 
 		for (SClassDeclaration declaration : classes.getAll()) {
 			visitor.visit(declaration);
@@ -153,7 +154,7 @@ public class SemanticAnalyzer {
 	 * @throws SemanticException if any statement does not have a side effect
 	 */
 	void checkSideEffects(Namespace<SClassDeclaration> classes) throws SemanticException {
-		Visitor<Void> visitor = new SideEffectVisitor(source);
+		Visitor<Optional<Void>> visitor = new SideEffectVisitor(source);
 
 		for (SClassDeclaration declaration : classes.getAll()) {
 			visitor.visit(declaration);
@@ -168,7 +169,7 @@ public class SemanticAnalyzer {
 	 * @throws SemanticException if any assignment assigns to something else
 	 */
 	void checkAssignments(Namespace<SClassDeclaration> classes) throws SemanticException {
-		Visitor<Void> visitor = new AssignmentLValueVisitor(source);
+		Visitor<Optional<Void>> visitor = new AssignmentLValueVisitor(source);
 
 		for (SClassDeclaration declaration : classes.getAll()) {
 			visitor.visit(declaration);

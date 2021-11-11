@@ -14,11 +14,16 @@ import java.util.Optional;
 /**
  * Ensures every {@link SExpressionStatement} has a side effect.
  */
-public class SideEffectVisitor implements Visitor<Void> {
+public class SideEffectVisitor implements Visitor<Optional<Void>> {
 	private final Source source;
 
 	public SideEffectVisitor(Source source) {
 		this.source = source;
+	}
+
+	@Override
+	public Optional<Void> defaultReturnValue() {
+		return Optional.empty();
 	}
 
 	@SuppressWarnings("DuplicateBranchesInSwitch")

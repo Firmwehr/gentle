@@ -20,11 +20,16 @@ import java.util.Optional;
  *     <li>An array access, i.e. {@code foo[20] = 20}</li>
  * </ul>
  */
-public class AssignmentLValueVisitor implements Visitor<Void> {
+public class AssignmentLValueVisitor implements Visitor<Optional<Void>> {
 	private final Source source;
 
 	public AssignmentLValueVisitor(Source source) {
 		this.source = source;
+	}
+
+	@Override
+	public Optional<Void> defaultReturnValue() {
+		return Optional.empty();
 	}
 
 	@Override

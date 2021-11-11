@@ -6,8 +6,6 @@ import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
 import com.github.firmwehr.gentle.source.SourceSpan;
 
-import java.util.Optional;
-
 public record SUnaryOperatorExpression(
 	UnaryOperator operator,
 	SExpression expression,
@@ -19,7 +17,7 @@ public record SUnaryOperatorExpression(
 	}
 
 	@Override
-	public <T> Optional<T> accept(Visitor<T> visitor) throws SemanticException {
+	public <T> T accept(Visitor<T> visitor) throws SemanticException {
 		return visitor.visit(this);
 	}
 }

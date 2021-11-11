@@ -5,8 +5,6 @@ import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
 import com.github.firmwehr.gentle.source.SourceSpan;
 
-import java.util.Optional;
-
 public sealed interface SExpression
 	permits SArrayAccessExpression, SBinaryOperatorExpression, SBooleanValueExpression, SFieldAccessExpression,
 	        SIntegerValueExpression, SLocalVariableExpression, SMethodInvocationExpression, SNewArrayExpression,
@@ -17,5 +15,5 @@ public sealed interface SExpression
 
 	SExprType type();
 
-	<T> Optional<T> accept(Visitor<T> visitor) throws SemanticException;
+	<T> T accept(Visitor<T> visitor) throws SemanticException;
 }

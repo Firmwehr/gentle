@@ -20,7 +20,7 @@ import java.util.Optional;
  *     <li>The parameter is never used in the method</li>
  * </ul>
  */
-public class MainMethodLookupVisitor implements Visitor<Void> {
+public class MainMethodLookupVisitor implements Visitor<Optional<Void>> {
 	private final Source source;
 
 	private Optional<SMethod> foundMainMethod = Optional.empty();
@@ -28,6 +28,11 @@ public class MainMethodLookupVisitor implements Visitor<Void> {
 
 	public MainMethodLookupVisitor(Source source) {
 		this.source = source;
+	}
+
+	@Override
+	public Optional<Void> defaultReturnValue() {
+		return Optional.empty();
 	}
 
 	@Override

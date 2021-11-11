@@ -10,8 +10,6 @@ import com.github.firmwehr.gentle.semantic.ast.statement.SStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
 import com.github.firmwehr.gentle.source.Source;
 
-import java.util.Optional;
-
 /**
  * Ensures every method is either void or every path leads to a return statement.
  * <br>
@@ -23,7 +21,7 @@ import java.util.Optional;
  * </ol>
  * Additionally, the {@link SReturnStatement} is marked to always return and acts as the starting point.
  */
-public class MethodReturnsVisitor implements Visitor<MethodReturnsVisitor.Returns> {
+public class MethodReturnsVisitor implements Visitor<MethodReturnsVisitor.AlwaysReturns> {
 	private final Source source;
 
 	public MethodReturnsVisitor(Source source) {
@@ -31,17 +29,22 @@ public class MethodReturnsVisitor implements Visitor<MethodReturnsVisitor.Return
 	}
 
 	@Override
-	public Optional<Returns> visit(SMethod method) throws SemanticException {
+	public AlwaysReturns defaultReturnValue() {
+		return AlwaysReturns.NO;
+	}
+
+	@Override
+	public AlwaysReturns visit(SMethod method) throws SemanticException {
 		// We do not need to check void methods. If they have a return statement it is verified by type
 		// checking and any path not explicitly returning just implicitly ends.
 		if (method.returnType().asExprType().asVoidType().isPresent()) {
-			return Optional.of(Returns.YES);
+			return AlwaysReturns.YES;
 		}
 
 		for (SStatement statement : method.body()) {
 			// This statement always returns so the rest is unreachable code, and we can bail out.
-			if (statement.accept(this).isPresent()) {
-				return Optional.of(Returns.YES);
+			if (statement.accept(this) == AlwaysReturns.YES) {
+				return AlwaysReturns.YES;
 			}
 		}
 
@@ -49,41 +52,42 @@ public class MethodReturnsVisitor implements Visitor<MethodReturnsVisitor.Return
 	}
 
 	@Override
-	public Optional<Returns> visit(SIfStatement ifStatement) throws SemanticException {
-		if (ifStatement.body().accept(this).isEmpty()) {
-			return Optional.empty();
+	public AlwaysReturns visit(SIfStatement ifStatement) throws SemanticException {
+		if (ifStatement.body().accept(this) == AlwaysReturns.NO) {
+			return AlwaysReturns.NO;
 		}
 		// The body always returns, but we have no else => This might not return if the condition isn't always true
 		if (ifStatement.elseBody().isEmpty()) {
-			return Optional.empty();
+			return AlwaysReturns.NO;
 		}
 		return ifStatement.elseBody().get().accept(this);
 	}
 
 	@Override
-	public Optional<Returns> visit(SWhileStatement whileStatement) throws SemanticException {
+	public AlwaysReturns visit(SWhileStatement whileStatement) throws SemanticException {
 		// We do not need to visit a "while" statement as the condition might be false and therefore it won't
 		// *definitely* return.
-		return Optional.empty();
+		return AlwaysReturns.NO;
 	}
 
 	@Override
-	public Optional<Returns> visit(SReturnStatement returnStatement) {
-		return Optional.of(Returns.YES);
+	public AlwaysReturns visit(SReturnStatement returnStatement) {
+		return AlwaysReturns.YES;
 	}
 
 	@Override
-	public Optional<Returns> visit(SBlock block) throws SemanticException {
+	public AlwaysReturns visit(SBlock block) throws SemanticException {
 		for (SStatement statement : block.statements()) {
 			// This statement always returns so the rest is unreachable code, and we can bail out.
-			if (statement.accept(this).isPresent()) {
-				return Optional.of(Returns.YES);
+			if (statement.accept(this) == AlwaysReturns.YES) {
+				return AlwaysReturns.YES;
 			}
 		}
-		return Optional.empty();
+		return AlwaysReturns.NO;
 	}
 
-	public enum Returns {
-		YES
+	public enum AlwaysReturns {
+		YES,
+		NO
 	}
 }

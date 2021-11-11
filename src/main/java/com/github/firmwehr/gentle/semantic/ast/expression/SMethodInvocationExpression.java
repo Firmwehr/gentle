@@ -7,7 +7,6 @@ import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
 import com.github.firmwehr.gentle.source.SourceSpan;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * @param postfixSpan span from the beginning of the name to the closing parenthesis
@@ -25,7 +24,7 @@ public record SMethodInvocationExpression(
 	}
 
 	@Override
-	public <T> Optional<T> accept(Visitor<T> visitor) throws SemanticException {
+	public <T> T accept(Visitor<T> visitor) throws SemanticException {
 		return visitor.visit(this);
 	}
 }
