@@ -29,11 +29,14 @@ public record SNormalType(
 
 	@Override
 	public boolean isAssignableTo(SExprType other) {
-		// FIXME: Respect array level
-		if (!(other instanceof SNormalType)) {
+		if (!(other instanceof SNormalType normalOther)) {
 			return false;
 		}
-		return basicType().isAssignableFrom(((SNormalType) other).basicType());
+
+		if (normalOther.arrayLevel() != arrayLevel()) {
+			return false;
+		}
+		return basicType().isAssignableFrom(normalOther.basicType());
 	}
 
 	public Optional<SNormalType> withDecrementedLevel() {
