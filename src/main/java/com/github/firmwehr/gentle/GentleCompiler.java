@@ -22,6 +22,8 @@ import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Set;
 
 public class GentleCompiler {
 
@@ -32,25 +34,28 @@ public class GentleCompiler {
 		LOGGER.info("Hello World, please be gentle UwU");
 		CommandArguments arguments = new CommandArgumentsParser().parseOrExit(args);
 
-		int flagsSet = 0;
+		Set<String> flagsSet = new HashSet<>();
 		if (arguments.echo()) {
-			flagsSet++;
+			flagsSet.add("echo");
 		}
 		if (arguments.lextest()) {
-			flagsSet++;
+			flagsSet.add("lextest");
 		}
 		if (arguments.parsetest()) {
-			flagsSet++;
+			flagsSet.add("parseTest");
 		}
 		if (arguments.printAst()) {
-			flagsSet++;
+			flagsSet.add("printAst");
 		}
 		if (arguments.check()) {
-			flagsSet++;
+			flagsSet.add("check");
 		}
 
-		if (flagsSet != 1) {
-			LOGGER.error("Conflicting flags");
+		if (flagsSet.isEmpty()) {
+			UserOutput.userError("No operation specified.");
+			System.exit(1);
+		} else if (flagsSet.size() != 1) {
+			UserOutput.userError("Conflicting flags set. Received the following mutually exclusive flags: " + flagsSet);
 			System.exit(1);
 		} else if (arguments.echo()) {
 			echoCommand(arguments.path());
