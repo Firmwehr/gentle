@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.semantic;
 
+import com.github.firmwehr.gentle.parser.ast.Ident;
 import com.github.firmwehr.gentle.parser.ast.expression.ArrayAccessExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperatorExpression;
@@ -41,6 +42,10 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SMethodInvocationExpre
 import com.github.firmwehr.gentle.semantic.ast.expression.SNewArrayExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNewObjectExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNullExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemInReadExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutFlushExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutPrintlnExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutWriteExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SThisExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SUnaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SBlock;
@@ -265,7 +270,12 @@ public record MethodScope(
 			arguments, expr.sourceSpan(), expr.sourceSpan());
 	}
 
-	SMethodInvocationExpression convert(MethodInvocationExpression expr) throws SemanticException {
+	SExpression convert(MethodInvocationExpression expr) throws SemanticException {
+		Optional<SExpression> stdlibExpr = convertToStdlibCall(expr);
+		if (stdlibExpr.isPresent()) {
+			return stdlibExpr.get();
+		}
+
 		SExpression expression = convert(expr.expression());
 
 		Optional<SClassType> classType = typeToClassType(expression.type());
@@ -279,12 +289,83 @@ public record MethodScope(
 			throw new SemanticException(source, expr.sourceSpan(), "calling main method");
 		}
 
-		List<SExpression> arguments = new ArrayList<>();
-		for (Expression argument : expr.arguments()) {
-			arguments.add(convert(argument));
+		List<SExpression> arguments = convertArguments(expr.arguments());
+		return new SMethodInvocationExpression(expression, method, arguments, expr.postfixSpan(), expr.sourceSpan());
+	}
+
+	List<SExpression> convertArguments(List<Expression> arguments) throws SemanticException {
+		List<SExpression> result = new ArrayList<>();
+		for (Expression argument : arguments) {
+			result.add(convert(argument));
+		}
+		return result;
+	}
+
+	Optional<SExpression> convertToStdlibCall(MethodInvocationExpression expr) throws SemanticException {
+		if (!(expr.expression() instanceof FieldAccessExpression fieldAccessExpr)) {
+			return Optional.empty();
+		}
+		if (!(fieldAccessExpr.expression() instanceof IdentExpression identExpr)) {
+			return Optional.empty();
+		}
+		if (!identExpr.name().ident().equals("System")) {
+			return Optional.empty();
 		}
 
-		return new SMethodInvocationExpression(expression, method, arguments, expr.postfixSpan(), expr.sourceSpan());
+		boolean isType = classes.contains("System");
+		boolean isField = currentClass.map(decl -> decl.fields().contains("System")).orElse(false);
+		boolean isLocalVar = localVariables.contains("System");
+		if (isType || isField || isLocalVar) {
+			return Optional.empty();
+		}
+
+		Ident fieldName = fieldAccessExpr.name();
+		Ident methodName = expr.name();
+		List<SExpression> arguments = convertArguments(expr.arguments());
+
+		return Optional.of(switch (fieldName.ident()) {
+			case "in" -> {
+				if (methodName.ident().equals("read")) {
+					if (!arguments.isEmpty()) {
+						throw new SemanticException(source, expr.sourceSpan(),
+							"invalid stdlib call, System.in.read takes no arguments");
+					}
+					yield new SSystemInReadExpression(expr.sourceSpan());
+				} else {
+					throw new SemanticException(source, expr.sourceSpan(), "invalid stdlib call",
+						methodName.sourceSpan(), "no such method");
+				}
+			}
+			case "out" -> {
+				switch (methodName.ident()) {
+					case "println" -> {
+						if (arguments.size() != 1) {
+							throw new SemanticException(source, expr.sourceSpan(),
+								"invalid stdlib call, System.out.println takes a single argument");
+						}
+						yield new SSystemOutPrintlnExpression(arguments.get(0), expr.sourceSpan());
+					}
+					case "write" -> {
+						if (arguments.size() != 1) {
+							throw new SemanticException(source, expr.sourceSpan(),
+								"invalid stdlib call, System.out.write takes a single argument");
+						}
+						yield new SSystemOutWriteExpression(arguments.get(0), expr.sourceSpan());
+					}
+					case "flush" -> {
+						if (!arguments.isEmpty()) {
+							throw new SemanticException(source, expr.sourceSpan(),
+								"invalid stdlib call, System.out.flush takes no arguments");
+						}
+						yield new SSystemOutFlushExpression(expr.sourceSpan());
+					}
+					default -> throw new SemanticException(source, expr.sourceSpan(), "invalid stdlib call",
+						methodName.sourceSpan(), "no such method");
+				}
+			}
+			default -> throw new SemanticException(source, expr.sourceSpan(), "invalid stdlib call",
+				fieldName.sourceSpan(), "no such field");
+		});
 	}
 
 	SNewArrayExpression convert(NewArrayExpression expr) throws SemanticException {

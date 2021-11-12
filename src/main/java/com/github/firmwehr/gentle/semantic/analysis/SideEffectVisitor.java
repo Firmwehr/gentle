@@ -6,6 +6,10 @@ import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.expression.SBinaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SMethodInvocationExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemInReadExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutFlushExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutPrintlnExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutWriteExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SExpressionStatement;
 import com.github.firmwehr.gentle.source.Source;
 
@@ -33,6 +37,10 @@ public class SideEffectVisitor implements Visitor<Optional<Void>> {
 		return switch (expression) {
 			case SMethodInvocationExpression ignored -> Optional.empty();
 			case SBinaryOperatorExpression op && op.operator() == BinaryOperator.ASSIGN -> Optional.empty();
+			case SSystemInReadExpression ignored -> Optional.empty();
+			case SSystemOutPrintlnExpression ignored -> Optional.empty();
+			case SSystemOutWriteExpression ignored -> Optional.empty();
+			case SSystemOutFlushExpression ignored -> Optional.empty();
 			default -> throw new SemanticException(source, expression.sourceSpan(), "must have side effects");
 		};
 	}

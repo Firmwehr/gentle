@@ -71,6 +71,13 @@ public class StackedNamespace<T> {
 		}
 	}
 
+	public boolean contains(String name) {
+		if (scopes.isEmpty()) {
+			return false;
+		}
+		return scopes.peekFirst().get(name) != null;
+	}
+
 	private record Entry<T>(
 		Ident ident,
 		T value

@@ -42,6 +42,10 @@ public class Namespace<T> {
 		}
 	}
 
+	public boolean contains(String name) {
+		return content.containsKey(name);
+	}
+
 	public Set<T> getAll() {
 		return content.values().stream().map(Entry::value).collect(Collectors.toSet());
 	}
