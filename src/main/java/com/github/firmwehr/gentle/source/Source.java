@@ -222,11 +222,14 @@ public record Source(String content) {
 		codeLine.append(("%" + lineNrWidth + "d").formatted(endLineNr)).append(" | | ");
 		noteLine.append(" ".repeat(lineNrWidth)).append(" | `-");
 
-		for (int i = 0; i < line.length() && i < end - 1; i++) {
+		for (int i = 0; i < line.length(); i++) {
 			char c = line.charAt(i);
 
 			appendRespectingTab(codeLine, c, c);
-			appendRespectingTab(noteLine, c, '^');
+
+			if (i < end - 1) {
+				appendRespectingTab(noteLine, c, '^');
+			}
 		}
 
 		builder.append(codeLine).append("\n").append(noteLine);
