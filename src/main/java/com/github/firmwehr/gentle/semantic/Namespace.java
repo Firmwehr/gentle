@@ -37,8 +37,11 @@ public class Namespace<T> {
 		}
 	}
 
+	/**
+	 * @return the raw values in this namespace. This collection will always be distinct.
+	 */
 	public Collection<T> getAll() {
-		// Hashing recursive records is dangerous...
+		// The values might be recursive and fail to compute a usable hashcode
 		return content.values().stream().map(Entry::value).collect(Collectors.toList());
 	}
 

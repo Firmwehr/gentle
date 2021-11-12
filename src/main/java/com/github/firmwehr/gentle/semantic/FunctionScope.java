@@ -232,7 +232,7 @@ public record FunctionScope(
 					expr.sourceSpan());
 			}
 		} else {
-			return new SLocalVariableExpression(localVariables().get(expr.name()), expr.sourceSpan());
+			return new SLocalVariableExpression(localVariables.get(expr.name()), expr.sourceSpan());
 		}
 	}
 
