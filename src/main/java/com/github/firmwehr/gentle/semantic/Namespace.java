@@ -9,6 +9,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * A map from string to element that rejects duplicate entries by throwing a {@link SemanticException}.
+ *
+ * @param <T> the type of the elements within
+ */
 public class Namespace<T> {
 	private final Source source;
 	private final Map<String, Entry<T>> content;
