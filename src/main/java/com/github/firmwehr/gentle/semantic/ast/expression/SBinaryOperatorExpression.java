@@ -18,7 +18,7 @@ public record SBinaryOperatorExpression(
 	@Override
 	public SExprType type() {
 		return switch (operator) {
-			case ASSIGN -> rhs.type();
+			case ASSIGN -> lhs.type();
 			case LOGICAL_OR, LOGICAL_AND, EQUAL, NOT_EQUAL, LESS_THAN, LESS_OR_EQUAL, GREATER_THAN, GREATER_OR_EQUAL -> new SNormalType(
 				new SBooleanType());
 			case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> new SNormalType(new SIntType());
