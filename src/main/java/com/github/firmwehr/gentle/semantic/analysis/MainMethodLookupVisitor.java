@@ -57,8 +57,8 @@ public class MainMethodLookupVisitor implements Visitor<Optional<Void>> {
 
 		LocalVariableDeclaration parameter = method.parameters().get(0);
 
-		if (parameter.getType().arrayLevel() != 1 || parameter.getType().basicType().asStringType().isEmpty()) {
-			throw new SemanticException(source, parameter.getTypeSpan(), "expected String[]");
+		if (parameter.type().arrayLevel() != 1 || parameter.type().basicType().asStringType().isEmpty()) {
+			throw new SemanticException(source, parameter.typeSpan(), "expected String[]");
 		}
 
 		this.foundMainMethod = Optional.of(method);
@@ -73,7 +73,7 @@ public class MainMethodLookupVisitor implements Visitor<Optional<Void>> {
 
 		if (mainMethodParameter.map(it -> it == localVariable).orElse(false)) {
 			throw new SemanticException(source, localVariableExpression.sourceSpan(),
-				"illegal use of main method parameter", localVariable.getDeclaration().sourceSpan(), "declared here");
+				"illegal use of main method parameter", localVariable.declaration().sourceSpan(), "declared here");
 		}
 
 		return Visitor.super.visit(localVariableExpression);

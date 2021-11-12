@@ -12,7 +12,7 @@ public record SLocalVariableExpression(
 ) implements SExpression {
 	@Override
 	public SExprType type() {
-		return localVariable.getType();
+		return localVariable.type();
 	}
 
 	@Override

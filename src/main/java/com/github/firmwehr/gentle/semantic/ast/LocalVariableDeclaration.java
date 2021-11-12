@@ -9,31 +9,11 @@ import com.github.firmwehr.gentle.source.SourceSpan;
  * <br>
  * This class uses <em>reference equality</em> semantics.
  */
-public class LocalVariableDeclaration {
-	private final SNormalType type;
-	private final SourceSpan typeSpan;
-	private final Ident declaration;
-
-	public LocalVariableDeclaration(
-		SNormalType type, SourceSpan typeSpan, Ident declaration
-	) {
-		this.type = type;
-		this.typeSpan = typeSpan;
-		this.declaration = declaration;
-	}
-
-	public SNormalType getType() {
-		return type;
-	}
-
-	public SourceSpan getTypeSpan() {
-		return typeSpan;
-	}
-
-	public Ident getDeclaration() {
-		return declaration;
-	}
-
+public record LocalVariableDeclaration(
+	SNormalType type,
+	SourceSpan typeSpan,
+	Ident declaration
+) {
 	@Override
 	public boolean equals(Object o) {
 		return this == o;

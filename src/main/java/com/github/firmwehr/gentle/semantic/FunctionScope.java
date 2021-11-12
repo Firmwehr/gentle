@@ -72,7 +72,7 @@ public record FunctionScope(
 
 		StackedNamespace<LocalVariableDeclaration> localVariables = new StackedNamespace<>(source);
 		for (LocalVariableDeclaration parameter : method.parameters()) {
-			localVariables.put(parameter.getDeclaration(), parameter);
+			localVariables.put(parameter.declaration(), parameter);
 		}
 
 		return new FunctionScope(source, classes, currentClass, localVariables);
@@ -130,7 +130,7 @@ public record FunctionScope(
 		LocalVariableDeclaration decl =
 			new LocalVariableDeclaration(type, statement.type().sourceSpan(), statement.name());
 
-		localVariables.put(decl.getDeclaration(), decl);
+		localVariables.put(decl.declaration(), decl);
 
 		if (statement.value().isPresent()) {
 			SExpression lhs = new SLocalVariableExpression(decl, statement.name().sourceSpan());

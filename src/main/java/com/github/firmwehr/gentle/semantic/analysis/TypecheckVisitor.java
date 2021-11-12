@@ -189,10 +189,10 @@ public class TypecheckVisitor implements Visitor<Optional<Void>> {
 			SExpression argument = arguments.get(i);
 			LocalVariableDeclaration parameter = parameters.get(i);
 
-			if (!argument.type().isAssignableTo(parameter.getType())) {
+			if (!argument.type().isAssignableTo(parameter.type())) {
 				throw new SemanticException(source, methodInvocationExpression.postfixSpan(),
 					"invalid call, incompatible types", argument.sourceSpan(), "has type " + argument.type().format(),
-					parameter.getTypeSpan(), "expected this type");
+					parameter.typeSpan(), "expected this type");
 			}
 		}
 
