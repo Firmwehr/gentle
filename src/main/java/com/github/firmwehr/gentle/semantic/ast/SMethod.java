@@ -8,6 +8,11 @@ import com.github.firmwehr.gentle.source.SourceSpan;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A declaration of a method.
+ * <br>
+ * This class uses <em>reference equality</em> semantics.
+ */
 public record SMethod(
 	SClassDeclaration classDecl,
 	boolean isStatic,
@@ -26,5 +31,15 @@ public record SMethod(
 		List<LocalVariableDeclaration> parameters
 	) {
 		return new SMethod(classDecl, isStatic, name, returnType, returnTypeSpan, parameters, new ArrayList<>());
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		return o == this;
+	}
+
+	@Override
+	public int hashCode() {
+		return System.identityHashCode(this);
 	}
 }

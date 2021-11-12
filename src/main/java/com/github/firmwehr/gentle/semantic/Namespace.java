@@ -3,10 +3,10 @@ package com.github.firmwehr.gentle.semantic;
 import com.github.firmwehr.gentle.parser.ast.Ident;
 import com.github.firmwehr.gentle.source.Source;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Namespace<T> {
@@ -37,12 +37,8 @@ public class Namespace<T> {
 		}
 	}
 
-	/**
-	 * @return the raw values in this namespace. This collection will always be distinct.
-	 */
-	public Collection<T> getAll() {
-		// The values might be recursive and fail to compute a usable hashcode
-		return content.values().stream().map(Entry::value).collect(Collectors.toList());
+	public Set<T> getAll() {
+		return content.values().stream().map(Entry::value).collect(Collectors.toSet());
 	}
 
 	private static record Entry<T>(
