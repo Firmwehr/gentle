@@ -9,6 +9,16 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
 
+/**
+ * A namespace that maps strings to some value. This differs from a normal map, as it allows the user to {@link
+ * #enterScope() enter} and {@link #leaveScope() leave} scopes. When you enter a new scope, all your existing mappings
+ * are kept. Wenn you leave a scope, all mappings you added using {@link #put(Ident, Object)} while in that scope will
+ * be removed.
+ * <p>
+ * This implementation still allows for fast lookup by using a persistent map.
+ *
+ * @param <T> the type of the elements contained within
+ */
 public class StackedNamespace<T> {
 
 	private final Source source;
