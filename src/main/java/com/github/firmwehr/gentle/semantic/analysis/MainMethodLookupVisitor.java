@@ -48,6 +48,8 @@ public class MainMethodLookupVisitor implements Visitor<Optional<Void>> {
 			throw new SemanticException(source, method.name().sourceSpan(), "main method must be named 'main'");
 		}
 
+		// These two cases are already prevented by the grammar and parser, so if these checks are not successful,
+		// something went wrong in our code.
 		if (!(method.returnType() instanceof SVoidType)) {
 			throw new IllegalArgumentException("The main method must have a void return type");
 		}
