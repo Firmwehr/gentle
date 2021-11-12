@@ -58,13 +58,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public record FunctionScope(
+public record MethodScope(
 	Source source,
 	Namespace<SClassDeclaration> classes,
 	Optional<SClassDeclaration> currentClass,
 	StackedNamespace<LocalVariableDeclaration> localVariables
 ) {
-	public static FunctionScope fromMethod(Source source, Namespace<SClassDeclaration> classes, SMethod method)
+	public static MethodScope fromMethod(Source source, Namespace<SClassDeclaration> classes, SMethod method)
 		throws SemanticException {
 
 		Optional<SClassDeclaration> currentClass =
@@ -75,7 +75,7 @@ public record FunctionScope(
 			localVariables.put(parameter.declaration(), parameter);
 		}
 
-		return new FunctionScope(source, classes, currentClass, localVariables);
+		return new MethodScope(source, classes, currentClass, localVariables);
 	}
 
 	public SBlock convert(Block block) throws SemanticException {

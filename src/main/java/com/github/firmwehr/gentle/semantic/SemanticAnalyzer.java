@@ -116,13 +116,13 @@ public class SemanticAnalyzer {
 
 			for (Method method : classDecl.methods()) {
 				SMethod sMethod = sClassDecl.methods().get(method.name());
-				FunctionScope scope = FunctionScope.fromMethod(source, classes, sMethod);
+				MethodScope scope = MethodScope.fromMethod(source, classes, sMethod);
 				sMethod.body().addAll(scope.convert(method.body()).statements());
 			}
 
 			for (MainMethod mainMethod : classDecl.mainMethods()) {
 				SMethod sMethod = sClassDecl.methods().get(mainMethod.name());
-				FunctionScope scope = FunctionScope.fromMethod(source, classes, sMethod);
+				MethodScope scope = MethodScope.fromMethod(source, classes, sMethod);
 				sMethod.body().addAll(scope.convert(mainMethod.body()).statements());
 			}
 		}
