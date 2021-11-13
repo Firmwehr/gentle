@@ -234,6 +234,7 @@ public record Source(String content) {
 			char c = line.charAt(i);
 			appendRespectingTab(builder, c, c);
 		}
+		builder.append(ansi().reset());
 	}
 
 	private void formatLastLineOfMultilineMessage(
