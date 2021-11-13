@@ -524,4 +524,16 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 		);
 		// @formatter:on
 	}
+
+	// This wrapper allows us to give the parameterized test cases nice labels
+	public static record ParserTestCase(
+		String label,
+		String source,
+		Program expectedProgram
+	) {
+		@Override
+		public String toString() {
+			return label();
+		}
+	}
 }

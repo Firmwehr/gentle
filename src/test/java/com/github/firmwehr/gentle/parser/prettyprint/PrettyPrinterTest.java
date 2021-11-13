@@ -4,7 +4,6 @@ import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.parser.ParseException;
 import com.github.firmwehr.gentle.parser.Parser;
-import com.github.firmwehr.gentle.parser.ParserTestCase;
 import com.github.firmwehr.gentle.parser.ParserTestCaseProvider;
 import com.github.firmwehr.gentle.parser.ast.Program;
 import com.github.firmwehr.gentle.source.Source;
@@ -73,7 +72,7 @@ public class PrettyPrinterTest {
 
 	@ParameterizedTest
 	@ArgumentsSource(ParserTestCaseProvider.class)
-	public void format_shouldReturnParsableStrings(ParserTestCase testCase) throws ParseException, LexerException {
+	public void format_shouldReturnParsableStrings(ParserTestCaseProvider.ParserTestCase testCase) throws ParseException, LexerException {
 		Program program1 = parse(testCase.source());
 		String prettyPrinted = PrettyPrinter.format(program1);
 		Program program2 = parse(prettyPrinted);
