@@ -3,8 +3,12 @@ package com.github.firmwehr.gentle.source;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.fusesource.jansi.Ansi.ansi;
+
 public record Source(String content) {
 	private static final int TAB_WIDTH = 4;
+	public static final String ERROR_COLOR = ansi().fgRed().toString();
+	public static final String LINE_COLOR = ansi().fgBlue().toString();
 
 	/**
 	 * Find the beginning of the line a certain character is in. If the character is part of a linebreak, it belongs to
@@ -133,11 +137,19 @@ public record Source(String content) {
 		StringBuilder noteLine = new StringBuilder();
 
 		String lineNrStr = Integer.toString(lineNr);
-		codeLine.append(lineNrStr).append(" | ");
-		noteLine.append(" ".repeat(lineNrStr.length())).append(" | ");
+		codeLine.append(LINE_COLOR).append(lineNrStr).append(" | ").append(ansi().reset());
+		noteLine.append(LINE_COLOR).append(" ".repeat(lineNrStr.length())).append(" | ").append(ansi().reset());
 
 		for (int i = 0; i < line.length(); i++) {
 			char c = line.charAt(i);
+
+			if (i == start - 1) {
+				codeLine.append(ERROR_COLOR);
+				noteLine.append(ERROR_COLOR);
+			} else if (i == end - 1) {
+				codeLine.append(ansi().reset());
+				noteLine.append(ansi().reset());
+			}
 
 			appendRespectingTab(codeLine, c, c);
 
@@ -148,7 +160,7 @@ public record Source(String content) {
 			}
 		}
 
-		noteLine.append(" ").append(message);
+		noteLine.append(" ").append(ERROR_COLOR).append(message);
 
 		return codeLine.append("\n").append(noteLine).toString();
 	}
@@ -189,14 +201,21 @@ public record Source(String content) {
 		StringBuilder codeLine = new StringBuilder();
 		StringBuilder noteLine = new StringBuilder();
 
-		codeLine.append(("%" + lineNrWidth + "d").formatted(startLineNr)).append(" |   ");
-		noteLine.append(" ".repeat(lineNrWidth)).append(" | ,-");
+		codeLine.append(LINE_COLOR)
+			.append(("%" + lineNrWidth + "d").formatted(startLineNr))
+			.append(" |   ")
+			.append(ansi().reset());
+		noteLine.append(LINE_COLOR).append(" ".repeat(lineNrWidth)).append(" | ").append(ERROR_COLOR).append(",-");
 
 		for (int i = 0; i < line.length(); i++) {
 			char c = line.charAt(i);
 
 			boolean highlighting = start - 1 <= i;
 			char highlight = highlighting ? '^' : '-';
+
+			if (start - 1 == i) {
+				codeLine.append(ERROR_COLOR);
+			}
 
 			appendRespectingTab(codeLine, c, c);
 			appendRespectingTab(noteLine, c, highlight);
@@ -206,7 +225,11 @@ public record Source(String content) {
 	}
 
 	private void formatMiddleLineOfMultilineMessage(StringBuilder builder, String line, int lineNrWidth, int lineNr) {
-		builder.append(("%" + lineNrWidth + "d").formatted(lineNr)).append(" | | ");
+		builder.append(LINE_COLOR)
+			.append(("%" + lineNrWidth + "d").formatted(lineNr))
+			.append(" |")
+			.append(ERROR_COLOR)
+			.append(" | ");
 		for (int i = 0; i < line.length(); i++) {
 			char c = line.charAt(i);
 			appendRespectingTab(builder, c, c);
@@ -219,8 +242,12 @@ public record Source(String content) {
 		StringBuilder codeLine = new StringBuilder();
 		StringBuilder noteLine = new StringBuilder();
 
-		codeLine.append(("%" + lineNrWidth + "d").formatted(endLineNr)).append(" | | ");
-		noteLine.append(" ".repeat(lineNrWidth)).append(" | `-");
+		codeLine.append(LINE_COLOR)
+			.append(("%" + lineNrWidth + "d").formatted(endLineNr))
+			.append(" |")
+			.append(ERROR_COLOR)
+			.append(" | ");
+		noteLine.append(LINE_COLOR).append(" ".repeat(lineNrWidth)).append(" |").append(ERROR_COLOR).append(" `-");
 
 		for (int i = 0; i < line.length(); i++) {
 			char c = line.charAt(i);

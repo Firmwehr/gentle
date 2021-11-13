@@ -77,10 +77,10 @@ public class UserOutput {
 	 * @param message the message to write
 	 */
 	public static void userError(String message) {
-		userMessage(ansi().fgBrightRed().a("[error] ").fgRed().a(indentLinesExceptFirst(message)).reset().toString());
+		userMessage(ansi().fgBrightRed().a("[error] ").reset().a(indentLinesExceptFirst(message)).reset().toString());
 	}
 
 	private static String indentLinesExceptFirst(String input) {
-		return input.indent("[error] ".length()).stripLeading();
+		return input.indent(1).stripLeading();
 	}
 }

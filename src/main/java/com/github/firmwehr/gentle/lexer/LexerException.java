@@ -3,6 +3,8 @@ package com.github.firmwehr.gentle.lexer;
 import com.github.firmwehr.gentle.source.Source;
 import com.github.firmwehr.gentle.source.SourceSpan;
 
+import static org.fusesource.jansi.Ansi.ansi;
+
 public class LexerException extends Exception {
 
 	private final Source source;
@@ -17,6 +19,7 @@ public class LexerException extends Exception {
 
 	@Override
 	public String getMessage() {
-		return "Failed to lex token\n" + source.formatMessageAt(new SourceSpan(offset, offset + 1), description);
+		return ansi().bold() + "Failed to lex token\n" + ansi().boldOff() +
+			source.formatMessageAt(new SourceSpan(offset, offset + 1), description);
 	}
 }

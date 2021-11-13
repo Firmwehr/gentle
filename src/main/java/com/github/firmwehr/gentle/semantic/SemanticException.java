@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.fusesource.jansi.Ansi.ansi;
+
 public class SemanticException extends Exception {
 	private final Source source;
 	private final Optional<String> description;
@@ -53,7 +55,7 @@ public class SemanticException extends Exception {
 	public String getMessage() {
 		StringBuilder builder = new StringBuilder();
 
-		builder.append("Semantic error");
+		builder.append(ansi().bold()).append("Semantic error").append(ansi().boldOff());
 
 		description.ifPresent(s -> builder.append("\n").append(s));
 

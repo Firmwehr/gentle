@@ -3,6 +3,8 @@ package com.github.firmwehr.gentle.parser;
 import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.source.Source;
 
+import static org.fusesource.jansi.Ansi.ansi;
+
 public class ParseException extends Exception {
 	private final Source source;
 	private final Token token;
@@ -16,6 +18,7 @@ public class ParseException extends Exception {
 
 	@Override
 	public String getMessage() {
-		return "Unexpected " + token.format() + "\n" + source.formatMessageAt(token.sourceSpan(), description);
+		return ansi().bold() + "Unexpected " + ansi().boldOff() + ansi().fgRed() + token.format() + ansi().reset() +
+			"\n" + source.formatMessageAt(token.sourceSpan(), description);
 	}
 }
