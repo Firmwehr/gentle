@@ -16,6 +16,7 @@ jobs:
           java-version: 17
       - run: ./gradlew build
       - uses: JetBrains/qodana-action@v3.1.1
+        id: qodana
         with:
           linter: qodana-jvm-community
           fail-threshold: 1
@@ -24,26 +25,8 @@ jobs:
           path: ${{ github.workspace }}/qodana
       - name: Print problems
         run: cat qodana/report/results/result-allProblems.json | jq
-      - name: Format comment
-        run: cat qodana/report/results/result-allProblems.json | python tooling/commenter.py
-        id: commenter
-      - name: Find Comment # only works on PRs, not on pushes (merges)
-        if: ${{ github.event_name == 'pull_request' }}
-        uses: peter-evans/find-comment@v1
-        id: fc
+      - name: SARIF Annotator
+        uses: SirYwell/sarif-annotator@v0.2.0
         with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: "Qodana"
-      - name: Create or Update Comment
-        if: ${{ github.event_name == 'pull_request' && (steps.fc.outputs.comment-id || steps.commenter.outputs.has-problems) }}
-        uses: peter-evans/create-or-update-comment@v1.4.5
-        with:
-          edit-mode: replace
-          comment-id: ${{ steps.fc.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body: ${{ steps.commenter.outputs.body }}
-      - name: Fail on problems
-        run: |
-          VIOLATIONS=$(jq ".listProblem | length" qodana/report/results/result-allProblems.json)
-          if [ "$VIOLATIONS" -gt "0" ]; then exit 1; fi
+          source: qodana
+          report-path: ${{ steps.qodana.outputs.results-json-path }}
