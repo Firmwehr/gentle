@@ -190,7 +190,7 @@ public record Source(String content) {
 		// Last line
 		formatLastLineOfMultilineMessage(builder, lines.get(lines.size() - 1), lineNrWidth, endLineNr, end);
 
-		builder.append(" ").append(message);
+		builder.append(" ").append(ERROR_COLOR).append(message);
 
 		return builder.toString();
 	}
@@ -251,6 +251,11 @@ public record Source(String content) {
 
 		for (int i = 0; i < line.length(); i++) {
 			char c = line.charAt(i);
+
+			if (end - 1 == i) {
+				codeLine.append(ansi().reset());
+				noteLine.append(ansi().reset());
+			}
 
 			appendRespectingTab(codeLine, c, c);
 
