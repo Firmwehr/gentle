@@ -26,7 +26,7 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 			)),
 			Arguments.of(new ParserTestCase("empty class",
 				"class Empty {}",
-				new Program().withDecl(new ClassDeclaration("Empty"))
+				new Program().withDecl(ClassDeclaration.dummy("Empty"))
 			)),
 			Arguments.of(new ParserTestCase("empty classes",
 				"""
@@ -40,10 +40,10 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				{
 				}
 				""",
-				new Program().withDecl(new ClassDeclaration("Nothing"))
-					.withDecl(new ClassDeclaration("to"))
-					.withDecl(new ClassDeclaration("c"))
-					.withDecl(new ClassDeclaration("HERE"))
+				new Program().withDecl(ClassDeclaration.dummy("Nothing"))
+					.withDecl(ClassDeclaration.dummy("to"))
+					.withDecl(ClassDeclaration.dummy("c"))
+					.withDecl(ClassDeclaration.dummy("HERE"))
 			)),
 			Arguments.of(new ParserTestCase("classes with methods and fields",
 				"""
@@ -61,17 +61,17 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				}
 				""",
 				new Program()
-					.withDecl(new ClassDeclaration("Foo")
-						.withMethod(new Method("eat")
+					.withDecl(ClassDeclaration.dummy("Foo")
+						.withMethod(Method.dummy("eat")
 							.withParam(Type.newInt().atLevel(1), "types")
 							.withParam(Type.newInt(), "amount")
 							.withParam(Type.newBool(), "raw"))
 						.withField(Type.newInt().atLevel(1), "numbers")
-						.withMainMethod(new MainMethod("main", Type.newIdent("String"), "args")))
-					.withDecl(new ClassDeclaration("Bar")
-						.withMethod(new Method("getSingleFoo")
+						.withMainMethod(MainMethod.dummy("main", Type.newIdent("String"), "args")))
+					.withDecl(ClassDeclaration.dummy("Bar")
+						.withMethod(Method.dummy("getSingleFoo")
 							.returning(Type.newIdent("Foo")))
-						.withMethod(new Method("getManyFoos")
+						.withMethod(Method.dummy("getManyFoos")
 							.returning(Type.newIdent("Foo").atLevel(1))
 							.withParam(Type.newInt(), "amount"))
 						.withField(Type.newBool().atLevel(2), "bitmap")
@@ -86,8 +86,8 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				}
 				""",
 				new Program()
-					.withDecl(new ClassDeclaration("Foo")
-						.withMethod(new Method("add")
+					.withDecl(ClassDeclaration.dummy("Foo")
+						.withMethod(Method.dummy("add")
 							.withParam(Type.newInt(), "a")
 							.withParam(Type.newInt(), "b")
 							.withBody(Statement.newBlock()
@@ -106,8 +106,8 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				}
 				""",
 				new Program()
-					.withDecl(new ClassDeclaration("Foo")
-						.withMethod(new Method("bar")
+					.withDecl(ClassDeclaration.dummy("Foo")
+						.withMethod(Method.dummy("bar")
 							.withBody(Statement.newBlock()
 								.thenExpr(Expression.newBinOp(
 									Expression.newBinOp(
@@ -132,10 +132,9 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				}
 				""",
 				new Program()
-					.withDecl(new ClassDeclaration("Foo")
-						.withMethod(new Method("bar")
+					.withDecl(ClassDeclaration.dummy("Foo")
+						.withMethod(Method.dummy("bar")
 							.withBody(Statement.newBlock()
-
 								.thenExpr(Expression.newBinOp(
 									Expression.newBinOp(
 										Expression.newInt(2),
@@ -159,8 +158,8 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				}
 				""",
 				new Program()
-					.withDecl(new ClassDeclaration("Foo")
-						.withMethod(new Method("bar")
+					.withDecl(ClassDeclaration.dummy("Foo")
+						.withMethod(Method.dummy("bar")
 							.withBody(Statement.newBlock()
 								.thenExpr(Expression.newBinOp(
 									Expression.newBinOp(
@@ -205,8 +204,8 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				}
 				""",
 				new Program()
-					.withDecl(new ClassDeclaration("SumOfPrimExpr")
-						.withMethod(new Method("foo")
+					.withDecl(ClassDeclaration.dummy("SumOfPrimExpr")
+						.withMethod(Method.dummy("foo")
 							.returning(Type.newInt())
 							.withBody(Statement.newBlock()
 								.thenReturn(Stream.of(
@@ -234,8 +233,8 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				}
 				""",
 				new Program()
-					.withDecl(new ClassDeclaration("Postfix")
-						.withMethod(new Method("foo")
+					.withDecl(ClassDeclaration.dummy("Postfix")
+						.withMethod(Method.dummy("foo")
 							.returning(Type.newInt())
 							.withBody(Statement.newBlock()
 								.thenReturn(Expression.newIdent("a")
@@ -263,8 +262,8 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				}
 				""",
 				new Program()
-					.withDecl(new ClassDeclaration("Factorial")
-						.withMethod(new Method("fac")
+					.withDecl(ClassDeclaration.dummy("Factorial")
+						.withMethod(Method.dummy("fac")
 							.returning(Type.newInt())
 							.withParam(Type.newInt(), "n")
 							.withBody(Statement.newBlock()
@@ -285,8 +284,8 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 									)),
 									BinaryOperator.MULTIPLY
 								)))))
-					.withDecl(new ClassDeclaration("Prog3")
-						.withMainMethod(new MainMethod("main", Type.newIdent("String"), "args")
+					.withDecl(ClassDeclaration.dummy("Prog3")
+						.withMainMethod(MainMethod.dummy("main", Type.newIdent("String"), "args")
 							.withBody(Statement.newBlock()
 								.thenLocalVar(
 									Type.newIdent("Factorial"),
@@ -331,8 +330,8 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				}
 				""",
 				new Program()
-					.withDecl(new ClassDeclaration("Math")
-						.withMethod(new Method("clamp")
+					.withDecl(ClassDeclaration.dummy("Math")
+						.withMethod(Method.dummy("clamp")
 							.returning(Type.newInt())
 							.withParam(Type.newInt(), "n")
 							.withParam(Type.newInt(), "min")
@@ -355,7 +354,7 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 										Statement.newReturn(Expression.newIdent("n"))
 									)
 								)))
-						.withMethod(new Method("sign")
+						.withMethod(Method.dummy("sign")
 							.returning(Type.newInt())
 							.withParam(Type.newInt(), "n")
 							.withBody(Statement.newBlock()
@@ -365,7 +364,7 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 									Expression.newInt(1).withUnary(UnaryOperator.NEGATION),
 									Expression.newInt(1)
 								))))
-						.withMethod(new Method("sum")
+						.withMethod(Method.dummy("sum")
 							.returning(Type.newInt())
 							.withParam(Type.newInt(), "n")
 							.withBody(Statement.newBlock()
@@ -413,8 +412,8 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				}
 				""",
 				new Program()
-					.withDecl(new ClassDeclaration("Foo")
-						.withMethod(new Method("bar")
+					.withDecl(ClassDeclaration.dummy("Foo")
+						.withMethod(Method.dummy("bar")
 							.withBody(Statement.newBlock()
 								.thenIf(Expression.newIdent("a"), Statement.newIf(
 									Expression.newIdent("b"),
@@ -438,8 +437,8 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				}
 				""",
 				new Program()
-					.withDecl(new ClassDeclaration("Foo")
-						.withMethod(new Method("bar")
+					.withDecl(ClassDeclaration.dummy("Foo")
+						.withMethod(Method.dummy("bar")
 							.withBody(Statement.newBlock()
 								.thenLocalVar(Type.newInt(), "a")
 								.thenBlock(Statement.newBlock()
@@ -471,8 +470,8 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				}
 				""",
 				new Program()
-					.withDecl(new ClassDeclaration("Foo")
-						.withMethod(new Method("bar")
+					.withDecl(ClassDeclaration.dummy("Foo")
+						.withMethod(Method.dummy("bar")
 							.withBody(Statement.newBlock()
 								.thenEmpty()
 								.thenLocalVar(Type.newInt(), "a", Expression.newInt(3))
@@ -489,7 +488,7 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 								.thenEmpty()
 								.thenReturn()
 								.thenEmpty()))
-						.withMethod(new Method("smile")
+						.withMethod(Method.dummy("smile")
 							.withBody(Statement.newBlock()
 								.thenEmpty().thenEmpty().thenEmpty().thenEmpty()
 								.thenEmpty().thenEmpty().thenEmpty().thenEmpty()
@@ -507,8 +506,8 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 				}
 				""",
 				new Program()
-					.withDecl(new ClassDeclaration("Foo")
-						.withMethod(new Method("bar")
+					.withDecl(ClassDeclaration.dummy("Foo")
+						.withMethod(Method.dummy("bar")
 							.withBody(Statement.newBlock()
 								.thenExpr(Expression.newNewArray(
 									Type.newInt().atLevel(1),

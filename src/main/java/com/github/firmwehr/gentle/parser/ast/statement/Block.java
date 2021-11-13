@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.parser.ast.statement;
 
+import com.github.firmwehr.gentle.parser.ExprWithParens;
 import com.github.firmwehr.gentle.parser.Util;
 import com.github.firmwehr.gentle.parser.ast.Ident;
 import com.github.firmwehr.gentle.parser.ast.Type;
@@ -16,11 +17,12 @@ public record Block(List<BlockStatement> statements) implements Statement, Block
 	}
 
 	public Block thenLocalVar(Type type, String name) {
-		return then(new LocalVariableDeclarationStatement(type, new Ident(name), Optional.empty()));
+		return then(new LocalVariableDeclarationStatement(type, Ident.dummy(name), Optional.empty()));
 	}
 
 	public Block thenLocalVar(Type type, String name, Expression value) {
-		return then(new LocalVariableDeclarationStatement(type, new Ident(name), Optional.of(value)));
+		return then(
+			new LocalVariableDeclarationStatement(type, Ident.dummy(name), Optional.of(new ExprWithParens(value))));
 	}
 
 	public Block thenBlock(Block block) {

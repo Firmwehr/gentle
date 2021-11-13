@@ -8,6 +8,7 @@ import com.github.firmwehr.gentle.source.Source;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import static com.github.firmwehr.gentle.testutil.Equality.equalExceptSourcePosition;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ParserTest {
@@ -28,7 +29,6 @@ class ParserTest {
 		System.out.println();
 		System.out.println(PrettyPrinter.format(testCase.expectedProgram()));
 
-		// Expected value is for some reason on the left side
-		assertThat(testCase.expectedProgram()).isEqualTo(actualProgram);
+		assertThat(actualProgram).is(equalExceptSourcePosition(testCase.expectedProgram()));
 	}
 }

@@ -11,6 +11,8 @@ import com.github.firmwehr.gentle.parser.Parser;
 import com.github.firmwehr.gentle.parser.ast.Program;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 import com.github.firmwehr.gentle.parser.tokens.Token;
+import com.github.firmwehr.gentle.semantic.SemanticAnalyzer;
+import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.source.Source;
 
 import java.io.ByteArrayOutputStream;
@@ -20,6 +22,8 @@ import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Set;
 
 public class GentleCompiler {
 
@@ -30,22 +34,28 @@ public class GentleCompiler {
 		LOGGER.info("Hello World, please be gentle UwU");
 		CommandArguments arguments = new CommandArgumentsParser().parseOrExit(args);
 
-		int flagsSet = 0;
+		Set<String> flagsSet = new HashSet<>();
 		if (arguments.echo()) {
-			flagsSet++;
+			flagsSet.add("echo");
 		}
 		if (arguments.lextest()) {
-			flagsSet++;
+			flagsSet.add("lextest");
 		}
 		if (arguments.parsetest()) {
-			flagsSet++;
+			flagsSet.add("parseTest");
 		}
 		if (arguments.printAst()) {
-			flagsSet++;
+			flagsSet.add("printAst");
+		}
+		if (arguments.check()) {
+			flagsSet.add("check");
 		}
 
-		if (flagsSet != 1) {
-			LOGGER.error("Conflicting flags");
+		if (flagsSet.isEmpty()) {
+			UserOutput.userError("No operation specified.");
+			System.exit(1);
+		} else if (flagsSet.size() != 1) {
+			UserOutput.userError("Conflicting flags set. Received the following mutually exclusive flags: " + flagsSet);
 			System.exit(1);
 		} else if (arguments.echo()) {
 			echoCommand(arguments.path());
@@ -55,7 +65,10 @@ public class GentleCompiler {
 			parseTestCommand(arguments.path());
 		} else if (arguments.printAst()) {
 			printAstCommand(arguments.path());
+		} else if (arguments.check()) {
+			checkCommand(arguments.path());
 		} else {
+			// This can never be reached
 			runCommand(arguments.path());
 		}
 
@@ -100,7 +113,7 @@ public class GentleCompiler {
 			Source source = new Source(Files.readString(path, FILE_CHARSET));
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
-			parser.parse(); // result ignored for now
+			parser.parse(); // Result ignored
 		} catch (MalformedInputException e) {
 			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
 			System.exit(1);
@@ -127,6 +140,25 @@ public class GentleCompiler {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
 			System.exit(1);
 		} catch (LexerException | ParseException e) {
+			UserOutput.userError(e);
+			System.exit(1);
+		}
+	}
+
+	private static void checkCommand(Path path) {
+		try {
+			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			Lexer lexer = new Lexer(source, true);
+			Parser parser = Parser.fromLexer(source, lexer);
+			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer(source, parser.parse());
+			semanticAnalyzer.analyze(); // Result ignored
+		} catch (MalformedInputException e) {
+			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			System.exit(1);
+		} catch (IOException e) {
+			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
+			System.exit(1);
+		} catch (LexerException | ParseException | SemanticException e) {
 			UserOutput.userError(e);
 			System.exit(1);
 		}

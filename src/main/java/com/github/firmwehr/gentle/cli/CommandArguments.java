@@ -11,20 +11,23 @@ import java.nio.file.Path;
 @Command(name = "gentle", description = "A small MiniJava compiler.", publicParser = true)
 public interface CommandArguments {
 
-	@Option(names = "--echo", description = "Reads the given file and will output it as it is.")
+	@Option(names = "--echo", description = "output the file as is")
 	boolean echo();
 
-	@Option(names = "--lextest", description = "Reads the given file and prints all tokens or aborts on first error")
+	@Option(names = "--lextest", description = "print all of the file's tokens")
 	boolean lextest();
 
-	@Option(names = "--parsetest", description = "Reads the given file and exits with 0 iff it is syntactically valid")
+	@Option(names = "--parsetest", description = "exit with 0 iff the file is syntactically valid")
 	boolean parsetest();
 
-	@Option(names = "--print-ast", description = "Reads the given file and pretty-prints the parser AST")
+	@Option(names = "--print-ast", description = "parse and pretty-print the file")
 	boolean printAst();
 
-	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "The file to operate on.",
-		paramLabel = "PATH")
+	@Option(names = "--check", description = "exit with 0 iff the file is semantically valid")
+	boolean check();
+
+	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",
+		paramLabel = "FILE")
 	Path path();
 
 	class ExistingFileConverter extends StringConverter<Path> {

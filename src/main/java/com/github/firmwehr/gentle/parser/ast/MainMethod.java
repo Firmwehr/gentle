@@ -4,18 +4,21 @@ import com.github.firmwehr.gentle.parser.ast.statement.Block;
 import com.github.firmwehr.gentle.parser.ast.statement.Statement;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
+import com.github.firmwehr.gentle.source.SourceSpan;
 
 public record MainMethod(
 	Ident name,
+	SourceSpan voidSpan,
 	Parameter parameter,
 	Block body
 ) implements PrettyPrint {
-	public MainMethod(String name, Type paramType, String paramName) {
-		this(new Ident(name), new Parameter(paramType, new Ident(paramName)), Statement.newBlock());
+	public static MainMethod dummy(String name, Type paramType, String paramName) {
+		return new MainMethod(Ident.dummy(name), SourceSpan.dummy(), new Parameter(paramType, Ident.dummy(paramName)),
+			Statement.newBlock());
 	}
 
 	public MainMethod withBody(Block body) {
-		return new MainMethod(name, parameter, body);
+		return new MainMethod(name, voidSpan, parameter, body);
 	}
 
 	@Override
