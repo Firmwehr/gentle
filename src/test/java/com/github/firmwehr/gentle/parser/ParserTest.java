@@ -5,7 +5,6 @@ import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.parser.ast.Program;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 import com.github.firmwehr.gentle.source.Source;
-import com.github.firmwehr.gentle.source.SourcePosition;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsSource;
@@ -43,12 +42,12 @@ class ParserTest {
 		String label,
 		String source,
 		// pde = parser defined error
-		SourcePosition expectedPde
+		int expectedPdeOffset
 	) {
 		// expects source to have unix line endings
 		public static FailingParserTestCase fromPos(String label, String source, int line, int column) {
 			int offset = source.lines().limit(line - 1).mapToInt(line_ -> line_.length() + 1).sum() + column - 1;
-			return new FailingParserTestCase(label, source, new SourcePosition(offset, line, column));
+			return new FailingParserTestCase(label, source, offset);
 		}
 
 		@Override
@@ -67,7 +66,7 @@ class ParserTest {
 
 		System.out.println(parseException.getMessage());
 
-		assertThat(parseException.getToken().sourceSpan().startOffset()).isEqualTo(testCase.expectedPde().offset());
+		assertThat(parseException.getToken().sourceSpan().startOffset()).isEqualTo(testCase.expectedPdeOffset());
 	}
 
 	private static List<Arguments> provideSyntacticallyIncorrectPrograms() {
