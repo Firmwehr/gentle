@@ -221,7 +221,7 @@ public record Source(String content) {
 			appendRespectingTab(noteLine, c, highlight);
 		}
 
-		builder.append(codeLine).append("\n").append(noteLine);
+		builder.append(codeLine).append("\n").append(noteLine).append(ansi().reset());
 	}
 
 	private void formatMiddleLineOfMultilineMessage(StringBuilder builder, String line, int lineNrWidth, int lineNr) {
