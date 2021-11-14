@@ -49,29 +49,29 @@ public class PrettyPrinter {
 		return this;
 	}
 
-	public <T extends PrettyPrint> PrettyPrinter add(T t, boolean omitParentheses) {
-		t.prettyPrint(this, omitParentheses);
+	public <T extends PrettyPrint> PrettyPrinter add(T t, PrettyPrint.Parentheses parens) {
+		t.prettyPrint(this, parens);
 
 		return this;
 	}
 
 	public <T extends PrettyPrint> PrettyPrinter add(T t) {
-		return add(t, false);
+		return add(t, PrettyPrint.Parentheses.INCLUDE);
 	}
 
 
 	public <T extends PrettyPrint> PrettyPrinter addAll(
-		List<T> ts, String separator, boolean newlines, boolean omitParentheses
+		List<T> ts, String separator, boolean newlines, PrettyPrint.Parentheses parens
 	) {
 		if (!ts.isEmpty()) {
 			for (int i = 0; i < ts.size() - 1; i++) {
-				add(ts.get(i), omitParentheses).add(separator);
+				add(ts.get(i), parens).add(separator);
 				if (newlines) {
 					newline();
 				}
 			}
 
-			add(ts.get(ts.size() - 1), omitParentheses);
+			add(ts.get(ts.size() - 1), parens);
 			if (newlines) {
 				newline();
 			}
@@ -81,7 +81,7 @@ public class PrettyPrinter {
 	}
 
 	public <T extends PrettyPrint> PrettyPrinter addAll(List<T> ts, String separator, boolean newlines) {
-		return addAll(ts, separator, newlines, true);
+		return addAll(ts, separator, newlines, PrettyPrint.Parentheses.OMIT);
 	}
 
 	public String format() {

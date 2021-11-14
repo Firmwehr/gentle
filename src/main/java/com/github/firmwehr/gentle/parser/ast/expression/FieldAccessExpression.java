@@ -10,14 +10,14 @@ public record FieldAccessExpression(
 	SourceSpan sourceSpan
 ) implements Expression {
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
-		if (!omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
+		if (parens == Parentheses.INCLUDE) {
 			p.add("(");
 		}
 
 		p.add(expression).add(".").add(name);
 
-		if (!omitParentheses) {
+		if (parens == Parentheses.INCLUDE) {
 			p.add(")");
 		}
 	}

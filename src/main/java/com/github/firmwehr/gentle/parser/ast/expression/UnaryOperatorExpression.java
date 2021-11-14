@@ -10,14 +10,14 @@ public record UnaryOperatorExpression(
 	SourceSpan sourceSpan
 ) implements Expression {
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
-		if (!omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
+		if (parens == Parentheses.INCLUDE) {
 			p.add("(");
 		}
 
 		p.add(operator.getName()).add(expression);
 
-		if (!omitParentheses) {
+		if (parens == Parentheses.INCLUDE) {
 			p.add(")");
 		}
 	}

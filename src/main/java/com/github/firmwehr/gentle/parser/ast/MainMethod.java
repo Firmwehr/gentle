@@ -22,7 +22,7 @@ public record MainMethod(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
 		p.add("public static void ").add(name).add("(").add(parameter).add(") ").add(body);
 	}
 }

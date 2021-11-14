@@ -5,7 +5,7 @@ import com.github.firmwehr.gentle.source.SourceSpan;
 
 public record IntType(SourceSpan sourceSpan) implements BasicType {
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
 		p.add("int");
 	}
 }

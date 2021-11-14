@@ -15,17 +15,17 @@ public record NewArrayExpression(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
-		if (!omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
+		if (parens == Parentheses.INCLUDE) {
 			p.add("(");
 		}
 
-		p.add("new ").add(type.basicType()).add("[").add(size, true).add("]");
+		p.add("new ").add(type.basicType()).add("[").add(size, Parentheses.OMIT).add("]");
 		for (int i = 0; i < type.arrayLevel() - 1; i++) {
 			p.add("[]");
 		}
 
-		if (!omitParentheses) {
+		if (parens == Parentheses.INCLUDE) {
 			p.add(")");
 		}
 	}

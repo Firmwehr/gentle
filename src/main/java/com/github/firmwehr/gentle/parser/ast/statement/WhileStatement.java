@@ -13,8 +13,8 @@ public record WhileStatement(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
-		p.add("while (").add(condition, true).add(")");
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
+		p.add("while (").add(condition, Parentheses.OMIT).add(")");
 
 		if (body instanceof EmptyStatement) {
 			p.add(body);

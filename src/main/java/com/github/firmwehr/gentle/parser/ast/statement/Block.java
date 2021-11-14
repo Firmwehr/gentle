@@ -63,7 +63,7 @@ public record Block(List<BlockStatement> statements) implements Statement, Block
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
 		List<BlockStatement> statements =
 			this.statements.stream().filter(s -> !(s instanceof EmptyStatement)).collect(Collectors.toList());
 

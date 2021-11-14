@@ -8,7 +8,7 @@ public record Field(
 	Ident name
 ) implements PrettyPrint {
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
 		p.add("public ").add(type).add(" ").add(name).add(";");
 	}
 }
