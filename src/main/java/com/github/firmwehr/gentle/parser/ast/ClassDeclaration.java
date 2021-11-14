@@ -34,7 +34,7 @@ public record ClassDeclaration(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
 		List<Field> fields = this.fields.stream()
 			.sorted(Comparator.comparing(field -> field.name().ident()))
 			.collect(Collectors.toList());

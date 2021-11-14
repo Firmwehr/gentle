@@ -32,7 +32,7 @@ public record Method(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
 		p.add("public ")
 			.add(returnType)
 			.add(" ")

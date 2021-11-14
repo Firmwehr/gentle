@@ -6,7 +6,7 @@ import com.github.firmwehr.gentle.source.SourceSpan;
 
 public record IdentExpression(Ident name) implements Expression {
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
 		p.add(name);
 	}
 

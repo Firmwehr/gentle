@@ -21,7 +21,7 @@ public record Ident(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
 		p.add(ident);
 	}
 }

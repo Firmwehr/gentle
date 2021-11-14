@@ -18,7 +18,7 @@ public record Program(List<ClassDeclaration> classes) implements PrettyPrint {
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
 		List<ClassDeclaration> classes =
 			this.classes.stream().sorted(Comparator.comparing(c -> c.name().ident())).collect(Collectors.toList());
 

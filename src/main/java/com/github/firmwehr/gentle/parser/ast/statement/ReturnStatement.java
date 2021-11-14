@@ -16,9 +16,9 @@ public record ReturnStatement(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
 		p.add("return");
-		returnValue.ifPresent(expression -> p.add(" ").add(expression, true));
+		returnValue.ifPresent(expression -> p.add(" ").add(expression, Parentheses.OMIT));
 		p.add(";");
 	}
 }

@@ -16,8 +16,8 @@ public record IfStatement(
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
-		p.add("if (").add(condition, true).add(")");
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
+		p.add("if (").add(condition, Parentheses.OMIT).add(")");
 
 		boolean elseOnNewLine;
 		if (body instanceof EmptyStatement) {

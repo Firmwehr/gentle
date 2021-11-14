@@ -10,7 +10,7 @@ public record ExpressionStatement(Expression expression) implements Statement, B
 	}
 
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
-		p.add(expression, true).add(";");
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
+		p.add(expression, Parentheses.OMIT).add(";");
 	}
 }

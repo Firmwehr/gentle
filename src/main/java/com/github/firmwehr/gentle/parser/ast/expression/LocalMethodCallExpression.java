@@ -12,14 +12,14 @@ public record LocalMethodCallExpression(
 	SourceSpan sourceSpan
 ) implements Expression {
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
-		if (!omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
+		if (parens == Parentheses.INCLUDE) {
 			p.add("(");
 		}
 
-		p.add(name).add("(").addAll(arguments, ", ", false, true).add(")");
+		p.add(name).add("(").addAll(arguments, ", ", false, Parentheses.OMIT).add(")");
 
-		if (!omitParentheses) {
+		if (parens == Parentheses.INCLUDE) {
 			p.add(")");
 		}
 	}

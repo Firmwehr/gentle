@@ -8,7 +8,7 @@ public record BooleanLiteralExpression(
 	SourceSpan sourceSpan
 ) implements Expression {
 	@Override
-	public void prettyPrint(PrettyPrinter p, boolean omitParentheses) {
+	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
 		if (value) {
 			p.add("true");
 		} else {
