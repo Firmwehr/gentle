@@ -10,6 +10,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import static com.github.firmwehr.gentle.testutil.Equality.equalExceptSourcePosition;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ParserTest {
 	private static Parser fromText(String text) throws LexerException {
@@ -19,7 +20,7 @@ class ParserTest {
 
 	@ParameterizedTest
 	@ArgumentsSource(ParserTestCaseProvider.class)
-	public void parse_shouldConstructAstForSyntacticallyCorrectPrograms(ParserTestCase testCase)
+	public void parse_shouldConstructAstForSyntacticallyCorrectPrograms(ParserTestCaseProvider.ParserTestCase testCase)
 		throws LexerException, ParseException {
 
 		Parser parser = fromText(testCase.source());
@@ -31,4 +32,18 @@ class ParserTest {
 
 		assertThat(actualProgram).is(equalExceptSourcePosition(testCase.expectedProgram()));
 	}
+
+	@ParameterizedTest
+	@ArgumentsSource(FailingParserTestCaseProvider.class)
+	public void parse_shouldFailForSyntacticallyIncorrectPrograms(FailingParserTestCaseProvider.FailingParserTestCase testCase)
+		throws LexerException {
+
+		Parser parser = fromText(testCase.source());
+		ParseException parseException = assertThrows(ParseException.class, parser::parse);
+
+		System.out.println(parseException.getMessage());
+
+		assertThat(parseException.getToken().sourceSpan().startOffset()).isEqualTo(testCase.expectedPdeOffset());
+	}
+
 }
