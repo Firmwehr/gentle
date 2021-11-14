@@ -52,7 +52,14 @@ public class Lexer {
 				continue;
 			}
 			if (reader.canRead(2) && reader.peek(2).equals("/*")) {
-				Token comment = readComment();
+				Token comment = readMultilineComment();
+				if (!onlyRelevantTokens) {
+					tokens.add(comment);
+				}
+				continue;
+			}
+			if (reader.canRead(2) && reader.peek(2).equals("//")) {
+				Token comment = readSingleLineComment();
 				if (!onlyRelevantTokens) {
 					tokens.add(comment);
 				}
@@ -237,12 +244,19 @@ public class Lexer {
 		return new OperatorToken(new SourceSpan(start, reader.getPosition()), operator);
 	}
 
-	private Token readComment() throws LexerException {
+	private Token readMultilineComment() throws LexerException {
 		int start = reader.getPosition();
 		reader.assertRead("/*");
 		String text = reader.assertReadUntil("*/");
 		text = text.substring(0, text.length() - 2);
-		return new CommentToken(new SourceSpan(start, reader.getPosition()), text);
+		return new CommentToken(new SourceSpan(start, reader.getPosition()), text, CommentToken.Type.MULTI_LINE);
+	}
+
+	private Token readSingleLineComment() throws LexerException {
+		int start = reader.getPosition();
+		reader.assertRead("//");
+		String text = reader.readLine();
+		return new CommentToken(new SourceSpan(start, reader.getPosition()), text, CommentToken.Type.SINGLE_LINE);
 	}
 
 	private boolean isDigit(char c) {

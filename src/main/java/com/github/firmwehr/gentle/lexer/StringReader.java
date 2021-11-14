@@ -117,6 +117,33 @@ public class StringReader {
 		return underlying.substring(start, position);
 	}
 
+	/**
+	 * Reads the entire remainder of the current line, including the line ending itself. After calling this method, the
+	 * cursor will be placed on the next line or right before EOF, in case this was the last line.
+	 *
+	 * @return The remaining line following the current cursor including the line ending itself.
+	 */
+	public String readLine() {
+		int start = position;
+		while (canRead()) {
+			if (peek() == '\r') {
+				readChar(); // consume \r to check for \n
+
+				// check for trailing \n and consume it
+				if (peek() == '\n') {
+					readChar();
+				}
+				break;
+			} else if (peek() == '\n') {
+				readChar();
+				break;
+			}
+			readChar();
+		}
+
+		return underlying.substring(start, position);
+	}
+
 	public String assertReadUntil(String needle) throws LexerException {
 		int needleIndex = underlying.indexOf(needle, position);
 
