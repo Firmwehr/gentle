@@ -65,6 +65,7 @@ import java.util.Optional;
 
 public record MethodScope(
 	Source source,
+	SMethod method,
 	Namespace<SClassDeclaration> classes,
 	Optional<SClassDeclaration> currentClass,
 	StackedNamespace<LocalVariableDeclaration> localVariables
@@ -80,7 +81,7 @@ public record MethodScope(
 			localVariables.put(parameter.declaration(), parameter);
 		}
 
-		return new MethodScope(source, classes, currentClass, localVariables);
+		return new MethodScope(source, method, classes, currentClass, localVariables);
 	}
 
 	public SBlock convert(Block block) throws SemanticException {
@@ -313,7 +314,9 @@ public record MethodScope(
 		}
 
 		boolean isType = classes.contains("System");
-		boolean isField = currentClass.map(decl -> decl.fields().contains("System")).orElse(false);
+		// We need to check in the classDecl of the method and not currentClass, as fields in the class still overrule
+		// System in static methods.
+		boolean isField = method.classDecl().fields().contains("System");
 		boolean isLocalVar = localVariables.contains("System");
 		if (isType || isField || isLocalVar) {
 			return Optional.empty();
