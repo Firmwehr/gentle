@@ -17,7 +17,7 @@ public record WhileStatement(
 		p.add("while (").add(condition, Parentheses.OMIT).add(")");
 
 		if (body instanceof EmptyStatement) {
-			p.add(body);
+			p.add(" { }");
 		} else if (body instanceof Block) {
 			p.add(" ").add(body);
 		} else {
