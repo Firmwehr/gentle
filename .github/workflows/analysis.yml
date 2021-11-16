@@ -29,7 +29,7 @@ jobs:
         run: cat qodana/report/results/result-allProblems.json | jq
       - name: SARIF Annotator
         if: always()
-        uses: SirYwell/sarif-annotator@v0.2.0
+        uses: SirYwell/sarif-annotator@v0.2.1
         with:
           source: qodana
           report-path: ${{ steps.qodana.outputs.results-json-path }}
