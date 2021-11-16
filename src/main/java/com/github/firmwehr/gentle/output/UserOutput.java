@@ -5,7 +5,6 @@ import java.io.IOException;
 
 import static org.fusesource.jansi.Ansi.ansi;
 
-@SuppressWarnings("UseOfSystemOutOrSystemErr")
 public class UserOutput {
 
 	/**
