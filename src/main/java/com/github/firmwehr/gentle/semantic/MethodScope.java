@@ -65,6 +65,7 @@ import java.util.Optional;
 
 public record MethodScope(
 	Source source,
+	SMethod method,
 	Namespace<SClassDeclaration> classes,
 	Optional<SClassDeclaration> currentClass,
 	StackedNamespace<LocalVariableDeclaration> localVariables
@@ -80,7 +81,7 @@ public record MethodScope(
 			localVariables.put(parameter.declaration(), parameter);
 		}
 
-		return new MethodScope(source, classes, currentClass, localVariables);
+		return new MethodScope(source, method, classes, currentClass, localVariables);
 	}
 
 	public SBlock convert(Block block) throws SemanticException {
@@ -250,13 +251,13 @@ public record MethodScope(
 	}
 
 	SMethodInvocationExpression convert(LocalMethodCallExpression expr) throws SemanticException {
-		if (currentClass.isEmpty()) {
-			throw new SemanticException(source, expr.sourceSpan(), "calling local method in static context");
+		SMethod localMethod = method.classDecl().methods().get(expr.name());
+		if (localMethod.isStatic()) {
+			throw new SemanticException(source, expr.sourceSpan(), "calling main method");
 		}
 
-		SMethod method = currentClass.get().methods().get(expr.name());
-		if (method.isStatic()) {
-			throw new SemanticException(source, expr.sourceSpan(), "calling main method");
+		if (currentClass.isEmpty()) {
+			throw new SemanticException(source, expr.sourceSpan(), "calling local method in static context");
 		}
 
 		List<SExpression> arguments = new ArrayList<>();
@@ -266,7 +267,7 @@ public record MethodScope(
 
 		// The SThisExpression doesn't really have a proper SourceSpan. Giving it the SMethodInvocationExpression's
 		// span probably makes the most sense.
-		return new SMethodInvocationExpression(new SThisExpression(currentClass.get(), expr.sourceSpan()), method,
+		return new SMethodInvocationExpression(new SThisExpression(currentClass.get(), expr.sourceSpan()), localMethod,
 			arguments, expr.sourceSpan(), expr.sourceSpan());
 	}
 
@@ -313,7 +314,9 @@ public record MethodScope(
 		}
 
 		boolean isType = classes.contains("System");
-		boolean isField = currentClass.map(decl -> decl.fields().contains("System")).orElse(false);
+		// We need to check in the classDecl of the method and not currentClass, as fields in the class still overrule
+		// System in static methods.
+		boolean isField = method.classDecl().fields().contains("System");
 		boolean isLocalVar = localVariables.contains("System");
 		if (isType || isField || isLocalVar) {
 			return Optional.empty();
