@@ -21,11 +21,14 @@ jobs:
           linter: qodana-jvm-community
           fail-threshold: 1
       - uses: actions/upload-artifact@v2
+        if: always()
         with:
           path: ${{ github.workspace }}/qodana
       - name: Print problems
+        if: always()
         run: cat qodana/report/results/result-allProblems.json | jq
       - name: SARIF Annotator
+        if: always()
         uses: SirYwell/sarif-annotator@v0.2.0
         with:
           source: qodana
