@@ -251,13 +251,13 @@ public record MethodScope(
 	}
 
 	SMethodInvocationExpression convert(LocalMethodCallExpression expr) throws SemanticException {
-		if (currentClass.isEmpty()) {
-			throw new SemanticException(source, expr.sourceSpan(), "calling local method in static context");
+		SMethod localMethod = method.classDecl().methods().get(expr.name());
+		if (localMethod.isStatic()) {
+			throw new SemanticException(source, expr.sourceSpan(), "calling main method");
 		}
 
-		SMethod method = currentClass.get().methods().get(expr.name());
-		if (method.isStatic()) {
-			throw new SemanticException(source, expr.sourceSpan(), "calling main method");
+		if (currentClass.isEmpty()) {
+			throw new SemanticException(source, expr.sourceSpan(), "calling local method in static context");
 		}
 
 		List<SExpression> arguments = new ArrayList<>();
@@ -267,7 +267,7 @@ public record MethodScope(
 
 		// The SThisExpression doesn't really have a proper SourceSpan. Giving it the SMethodInvocationExpression's
 		// span probably makes the most sense.
-		return new SMethodInvocationExpression(new SThisExpression(currentClass.get(), expr.sourceSpan()), method,
+		return new SMethodInvocationExpression(new SThisExpression(currentClass.get(), expr.sourceSpan()), localMethod,
 			arguments, expr.sourceSpan(), expr.sourceSpan());
 	}
 
