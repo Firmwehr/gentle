@@ -90,6 +90,10 @@ dependencies {
 	// Persistent collections
 	implementation("org.javimmutable:javimmutable-collections:3.2.1")
 
+	implementation("com.github.Firmwehr:jFirm:6861657bec")
+	// https://mvnrepository.com/artifact/net.java.dev.jna/jna
+	implementation("net.java.dev.jna:jna:5.10.0")
+
 	// junit
 	val junitVersion = "5.8.1"
 	testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
