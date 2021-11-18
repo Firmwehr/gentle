@@ -20,8 +20,9 @@ public class FirmFun {
 		Graph mainGraph = new Graph(mainEntity, 0);
 		Construction construction = new Construction(mainGraph);
 
-		construction.newReturn(construction.getCurrentMem(), new Node[0]);
-
+		Node returnNode = construction.newReturn(construction.getCurrentMem(), new Node[]{});
+		mainGraph.getEndBlock().addPred(returnNode);
+		
 		construction.finish();
 
 		Dump.dumpGraph(mainGraph, "test");
