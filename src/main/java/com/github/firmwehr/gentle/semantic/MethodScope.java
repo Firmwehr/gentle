@@ -15,7 +15,6 @@ import com.github.firmwehr.gentle.parser.ast.expression.NewArrayExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.NewObjectExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.NullExpression;
 import com.github.firmwehr.gentle.parser.ast.expression.ThisExpression;
-import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperator;
 import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperatorExpression;
 import com.github.firmwehr.gentle.parser.ast.statement.Block;
 import com.github.firmwehr.gentle.parser.ast.statement.BlockStatement;
@@ -246,7 +245,9 @@ public record MethodScope(
 		try {
 			return new SIntegerValueExpression(expr.value().intValueExact(), expr.sourceSpan());
 		} catch (ArithmeticException e) {
-			throw new SemanticException(source, expr.sourceSpan(), "integer literal too large");
+			boolean negative = expr.value().signum() < 0;
+			String message = "integer literal too " + (negative ? "small" : "large");
+			throw new SemanticException(source, expr.sourceSpan(), message);
 		}
 	}
 
@@ -396,14 +397,6 @@ public record MethodScope(
 	}
 
 	SExpression convert(UnaryOperatorExpression expr) throws SemanticException {
-		if (expr.operator() == UnaryOperator.NEGATION && expr.expression() instanceof IntegerLiteralExpression i) {
-			try {
-				return new SIntegerValueExpression(i.value().negate().intValueExact(), expr.sourceSpan());
-			} catch (ArithmeticException e) {
-				throw new SemanticException(source, expr.sourceSpan(), "integer literal too small");
-			}
-		}
-
 		return new SUnaryOperatorExpression(expr.operator(), convert(expr.expression()), expr.sourceSpan());
 	}
 

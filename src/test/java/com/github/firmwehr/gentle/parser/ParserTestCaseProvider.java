@@ -7,7 +7,6 @@ import com.github.firmwehr.gentle.parser.ast.Program;
 import com.github.firmwehr.gentle.parser.ast.Type;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
 import com.github.firmwehr.gentle.parser.ast.expression.Expression;
-import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperator;
 import com.github.firmwehr.gentle.parser.ast.statement.Statement;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.provider.Arguments;
@@ -361,7 +360,7 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 								.thenReturn(Expression.newCall(
 									"clamp",
 									Expression.newIdent("n"),
-									Expression.newInt(1).withUnary(UnaryOperator.NEGATION),
+									Expression.newInt(-1),
 									Expression.newInt(1)
 								))))
 						.withMethod(Method.dummy("sum")
