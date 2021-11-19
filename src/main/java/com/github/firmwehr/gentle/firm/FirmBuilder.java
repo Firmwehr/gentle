@@ -6,10 +6,15 @@ import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SMethod;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import com.github.firmwehr.gentle.semantic.ast.expression.SBinaryOperatorExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SBooleanValueExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SIntegerValueExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SNullExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SUnaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
+import com.github.firmwehr.gentle.semantic.ast.statement.SReturnStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SStatement;
+import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 import firm.Backend;
 import firm.Construction;
 import firm.Dump;
@@ -22,6 +27,7 @@ import firm.Program;
 import firm.Relation;
 import firm.Type;
 import firm.bindings.binding_ircons;
+import firm.bindings.binding_irnode;
 import firm.nodes.Block;
 import firm.nodes.Div;
 import firm.nodes.Mod;
@@ -32,6 +38,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -39,9 +46,8 @@ public class FirmBuilder {
 
 	public void convert(Path file, SProgram program) throws IOException, SemanticException {
 		System.out.println(Path.of("").toAbsolutePath());
+		Backend.option("dump=all");
 		Firm.init("x86_64-linux-gnu", new String[]{"pic=1"});
-
-		Dump.setDumpFlags(2 * (1 << 6) - 1);
 
 		SMethod method = program.mainMethod();
 		Set<LocalVariableDeclaration> variables = new HashSet<>();
@@ -108,10 +114,7 @@ public class FirmBuilder {
 						construction.setCurrentMem(construction.newProj(modNode, Mode.getM(), Mod.pnM));
 						yield construction.newProj(modNode, Mode.getIs(), Div.pnRes);
 					}
-					case EQUAL -> {
-						Node cmpNode = construction.newCmp(lhs, rhs, Relation.Equal);
-						yield construction.newCond(cmpNode);
-					}
+					case EQUAL -> construction.newCmp(lhs, rhs, Relation.Equal);
 					case LESS_OR_EQUAL -> construction.newCmp(lhs, rhs, Relation.LessEqual);
 					case LESS_THAN -> construction.newCmp(lhs, rhs, Relation.Less);
 					case GREATER_OR_EQUAL -> construction.newCmp(lhs, rhs, Relation.GreaterEqual);
@@ -124,10 +127,19 @@ public class FirmBuilder {
 			public Node visit(SIfStatement ifStatement) throws SemanticException {
 				Block afterBlock = construction.newBlock();
 
-				Node condition = ifStatement.condition().accept(this);
+				Node conditionValue = ifStatement.condition().accept(this);
+				Node condition;
+				if (conditionValue.getOpCode() == binding_irnode.ir_opcode.iro_Cmp) {
+					condition = construction.newCond(conditionValue);
+				} else {
+					Node cmp = construction.newCmp(conditionValue, construction.newConst(0, conditionValue.getMode()),
+						Relation.Equal);
+					condition = construction.newCond(cmp);
+				}
 
-				Node falseCaseNode = construction.newProj(condition, Mode.getX(), 0);
-				Node trueCaseNode = construction.newProj(condition, Mode.getX(), 1);
+				// Swapped because we compare to 0
+				Node falseCaseNode = construction.newProj(condition, Mode.getX(), 1);
+				Node trueCaseNode = construction.newProj(condition, Mode.getX(), 0);
 
 				Block trueBlock = construction.newBlock();
 				trueBlock.addPred(trueCaseNode);
@@ -144,6 +156,8 @@ public class FirmBuilder {
 					ifStatement.elseBody().get().accept(this);
 					Node falseToAfter = construction.newJmp();
 					afterBlock.addPred(falseToAfter);
+				} else {
+					afterBlock.addPred(falseCaseNode);
 				}
 
 				construction.setCurrentBlock(afterBlock);
@@ -159,10 +173,82 @@ public class FirmBuilder {
 			}
 
 			@Override
+			public Node visit(SBooleanValueExpression booleanValueExpression) {
+				return construction.newConst(booleanValueExpression.value() ? 1 : 0, Mode.getBu());
+			}
+
+			@Override
 			public Node visit(SLocalVariableExpression localVariableExpression) {
 				LocalVariableDeclaration variable = localVariableExpression.localVariable();
 				int index = localVariables.computeIfAbsent(variable, ignored -> localVariables.size());
-				return construction.getVariable(index, Mode.getIs());
+
+				SNormalType type = localVariableExpression.localVariable().type();
+				if (type.asBooleanType().isPresent()) {
+					return construction.getVariable(index, Mode.getBu());
+				} else if (type.asIntType().isPresent()) {
+					return construction.getVariable(index, Mode.getIs());
+				}
+				throw new RuntimeException("TODO");
+			}
+
+			@Override
+			public Node visit(SNullExpression nullExpression) {
+				return construction.newConst(0, Mode.getP());
+			}
+
+			@Override
+			public Node visit(SReturnStatement returnStatement) throws SemanticException {
+				Node[] returnValues = new Node[0];
+				if (returnStatement.returnValue().isPresent()) {
+					returnValues = new Node[]{returnStatement.returnValue().get().accept(this)};
+				}
+				Node returnNode = construction.newReturn(construction.getCurrentMem(), returnValues);
+				mainGraph.getEndBlock().addPred(returnNode);
+				return returnNode;
+			}
+
+			@Override
+			public Node visit(SUnaryOperatorExpression unaryOperatorExpression) throws SemanticException {
+				return switch (unaryOperatorExpression.operator()) {
+					case NEGATION -> construction.newMinus(unaryOperatorExpression.expression().accept(this));
+					case LOGICAL_NOT -> {
+						Node expr = unaryOperatorExpression.expression().accept(this);
+						Node isZeroCmp =
+							construction.newCmp(construction.newConst(0, expr.getMode()), expr, Relation.Equal);
+						Node isZeroCond = construction.newCond(isZeroCmp);
+
+						yield condToBu(isZeroCond);
+					}
+				};
+			}
+
+			private Node condToBu(Node isZeroCond) {
+				Block startBlock = construction.getCurrentBlock();
+				Block afterBlock = construction.newBlock();
+
+				// Is not zero
+				Node isNotZeroProj = construction.newProj(isZeroCond, Mode.getX(), 0);
+				Block isNotZeroBlock = construction.newBlock();
+				construction.setCurrentBlock(isNotZeroBlock);
+				isNotZeroBlock.addPred(isNotZeroProj);
+				afterBlock.addPred(construction.newJmp());
+
+				construction.setCurrentBlock(startBlock);
+
+				// Is zero
+				Node isZeroProj = construction.newProj(isZeroCond, Mode.getX(), 1);
+				Block isZeroBlock = construction.newBlock();
+				construction.setCurrentBlock(isZeroBlock);
+				isZeroBlock.addPred(isZeroProj);
+				afterBlock.addPred(construction.newJmp());
+
+				// After the conditional
+				construction.setCurrentBlock(afterBlock);
+
+				Node constZero = construction.newConst(0, Mode.getBu());
+				Node constOne = construction.newConst(1, Mode.getBu());
+
+				return construction.newPhi(new Node[]{constOne, constZero}, Mode.getBu());
 			}
 		};
 
@@ -170,8 +256,13 @@ public class FirmBuilder {
 			statement.accept(generateVisitor);
 		}
 
-		for (int i = 0; i < variables.size(); i++) {
-			mainGraph.keepAlive(construction.getVariable(i, Mode.getIs()));
+		Dump.dumpGraph(mainGraph, "foo");
+
+		List<LocalVariableDeclaration> copyOf = List.copyOf(variables);
+		for (int i = 0; i < copyOf.size(); i++) {
+			LocalVariableDeclaration variable = copyOf.get(i);
+			Mode mode = variable.type().asBooleanType().isPresent() ? Mode.getBu() : Mode.getIs();
+			mainGraph.keepAlive(construction.getVariable(i, mode));
 		}
 
 		Node oneConst = construction.newConst(1, Mode.getIs());
