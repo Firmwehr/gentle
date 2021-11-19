@@ -89,10 +89,11 @@ dependencies {
 
 	// Persistent collections
 	implementation("org.javimmutable:javimmutable-collections:3.2.1")
-
-	implementation("com.github.Firmwehr:jFirm:0632018461")
 	// https://mvnrepository.com/artifact/net.java.dev.jna/jna
 	implementation("net.java.dev.jna:jna:4.5.2")
+
+
+	implementation("com.github.Firmwehr:jFirm:fc897436f2")
 
 	// junit
 	val junitVersion = "5.8.1"
