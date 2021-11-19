@@ -3,6 +3,7 @@ package com.github.firmwehr.gentle.firm;
 import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
+import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SMethod;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import com.github.firmwehr.gentle.semantic.ast.expression.SBinaryOperatorExpression;
@@ -15,6 +16,7 @@ import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SReturnStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SStatement;
 import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
+import com.github.firmwehr.gentle.semantic.ast.type.SVoidyType;
 import firm.Backend;
 import firm.Construction;
 import firm.Dump;
@@ -38,19 +40,34 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class FirmBuilder {
 
 	public void convert(Path file, SProgram program) throws IOException, SemanticException {
 		System.out.println(Path.of("").toAbsolutePath());
-		Backend.option("dump=all");
+		System.in.read();
+		//		Backend.option("dump=all");
 		Firm.init("x86_64-linux-gnu", new String[]{"pic=1"});
 
-		SMethod method = program.mainMethod();
+		for (SClassDeclaration classDeclaration : program.classes().getAll()) {
+			for (SMethod method : classDeclaration.methods().getAll()) {
+				buildMethod(file, method);
+			}
+		}
+
+		String basename = FilenameUtils.removeExtension(file.getFileName().toString());
+		String assemblerFile = basename + ".s";
+		Backend.createAssembler(assemblerFile, assemblerFile);
+
+		Firm.finish();
+	}
+
+	private int countLocalVars(SMethod method) throws SemanticException {
 		Set<LocalVariableDeclaration> variables = new HashSet<>();
+
 		Visitor<Void> visitor = new Visitor<>() {
 
 			@Override
@@ -67,17 +84,37 @@ public class FirmBuilder {
 		for (SStatement statement : method.body()) {
 			statement.accept(visitor);
 		}
+		return variables.size();
+	}
 
+	private void buildMethod(Path file, SMethod method) throws SemanticException, IOException {
+		Type[] inputs = method.parameters()
+			.stream()
+			.map(LocalVariableDeclaration::type)
+			.map(FirmBuilder::getMode)
+			.filter(Objects::nonNull)
+			.map(Mode::getType)
+			.toArray(Type[]::new);
+		Type[] resultTypes = {getMode(method.returnType()).getType()};
+		MethodType methodType = new MethodType(inputs, resultTypes);
 
-		MethodType mainMethod = new MethodType(new Type[]{}, new Type[]{Mode.getIs().getType()});
-		Entity mainEntity = new Entity(Program.getGlobalType(), "main", mainMethod);
+		Entity methodEntity = new Entity(Program.getGlobalType(), method.name().ident(), methodType);
 
-		Graph mainGraph = new Graph(mainEntity, variables.size());
+		Graph mainGraph = new Graph(methodEntity, countLocalVars(method));
+
 		Construction construction = new Construction(mainGraph);
 
-		Visitor<Node> generateVisitor = new Visitor<>() {
+		Map<LocalVariableDeclaration, Integer> localVariables = new HashMap<>();
 
-			private Map<LocalVariableDeclaration, Integer> localVariables = new HashMap<>();
+		for (LocalVariableDeclaration parameter : method.parameters()) {
+			int index = localVariables.computeIfAbsent(parameter, ignored -> localVariables.size());
+			Mode mode = getMode(parameter.type());
+			if (mode != null) {
+				construction.setVariable(index, construction.newConst(0, mode));
+			}
+		}
+
+		Visitor<Node> generateVisitor = new Visitor<>() {
 
 			@Override
 			public Node defaultReturnValue() {
@@ -125,9 +162,12 @@ public class FirmBuilder {
 
 			@Override
 			public Node visit(SIfStatement ifStatement) throws SemanticException {
+				Block startBlock = construction.getCurrentBlock();
 				Block afterBlock = construction.newBlock();
 
 				Node conditionValue = ifStatement.condition().accept(this);
+				construction.setCurrentBlock(startBlock);
+
 				Node condition;
 				if (conditionValue.getOpCode() == binding_irnode.ir_opcode.iro_Cmp) {
 					condition = construction.newCond(conditionValue);
@@ -145,8 +185,11 @@ public class FirmBuilder {
 				trueBlock.addPred(trueCaseNode);
 				construction.setCurrentBlock(trueBlock);
 				ifStatement.body().accept(this);
+				construction.setCurrentBlock(trueBlock);
 				Node trueToAfter = construction.newJmp();
 				afterBlock.addPred(trueToAfter);
+
+				construction.setCurrentBlock(startBlock);
 
 				if (ifStatement.elseBody().isPresent()) {
 					Block falseBlock = construction.newBlock();
@@ -154,6 +197,7 @@ public class FirmBuilder {
 
 					construction.setCurrentBlock(falseBlock);
 					ifStatement.elseBody().get().accept(this);
+					construction.setCurrentBlock(falseBlock);
 					Node falseToAfter = construction.newJmp();
 					afterBlock.addPred(falseToAfter);
 				} else {
@@ -162,7 +206,7 @@ public class FirmBuilder {
 
 				construction.setCurrentBlock(afterBlock);
 
-				mainGraph.keepAlive(afterBlock);
+				//				mainGraph.keepAlive(afterBlock);
 
 				return afterBlock;
 			}
@@ -201,6 +245,8 @@ public class FirmBuilder {
 				Node[] returnValues = new Node[0];
 				if (returnStatement.returnValue().isPresent()) {
 					returnValues = new Node[]{returnStatement.returnValue().get().accept(this)};
+				} else {
+					returnValues = new Node[]{construction.newConst(0, Mode.getIs())};
 				}
 				Node returnNode = construction.newReturn(construction.getCurrentMem(), returnValues);
 				mainGraph.getEndBlock().addPred(returnNode);
@@ -256,28 +302,29 @@ public class FirmBuilder {
 			statement.accept(generateVisitor);
 		}
 
-		Dump.dumpGraph(mainGraph, "foo");
-
-		List<LocalVariableDeclaration> copyOf = List.copyOf(variables);
-		for (int i = 0; i < copyOf.size(); i++) {
-			LocalVariableDeclaration variable = copyOf.get(i);
-			Mode mode = variable.type().asBooleanType().isPresent() ? Mode.getBu() : Mode.getIs();
-			mainGraph.keepAlive(construction.getVariable(i, mode));
-		}
-
-		Node oneConst = construction.newConst(1, Mode.getIs());
-		Node returnNode = construction.newReturn(construction.getCurrentMem(), new Node[]{oneConst});
-		mainGraph.getEndBlock().addPred(returnNode);
+		Dump.dumpGraph(mainGraph, "before-mature");
 
 		construction.finish();
 
-		Dump.dumpGraph(mainGraph, "test");
+		Dump.dumpGraph(mainGraph, "after-mature");
+	}
 
-		String basename = FilenameUtils.removeExtension(file.getFileName().toString());
-		String assemblerFile = basename + ".s";
-		Backend.createAssembler(assemblerFile, assemblerFile);
-		Runtime.getRuntime().exec(new String[]{"gcc", assemblerFile, "-o", basename});
+	private static Mode getMode(SNormalType type) {
+		if (type.asBooleanType().isPresent()) {
+			return Mode.getBu();
+		} else if (type.asIntType().isPresent()) {
+			return Mode.getIs();
+		}
+		return null;
+	}
 
-		Firm.finish();
+	private static Mode getMode(SVoidyType type) {
+		if (type.asExprType().asNormalType().isPresent()) {
+			return getMode(type.asExprType().asNormalType().get());
+		}
+		if (type.asExprType().asVoidType().isPresent()) {
+			return Mode.getIs();
+		}
+		return null;
 	}
 }
