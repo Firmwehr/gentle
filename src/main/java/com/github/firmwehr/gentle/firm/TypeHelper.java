@@ -60,6 +60,7 @@ public class TypeHelper {
 	}
 
 	public CompoundType getType(SClassDeclaration classDeclaration) {
+		// TODO: Do we need to wrap this in a PointerType?
 		return classTypes.computeIfAbsent(classDeclaration, decl -> new ClassType(decl.name().ident()));
 	}
 

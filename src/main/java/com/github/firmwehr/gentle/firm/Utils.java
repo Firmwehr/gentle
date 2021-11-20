@@ -12,7 +12,7 @@ import java.util.Set;
 
 public class Utils {
 	public static int countLocalVars(SMethod method) throws SemanticException {
-		Set<LocalVariableDeclaration> variables = new HashSet<>();
+		Set<LocalVariableDeclaration> variables = new HashSet<>(method.parameters());
 
 		Visitor<Void> visitor = new Visitor<>() {
 

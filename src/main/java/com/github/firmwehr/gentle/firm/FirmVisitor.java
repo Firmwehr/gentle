@@ -80,12 +80,12 @@ class FirmVisitor implements Visitor<Node> {
 		MethodType methodType = new MethodType(types, new Type[]{returnType});
 		Entity entity = new Entity(typeHelper.getType(currentClass), method.name().ident(), methodType);
 
-		// + 1 to cover implicit receiver parameter
-		this.currentGraph = new Graph(entity, Utils.countLocalVars(method) + method.parameters().size() + 1);
+		// TODO: change countLocalVars to getLocalVars and return a Map<LVD, Integer>
+		this.currentGraph = new Graph(entity, Utils.countLocalVars(method) + 1);
 		this.construction = new Construction(currentGraph);
 
 		if (!method.isStatic()) {
-			Node startNode = construction.newStart();
+			Node startNode = currentGraph.getStart();
 			construction.setCurrentMem(construction.newProj(startNode, Mode.getM(), Start.pnM));
 			Node argsTuple = construction.newProj(startNode, Mode.getT(), Start.pnTArgs);
 
