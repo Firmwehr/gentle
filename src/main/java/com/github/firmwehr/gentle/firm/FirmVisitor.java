@@ -107,10 +107,10 @@ class FirmVisitor implements Visitor<Node> {
 	@Override
 	public Node visit(SBinaryOperatorExpression binaryOperatorExpression) throws SemanticException {
 		Node lhs = binaryOperatorExpression.lhs().accept(this);
-		Node rhs = binaryOperatorExpression.rhs().accept(this);
 
 		return switch (binaryOperatorExpression.operator()) {
 			case ASSIGN -> {
+				Node rhs = binaryOperatorExpression.rhs().accept(this);
 				if (binaryOperatorExpression.lhs() instanceof SLocalVariableExpression localVar) {
 					int index =
 						localVariables.computeIfAbsent(localVar.localVariable(), ignored -> localVariables.size());
@@ -119,26 +119,31 @@ class FirmVisitor implements Visitor<Node> {
 				}
 				throw new RuntimeException(":(");
 			}
-			case ADD -> construction.newAdd(lhs, rhs);
-			case SUBTRACT -> construction.newSub(lhs, rhs);
-			case MULTIPLY -> construction.newMul(lhs, rhs);
+			case ADD -> construction.newAdd(lhs, binaryOperatorExpression.rhs().accept(this));
+			case SUBTRACT -> construction.newSub(lhs, binaryOperatorExpression.rhs().accept(this));
+			case MULTIPLY -> construction.newMul(lhs, binaryOperatorExpression.rhs().accept(this));
 			case DIVIDE -> {
-				Node divNode = construction.newDiv(construction.getCurrentMem(), lhs, rhs,
-					binding_ircons.op_pin_state.op_pin_state_exc_pinned);
+				Node divNode =
+					construction.newDiv(construction.getCurrentMem(), lhs, binaryOperatorExpression.rhs().accept(this),
+						binding_ircons.op_pin_state.op_pin_state_exc_pinned);
 				construction.setCurrentMem(construction.newProj(divNode, Mode.getM(), Div.pnM));
 				yield construction.newProj(divNode, Mode.getIs(), Div.pnRes);
 			}
 			case MODULO -> {
-				Node modNode = construction.newMod(construction.getCurrentMem(), lhs, rhs,
-					binding_ircons.op_pin_state.op_pin_state_exc_pinned);
+				Node modNode =
+					construction.newMod(construction.getCurrentMem(), lhs, binaryOperatorExpression.rhs().accept(this),
+						binding_ircons.op_pin_state.op_pin_state_exc_pinned);
 				construction.setCurrentMem(construction.newProj(modNode, Mode.getM(), Mod.pnM));
 				yield construction.newProj(modNode, Mode.getIs(), Div.pnRes);
 			}
-			case EQUAL -> construction.newCmp(lhs, rhs, Relation.Equal);
-			case LESS_OR_EQUAL -> construction.newCmp(lhs, rhs, Relation.LessEqual);
-			case LESS_THAN -> construction.newCmp(lhs, rhs, Relation.Less);
-			case GREATER_OR_EQUAL -> construction.newCmp(lhs, rhs, Relation.GreaterEqual);
-			case GREATER_THAN -> construction.newCmp(lhs, rhs, Relation.Greater);
+			case EQUAL -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this), Relation.Equal);
+			case LESS_OR_EQUAL -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this),
+				Relation.LessEqual);
+			case LESS_THAN -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this), Relation.Less);
+			case GREATER_OR_EQUAL -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this),
+				Relation.GreaterEqual);
+			case GREATER_THAN -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this),
+				Relation.Greater);
 			case LOGICAL_OR -> {
 				Block afterBlock = construction.newBlock();
 				Block aIsTrueBlock = construction.newBlock();
@@ -159,7 +164,7 @@ class FirmVisitor implements Visitor<Node> {
 				// A FALSE BLOCK
 				construction.setCurrentBlock(aIsFalseBlock);
 				aIsFalseBlock.addPred(aIsFalseProj);
-				Node bValue = condToBu(condFromBooleanExpr(rhs));
+				Node bValue = condToBu(condFromBooleanExpr(binaryOperatorExpression.rhs().accept(this)));
 				afterBlock.addPred(construction.newJmp());
 
 				// AFTER BLOCK
@@ -186,7 +191,7 @@ class FirmVisitor implements Visitor<Node> {
 				// A TRUE BLOCK
 				construction.setCurrentBlock(aIsTrueBlock);
 				aIsTrueBlock.addPred(aIsTrueProj);
-				Node bValue = condToBu(condFromBooleanExpr(rhs));
+				Node bValue = condToBu(condFromBooleanExpr(binaryOperatorExpression.rhs().accept(this)));
 				afterBlock.addPred(construction.newJmp());
 
 				// AFTER BLOCK
