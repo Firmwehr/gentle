@@ -25,6 +25,7 @@ import firm.Type;
 import firm.bindings.binding_ircons;
 import firm.bindings.binding_irnode;
 import firm.nodes.Block;
+import firm.nodes.Cond;
 import firm.nodes.Div;
 import firm.nodes.Mod;
 import firm.nodes.Node;
@@ -79,6 +80,7 @@ class FirmVisitor implements Visitor<Node> {
 
 		if (!method.parameters().isEmpty()) {
 			Node startNode = construction.newStart();
+			construction.setCurrentMem(construction.newProj(startNode, Mode.getM(), Start.pnM));
 			Node argsTuple = construction.newProj(startNode, Mode.getT(), Start.pnTArgs);
 
 			List<LocalVariableDeclaration> parameters = method.parameters();
@@ -137,6 +139,60 @@ class FirmVisitor implements Visitor<Node> {
 			case LESS_THAN -> construction.newCmp(lhs, rhs, Relation.Less);
 			case GREATER_OR_EQUAL -> construction.newCmp(lhs, rhs, Relation.GreaterEqual);
 			case GREATER_THAN -> construction.newCmp(lhs, rhs, Relation.Greater);
+			case LOGICAL_OR -> {
+				Block afterBlock = construction.newBlock();
+				Block aIsTrueBlock = construction.newBlock();
+				Block aIsFalseBlock = construction.newBlock();
+
+				Node aIsFalseCmp = construction.newCmp(lhs, construction.newConst(0, Mode.getBu()), Relation.Equal);
+				Node aIsFalseCond = construction.newCond(aIsFalseCmp);
+
+				Node aIsTrueProj = construction.newProj(aIsFalseCond, Mode.getX(), Cond.pnFalse);
+				Node aIsFalseProj = construction.newProj(aIsFalseCond, Mode.getX(), Cond.pnTrue);
+
+				// A TRUE BLOCK
+				construction.setCurrentBlock(aIsTrueBlock);
+				aIsTrueBlock.addPred(aIsTrueProj);
+				Node constTrue = construction.newConst(1, Mode.getBu());
+				afterBlock.addPred(construction.newJmp());
+
+				// A FALSE BLOCK
+				construction.setCurrentBlock(aIsFalseBlock);
+				aIsFalseBlock.addPred(aIsFalseProj);
+				Node bValue = condToBu(condFromBooleanExpr(rhs));
+				afterBlock.addPred(construction.newJmp());
+
+				// AFTER BLOCK
+				construction.setCurrentBlock(afterBlock);
+				yield construction.newPhi(new Node[]{constTrue, bValue}, Mode.getBu());
+			}
+			case LOGICAL_AND -> {
+				Block afterBlock = construction.newBlock();
+				Block aIsTrueBlock = construction.newBlock();
+				Block aIsFalseBlock = construction.newBlock();
+
+				Node aIsFalseCmp = construction.newCmp(lhs, construction.newConst(0, Mode.getBu()), Relation.Equal);
+				Node aIsFalseCond = construction.newCond(aIsFalseCmp);
+
+				Node aIsTrueProj = construction.newProj(aIsFalseCond, Mode.getX(), Cond.pnFalse);
+				Node aIsFalseProj = construction.newProj(aIsFalseCond, Mode.getX(), Cond.pnTrue);
+
+				// A FALSE BLOCK
+				construction.setCurrentBlock(aIsFalseBlock);
+				aIsFalseBlock.addPred(aIsFalseProj);
+				Node constFalse = construction.newConst(0, Mode.getBu());
+				afterBlock.addPred(construction.newJmp());
+
+				// A TRUE BLOCK
+				construction.setCurrentBlock(aIsTrueBlock);
+				aIsTrueBlock.addPred(aIsTrueProj);
+				Node bValue = condToBu(condFromBooleanExpr(rhs));
+				afterBlock.addPred(construction.newJmp());
+
+				// AFTER BLOCK
+				construction.setCurrentBlock(afterBlock);
+				yield construction.newPhi(new Node[]{constFalse, bValue}, Mode.getBu());
+			}
 			default -> throw new RuntimeException("TODO");
 		};
 	}
@@ -149,15 +205,7 @@ class FirmVisitor implements Visitor<Node> {
 		Node conditionValue = ifStatement.condition().accept(this);
 		construction.setCurrentBlock(startBlock);
 
-		Node condition;
-		if (conditionValue.getOpCode() == binding_irnode.ir_opcode.iro_Cmp) {
-			condition = construction.newCond(conditionValue);
-		} else {
-			Node cmp =
-				construction.newCmp(conditionValue, construction.newConst(0, conditionValue.getMode()),
-					Relation.Equal);
-			condition = construction.newCond(cmp);
-		}
+		Node condition = condFromBooleanExpr(conditionValue);
 
 		// Swapped because we compare to 0
 		Node falseCaseNode = construction.newProj(condition, Mode.getX(), 1);
@@ -191,6 +239,19 @@ class FirmVisitor implements Visitor<Node> {
 		//				mainGraph.keepAlive(afterBlock);
 
 		return afterBlock;
+	}
+
+	private Node condFromBooleanExpr(Node conditionValue) {
+		Node condition;
+		if (conditionValue.getOpCode() == binding_irnode.ir_opcode.iro_Cmp) {
+			condition = construction.newCond(conditionValue);
+		} else {
+			Node cmp =
+				construction.newCmp(conditionValue, construction.newConst(0, conditionValue.getMode()),
+					Relation.Equal);
+			condition = construction.newCond(cmp);
+		}
+		return condition;
 	}
 
 	@Override
@@ -241,15 +302,16 @@ class FirmVisitor implements Visitor<Node> {
 			case NEGATION -> construction.newMinus(unaryOperatorExpression.expression().accept(this));
 			case LOGICAL_NOT -> {
 				Node expr = unaryOperatorExpression.expression().accept(this);
-				Node isZeroCmp = construction.newCmp(construction.newConst(0, expr.getMode()), expr, Relation.Equal);
-				Node isZeroCond = construction.newCond(isZeroCmp);
-
-				yield condToBu(isZeroCond);
+				yield condToBu(condFromBooleanExpr(expr), 0, 1);
 			}
 		};
 	}
 
 	private Node condToBu(Node isZeroCond) {
+		return condToBu(isZeroCond, 1, 0);
+	}
+
+	private Node condToBu(Node isZeroCond, int valueForTrue, int valueForFalse) {
 		Block startBlock = construction.getCurrentBlock();
 		Block afterBlock = construction.newBlock();
 
@@ -272,9 +334,9 @@ class FirmVisitor implements Visitor<Node> {
 		// After the conditional
 		construction.setCurrentBlock(afterBlock);
 
-		Node constZero = construction.newConst(0, Mode.getBu());
-		Node constOne = construction.newConst(1, Mode.getBu());
+		Node constTrue = construction.newConst(valueForFalse, Mode.getBu());
+		Node constFalse = construction.newConst(valueForTrue, Mode.getBu());
 
-		return construction.newPhi(new Node[]{constOne, constZero}, Mode.getBu());
+		return construction.newPhi(new Node[]{constFalse, constTrue}, Mode.getBu());
 	}
 }
