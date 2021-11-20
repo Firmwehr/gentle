@@ -10,6 +10,7 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SBooleanValueExpressio
 import com.github.firmwehr.gentle.semantic.ast.expression.SIntegerValueExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNullExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SThisExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SUnaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SReturnStatement;
@@ -31,13 +32,13 @@ import firm.nodes.Mod;
 import firm.nodes.Node;
 import firm.nodes.Start;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 class FirmVisitor implements Visitor<Node> {
 
-	private Map<LocalVariableDeclaration, Integer> localVariables;
+	private SlotTable slotTable;
 	private Construction construction;
 	private Graph currentGraph;
 	private final TypeHelper typeHelper;
@@ -61,35 +62,43 @@ class FirmVisitor implements Visitor<Node> {
 
 	@Override
 	public Node visit(SMethod method) throws SemanticException {
-		this.localVariables = new HashMap<>();
+		this.slotTable = new SlotTable(method);
 
-		Type[] types = method.parameters()
+		List<Type> typesList = method.parameters()
 			.stream()
 			.map(LocalVariableDeclaration::type)
 			.map(typeHelper::getType)
-			.toArray(Type[]::new);
+			.collect(Collectors.toCollection(ArrayList::new));
 
+		if (!method.isStatic()) {
+			typesList.add(0, typeHelper.getType(currentClass.type()));
+		}
+		Type[] types = typesList.toArray(Type[]::new);
 		Type returnType =
 			method.returnType().asExprType().asNormalType().map(typeHelper::getType).orElse(Mode.getIs().getType());
 
 		MethodType methodType = new MethodType(types, new Type[]{returnType});
 		Entity entity = new Entity(typeHelper.getType(currentClass), method.name().ident(), methodType);
 
-		this.currentGraph = new Graph(entity, Utils.countLocalVars(method) + method.parameters().size());
+		// + 1 to cover implicit receiver parameter
+		this.currentGraph = new Graph(entity, Utils.countLocalVars(method) + method.parameters().size() + 1);
 		this.construction = new Construction(currentGraph);
 
-		if (!method.parameters().isEmpty()) {
+		if (!method.isStatic()) {
 			Node startNode = construction.newStart();
 			construction.setCurrentMem(construction.newProj(startNode, Mode.getM(), Start.pnM));
 			Node argsTuple = construction.newProj(startNode, Mode.getT(), Start.pnTArgs);
 
-			List<LocalVariableDeclaration> parameters = method.parameters();
-			for (int i = 0; i < parameters.size(); i++) {
-				LocalVariableDeclaration parameter = parameters.get(i);
-				localVariables.put(parameter, i);
+			// the implicit receiver parameter is at pos 0 and needs to be handled separately
+			Node thisProj = construction.newProj(argsTuple, typeHelper.getMode(currentClass.type()), 0);
+			construction.setVariable(0, thisProj);
 
-				Node proj = construction.newProj(argsTuple, typeHelper.getMode(parameter.type()), i);
-				construction.setVariable(i, proj);
+			List<LocalVariableDeclaration> parameters = method.parameters();
+			for (LocalVariableDeclaration parameter : parameters) {
+				var index = slotTable.computeIndex(parameter);
+
+				Node proj = construction.newProj(argsTuple, typeHelper.getMode(parameter.type()), index);
+				construction.setVariable(index, proj);
 			}
 		}
 
@@ -112,8 +121,7 @@ class FirmVisitor implements Visitor<Node> {
 			case ASSIGN -> {
 				Node rhs = binaryOperatorExpression.rhs().accept(this);
 				if (binaryOperatorExpression.lhs() instanceof SLocalVariableExpression localVar) {
-					int index =
-						localVariables.computeIfAbsent(localVar.localVariable(), ignored -> localVariables.size());
+					int index = slotTable.computeIndex(localVar.localVariable());
 					construction.setVariable(index, rhs);
 					yield rhs;
 				}
@@ -203,6 +211,11 @@ class FirmVisitor implements Visitor<Node> {
 	}
 
 	@Override
+	public Node visit(SThisExpression thisExpression) throws SemanticException {
+		return construction.getVariable(0, Mode.getP());
+	}
+
+	@Override
 	public Node visit(SIfStatement ifStatement) throws SemanticException {
 		Block startBlock = construction.getCurrentBlock();
 		Block afterBlock = construction.newBlock();
@@ -272,7 +285,7 @@ class FirmVisitor implements Visitor<Node> {
 	@Override
 	public Node visit(SLocalVariableExpression localVariableExpression) {
 		LocalVariableDeclaration variable = localVariableExpression.localVariable();
-		int index = localVariables.computeIfAbsent(variable, ignored -> localVariables.size());
+		int index = slotTable.computeIndex(variable);
 
 		SNormalType type = localVariableExpression.localVariable().type();
 		if (type.asBooleanType().isPresent()) {
