@@ -4,9 +4,12 @@ import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
+import com.github.firmwehr.gentle.semantic.ast.SField;
 import com.github.firmwehr.gentle.semantic.ast.SMethod;
+import com.github.firmwehr.gentle.semantic.ast.expression.SArrayAccessExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SBinaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SBooleanValueExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SFieldAccessExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SIntegerValueExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNullExpression;
@@ -14,7 +17,6 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SThisExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SUnaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SReturnStatement;
-import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 import firm.Construction;
 import firm.Dump;
 import firm.Entity;
@@ -31,6 +33,7 @@ import firm.nodes.Div;
 import firm.nodes.Mod;
 import firm.nodes.Node;
 import firm.nodes.Start;
+import firm.nodes.Store;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,15 +41,18 @@ import java.util.stream.Collectors;
 
 class FirmVisitor implements Visitor<Node> {
 
+	private final TypeHelper typeHelper;
+	private final EntityHelper entityHelper;
+
 	private SlotTable slotTable;
 	private Construction construction;
 	private Graph currentGraph;
-	private final TypeHelper typeHelper;
 
 	private SClassDeclaration currentClass;
 
 	public FirmVisitor() {
 		this.typeHelper = new TypeHelper();
+		this.entityHelper = new EntityHelper(typeHelper);
 	}
 
 	@Override
@@ -58,6 +64,12 @@ class FirmVisitor implements Visitor<Node> {
 	public Node visit(SClassDeclaration classDeclaration) throws SemanticException {
 		this.currentClass = classDeclaration;
 		return Visitor.super.visit(classDeclaration);
+	}
+
+	@Override
+	public Node visit(SField field) {
+		entityHelper.setFieldEntity(field, currentClass);
+		return Visitor.super.visit(field);
 	}
 
 	@Override
@@ -125,6 +137,11 @@ class FirmVisitor implements Visitor<Node> {
 					construction.setVariable(index, rhs);
 					yield rhs;
 				}
+				if (binaryOperatorExpression.lhs() instanceof SFieldAccessExpression ignored) {
+					Node storeNode = construction.newStore(construction.getCurrentMem(), lhs, rhs);
+					construction.setCurrentMem(construction.newProj(storeNode, Mode.getM(), Store.pnM));
+					yield storeNode;
+				}
 				throw new RuntimeException(":(");
 			}
 			case ADD -> construction.newAdd(lhs, binaryOperatorExpression.rhs().accept(this));
@@ -145,6 +162,11 @@ class FirmVisitor implements Visitor<Node> {
 				yield construction.newProj(modNode, Mode.getIs(), Div.pnRes);
 			}
 			case EQUAL -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this), Relation.Equal);
+			case NOT_EQUAL -> {
+				Node equalCmp = construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this), Relation.Equal);
+				Node equalCond = construction.newCond(equalCmp);
+				yield condToBu(equalCond, 0, 1);
+			}
 			case LESS_OR_EQUAL -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this),
 				Relation.LessEqual);
 			case LESS_THAN -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this), Relation.Less);
@@ -206,13 +228,21 @@ class FirmVisitor implements Visitor<Node> {
 				construction.setCurrentBlock(afterBlock);
 				yield construction.newPhi(new Node[]{constFalse, bValue}, Mode.getBu());
 			}
-			default -> throw new RuntimeException("TODO");
 		};
 	}
 
 	@Override
 	public Node visit(SThisExpression thisExpression) throws SemanticException {
 		return construction.getVariable(0, Mode.getP());
+	}
+
+	@Override
+	public Node visit(SArrayAccessExpression arrayExpression) throws SemanticException {
+		Node arrayNode = arrayExpression.expression().accept(this);
+		Node indexNode = arrayExpression.index().accept(this);
+
+		// TODO: What is the correct type here?
+		return construction.newSel(arrayNode, indexNode, typeHelper.getType(arrayExpression.type()));
 	}
 
 	@Override
@@ -254,8 +284,6 @@ class FirmVisitor implements Visitor<Node> {
 
 		construction.setCurrentBlock(afterBlock);
 
-		//				mainGraph.keepAlive(afterBlock);
-
 		return afterBlock;
 	}
 
@@ -285,15 +313,11 @@ class FirmVisitor implements Visitor<Node> {
 	@Override
 	public Node visit(SLocalVariableExpression localVariableExpression) {
 		LocalVariableDeclaration variable = localVariableExpression.localVariable();
-		int index = slotTable.computeIndex(variable);
 
-		SNormalType type = localVariableExpression.localVariable().type();
-		if (type.asBooleanType().isPresent()) {
-			return construction.getVariable(index, Mode.getBu());
-		} else if (type.asIntType().isPresent()) {
-			return construction.getVariable(index, Mode.getIs());
-		}
-		throw new RuntimeException("TODO");
+		int index = slotTable.computeIndex(variable);
+		Mode mode = typeHelper.getMode(localVariableExpression.localVariable().type());
+
+		return construction.getVariable(index, mode);
 	}
 
 	@Override
@@ -302,8 +326,14 @@ class FirmVisitor implements Visitor<Node> {
 	}
 
 	@Override
+	public Node visit(SFieldAccessExpression fieldAccessExpression) throws SemanticException {
+		Node exprNode = fieldAccessExpression.expression().accept(this);
+		return construction.newMember(exprNode, entityHelper.getEntity(fieldAccessExpression.field()));
+	}
+
+	@Override
 	public Node visit(SReturnStatement returnStatement) throws SemanticException {
-		Node[] returnValues = new Node[0];
+		Node[] returnValues;
 		if (returnStatement.returnValue().isPresent()) {
 			returnValues = new Node[]{returnStatement.returnValue().get().accept(this)};
 		} else {
