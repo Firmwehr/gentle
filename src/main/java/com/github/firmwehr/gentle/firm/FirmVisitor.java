@@ -78,7 +78,7 @@ class FirmVisitor implements Visitor<Node> {
 			method.returnType().asExprType().asNormalType().map(typeHelper::getType).orElse(Mode.getIs().getType());
 
 		MethodType methodType = new MethodType(types, new Type[]{returnType});
-		Entity entity = new Entity(typeHelper.getType(currentClass), method.name().ident(), methodType);
+		Entity entity = new Entity(typeHelper.getClassType(currentClass), method.name().ident(), methodType);
 
 		// TODO: change countLocalVars to getLocalVars and return a Map<LVD, Integer>
 		this.currentGraph = new Graph(entity, Utils.countLocalVars(method) + 1);

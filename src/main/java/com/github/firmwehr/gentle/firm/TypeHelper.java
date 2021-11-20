@@ -8,7 +8,6 @@ import com.github.firmwehr.gentle.semantic.ast.basictype.SIntType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SStringType;
 import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
 import firm.ClassType;
-import firm.CompoundType;
 import firm.Mode;
 import firm.PointerType;
 import firm.Type;
@@ -19,7 +18,7 @@ import java.util.Map;
 public class TypeHelper {
 
 	private final Type stringType;
-	private final Map<SClassDeclaration, CompoundType> classTypes;
+	private final Map<SClassDeclaration, PointerType> classTypes;
 
 	public TypeHelper() {
 		this.stringType = new ClassType("String");
@@ -59,9 +58,14 @@ public class TypeHelper {
 		return Mode.getP();
 	}
 
-	public CompoundType getType(SClassDeclaration classDeclaration) {
-		// TODO: Do we need to wrap this in a PointerType?
-		return classTypes.computeIfAbsent(classDeclaration, decl -> new ClassType(decl.name().ident()));
+	public PointerType getType(SClassDeclaration classDeclaration) {
+		return classTypes.computeIfAbsent(classDeclaration,
+			decl -> new PointerType(new ClassType(decl.name().ident())));
+	}
+
+	public ClassType getClassType(SClassDeclaration classDeclaration) {
+		return (ClassType) classTypes.computeIfAbsent(classDeclaration,
+			decl -> new PointerType(new ClassType(decl.name().ident()))).getPointsTo();
 	}
 
 	public Type getStringType() {
