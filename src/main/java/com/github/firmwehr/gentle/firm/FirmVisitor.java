@@ -25,12 +25,14 @@ import firm.Entity;
 import firm.Graph;
 import firm.Mode;
 import firm.Relation;
+import firm.Type;
 import firm.bindings.binding_ircons;
 import firm.bindings.binding_irnode;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cond;
 import firm.nodes.Div;
+import firm.nodes.Load;
 import firm.nodes.Mod;
 import firm.nodes.Node;
 import firm.nodes.Start;
@@ -63,7 +65,15 @@ class FirmVisitor implements Visitor<Node> {
 	@Override
 	public Node visit(SClassDeclaration classDeclaration) throws SemanticException {
 		this.currentClass = classDeclaration;
-		return Visitor.super.visit(classDeclaration);
+		for (SField sField : classDeclaration.fields().getAll()) {
+			visit(sField);
+		}
+		typeHelper.getClassType(classDeclaration).layoutFields();
+		typeHelper.getClassType(classDeclaration).finishLayout();
+		for (SMethod sMethod : classDeclaration.methods().getAll()) {
+			visit(sMethod);
+		}
+		return defaultReturnValue();
 	}
 
 	@Override
@@ -129,7 +139,7 @@ class FirmVisitor implements Visitor<Node> {
 		Node proj = construction.newProj(call, Mode.getT(), Call.pnTResult);
 		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
 		// 0 as we only have one return element
-		return construction.newProj(proj, typeHelper.getMode(method.returnType()), 0);
+		return construction.newProj(proj, typeHelper.getMode(method.returnType().asExprType()), 0);
 	}
 
 	@Override
@@ -174,10 +184,13 @@ class FirmVisitor implements Visitor<Node> {
 				Node equalCond = construction.newCond(equalCmp);
 				yield condToBu(equalCond, 0, 1);
 			}
-			case LESS_OR_EQUAL -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this), Relation.LessEqual);
+			case LESS_OR_EQUAL -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this),
+				Relation.LessEqual);
 			case LESS_THAN -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this), Relation.Less);
-			case GREATER_OR_EQUAL -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this), Relation.GreaterEqual);
-			case GREATER_THAN -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this), Relation.Greater);
+			case GREATER_OR_EQUAL -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this),
+				Relation.GreaterEqual);
+			case GREATER_THAN -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this),
+				Relation.Greater);
 			case LOGICAL_OR -> {
 				Block afterBlock = construction.newBlock();
 				Block aIsTrueBlock = construction.newBlock();
@@ -245,8 +258,14 @@ class FirmVisitor implements Visitor<Node> {
 		Node arrayNode = arrayExpression.expression().accept(this);
 		Node indexNode = arrayExpression.index().accept(this);
 
-		// TODO: What is the correct type here?
-		return construction.newSel(arrayNode, indexNode, typeHelper.getType(arrayExpression.type()));
+		Type innerType = typeHelper.getType(arrayExpression.type());
+		Mode innerMode = typeHelper.getMode(arrayExpression.type());
+		Node typeSizeNode = construction.newConst(innerType.getSize(), Mode.getLs());
+		Node offsetNode = construction.newMul(construction.newConv(indexNode, Mode.getLs()), typeSizeNode);
+		Node targetAddressNode = construction.newAdd(arrayNode, offsetNode);
+		Node loadNode = construction.newLoad(construction.getCurrentMem(), targetAddressNode, innerMode);
+		construction.setCurrentMem(construction.newProj(loadNode, Mode.getM(), Load.pnM));
+		return construction.newProj(loadNode, innerMode, Load.pnRes);
 	}
 
 	@Override
@@ -355,10 +374,6 @@ class FirmVisitor implements Visitor<Node> {
 				yield condToBu(condFromBooleanExpr(expr), 0, 1);
 			}
 		};
-	}
-
-	public void finish() {
-		typeHelper.layoutTypes();
 	}
 
 	private Node condToBu(Node isZeroCond) {

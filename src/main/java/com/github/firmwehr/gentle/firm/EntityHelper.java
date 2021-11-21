@@ -56,7 +56,7 @@ public class EntityHelper {
 		Type[] types = typesList.toArray(Type[]::new);
 		Type[] returnType = new Type[0];
 		if (!(method.returnType() instanceof SVoidType)) {
-			returnType = new Type[]{typeHelper.getType(method.returnType())};
+			returnType = new Type[]{typeHelper.getType(method.returnType().asExprType())};
 		}
 
 		MethodType methodType = new MethodType(types, returnType);

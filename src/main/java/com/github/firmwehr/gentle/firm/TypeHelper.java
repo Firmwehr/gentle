@@ -6,9 +6,10 @@ import com.github.firmwehr.gentle.semantic.ast.basictype.SBooleanType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SClassType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SIntType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SStringType;
+import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
 import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
+import com.github.firmwehr.gentle.semantic.ast.type.SNullType;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
-import com.github.firmwehr.gentle.semantic.ast.type.SVoidyType;
 import firm.ClassType;
 import firm.Mode;
 import firm.PointerType;
@@ -83,17 +84,19 @@ public class TypeHelper {
 		return stringType;
 	}
 
-	public Mode getMode(SVoidyType returnType) {
+	public Mode getMode(SExprType returnType) {
 		return switch (returnType) {
 			case SNormalType normalType -> getMode(normalType);
 			case SVoidType ignored -> Mode.getANY();
+			case SNullType ignored -> throw new AssertionError("!?!");
 		};
 	}
 
-	public Type getType(SVoidyType returnType) {
+	public Type getType(SExprType returnType) {
 		return switch (returnType) {
 			case SNormalType normalType -> getType(normalType);
 			case SVoidType ignored -> voidType;
+			case SNullType ignored -> throw new AssertionError("???");
 		};
 	}
 }

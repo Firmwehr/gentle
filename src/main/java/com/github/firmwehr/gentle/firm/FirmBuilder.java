@@ -1,12 +1,11 @@
 package com.github.firmwehr.gentle.firm;
 
 import com.github.firmwehr.gentle.semantic.SemanticException;
-import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import firm.Backend;
 import firm.Firm;
-import firm.nodes.Node;
+import firm.Util;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.IOException;
@@ -26,7 +25,6 @@ public class FirmBuilder {
 			generateVisitor.visit(classDeclaration);
 		}
 
-		generateVisitor.finish();
 		Util.lowerSels();
 		String basename = FilenameUtils.removeExtension(file.getFileName().toString());
 		String assemblerFile = basename + ".s";
