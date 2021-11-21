@@ -7,6 +7,7 @@ import com.github.firmwehr.gentle.semantic.ast.basictype.SClassType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SIntType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SStringType;
 import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
+import com.github.firmwehr.gentle.semantic.ast.type.SVoidyType;
 import firm.ClassType;
 import firm.Mode;
 import firm.PointerType;
@@ -70,5 +71,12 @@ public class TypeHelper {
 
 	public Type getStringType() {
 		return stringType;
+	}
+
+	public Mode getMode(SVoidyType returnType) {
+		return switch (returnType) {
+			case SNormalType normalType -> getMode(normalType);
+			case default -> Mode.getIs();
+		};
 	}
 }

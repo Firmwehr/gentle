@@ -9,9 +9,11 @@ import com.github.firmwehr.gentle.semantic.ast.SMethod;
 import com.github.firmwehr.gentle.semantic.ast.expression.SArrayAccessExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SBinaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SBooleanValueExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SFieldAccessExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SIntegerValueExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SMethodInvocationExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNullExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SThisExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SUnaryOperatorExpression;
@@ -21,13 +23,12 @@ import firm.Construction;
 import firm.Dump;
 import firm.Entity;
 import firm.Graph;
-import firm.MethodType;
 import firm.Mode;
 import firm.Relation;
-import firm.Type;
 import firm.bindings.binding_ircons;
 import firm.bindings.binding_irnode;
 import firm.nodes.Block;
+import firm.nodes.Call;
 import firm.nodes.Cond;
 import firm.nodes.Div;
 import firm.nodes.Mod;
@@ -35,9 +36,8 @@ import firm.nodes.Node;
 import firm.nodes.Start;
 import firm.nodes.Store;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 class FirmVisitor implements Visitor<Node> {
 
@@ -76,21 +76,7 @@ class FirmVisitor implements Visitor<Node> {
 	public Node visit(SMethod method) throws SemanticException {
 		this.slotTable = new SlotTable(method);
 
-		List<Type> typesList = method.parameters()
-			.stream()
-			.map(LocalVariableDeclaration::type)
-			.map(typeHelper::getType)
-			.collect(Collectors.toCollection(ArrayList::new));
-
-		if (!method.isStatic()) {
-			typesList.add(0, typeHelper.getType(currentClass.type()));
-		}
-		Type[] types = typesList.toArray(Type[]::new);
-		Type returnType =
-			method.returnType().asExprType().asNormalType().map(typeHelper::getType).orElse(Mode.getIs().getType());
-
-		MethodType methodType = new MethodType(types, new Type[]{returnType});
-		Entity entity = new Entity(typeHelper.getClassType(currentClass), method.name().ident(), methodType);
+		Entity entity = this.entityHelper.computeMethodEntity(method);
 
 		// TODO: change countLocalVars to getLocalVars and return a Map<LVD, Integer>
 		this.currentGraph = new Graph(entity, Utils.countLocalVars(method) + 1);
@@ -123,6 +109,27 @@ class FirmVisitor implements Visitor<Node> {
 		Dump.dumpGraph(currentGraph, "after-mature");
 
 		return null;
+	}
+
+	@Override
+	public Node visit(SMethodInvocationExpression methodInvocationExpression) throws SemanticException {
+		// only non-static methods can be invoked, so we can always add 1 for the receiver
+		int argumentSize = methodInvocationExpression.arguments().size() + 1;
+		Node[] fArguments = new Node[argumentSize];
+		fArguments[0] = methodInvocationExpression.expression().accept(this);
+		List<SExpression> sArguments = methodInvocationExpression.arguments();
+		for (int i = 0; i < sArguments.size(); i++) {
+			SExpression argument = sArguments.get(i);
+			fArguments[i + 1] = argument.accept(this);
+		}
+		SMethod method = methodInvocationExpression.method();
+		Entity methodEntity = entityHelper.computeMethodEntity(method);
+		Node address = construction.newAddress(methodEntity);
+		Node call = construction.newCall(construction.getCurrentMem(), address, fArguments, methodEntity.getType());
+		Node proj = construction.newProj(call, Mode.getT(), Call.pnTResult);
+		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
+		// 0 as we only have one return element
+		return construction.newProj(proj, typeHelper.getMode(method.returnType()), 0);
 	}
 
 	@Override
@@ -167,13 +174,10 @@ class FirmVisitor implements Visitor<Node> {
 				Node equalCond = construction.newCond(equalCmp);
 				yield condToBu(equalCond, 0, 1);
 			}
-			case LESS_OR_EQUAL -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this),
-				Relation.LessEqual);
+			case LESS_OR_EQUAL -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this), Relation.LessEqual);
 			case LESS_THAN -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this), Relation.Less);
-			case GREATER_OR_EQUAL -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this),
-				Relation.GreaterEqual);
-			case GREATER_THAN -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this),
-				Relation.Greater);
+			case GREATER_OR_EQUAL -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this), Relation.GreaterEqual);
+			case GREATER_THAN -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this), Relation.Greater);
 			case LOGICAL_OR -> {
 				Block afterBlock = construction.newBlock();
 				Block aIsTrueBlock = construction.newBlock();
