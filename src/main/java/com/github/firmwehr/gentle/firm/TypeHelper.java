@@ -7,23 +7,26 @@ import com.github.firmwehr.gentle.semantic.ast.basictype.SClassType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SIntType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SStringType;
 import com.github.firmwehr.gentle.semantic.ast.type.SNormalType;
+import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidyType;
 import firm.ClassType;
 import firm.Mode;
 import firm.PointerType;
+import firm.PrimitiveType;
 import firm.Type;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class TypeHelper {
-
 	private final Type stringType;
+	private final Type voidType;
 	private final Map<SClassDeclaration, PointerType> classTypes;
 
 	public TypeHelper() {
 		this.stringType = new ClassType("String");
 		this.classTypes = new HashMap<>();
+		this.voidType = new PrimitiveType(Mode.getANY());
 	}
 
 	public Type getType(SBasicType basicType) {
@@ -76,7 +79,14 @@ public class TypeHelper {
 	public Mode getMode(SVoidyType returnType) {
 		return switch (returnType) {
 			case SNormalType normalType -> getMode(normalType);
-			case default -> Mode.getIs();
+			case SVoidType ignored -> Mode.getANY();
+		};
+	}
+
+	public Type getType(SVoidyType returnType) {
+		return switch (returnType) {
+			case SNormalType normalType -> getType(normalType);
+			case SVoidType ignored -> voidType;
 		};
 	}
 }

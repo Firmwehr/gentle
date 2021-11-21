@@ -4,10 +4,10 @@ import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SField;
 import com.github.firmwehr.gentle.semantic.ast.SMethod;
+import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import firm.ClassType;
 import firm.Entity;
 import firm.MethodType;
-import firm.Mode;
 import firm.Type;
 
 import java.util.ArrayList;
@@ -54,10 +54,12 @@ public class EntityHelper {
 			typesList.add(0, typeHelper.getType(method.classDecl().type()));
 		}
 		Type[] types = typesList.toArray(Type[]::new);
-		Type returnType =
-			method.returnType().asExprType().asNormalType().map(typeHelper::getType).orElse(Mode.getIs().getType());
+		Type[] returnType = new Type[0];
+		if (!(method.returnType() instanceof SVoidType)) {
+			returnType = new Type[]{typeHelper.getType(method.returnType())};
+		}
 
-		MethodType methodType = new MethodType(types, new Type[]{returnType});
+		MethodType methodType = new MethodType(types, returnType);
 		return new Entity(ownerType, method.name().ident(), methodType);
 	}
 }

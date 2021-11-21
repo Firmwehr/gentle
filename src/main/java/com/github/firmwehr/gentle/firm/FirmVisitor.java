@@ -337,11 +337,9 @@ class FirmVisitor implements Visitor<Node> {
 
 	@Override
 	public Node visit(SReturnStatement returnStatement) throws SemanticException {
-		Node[] returnValues;
+		Node[] returnValues = new Node[0];
 		if (returnStatement.returnValue().isPresent()) {
 			returnValues = new Node[]{returnStatement.returnValue().get().accept(this)};
-		} else {
-			returnValues = new Node[]{construction.newConst(0, Mode.getIs())};
 		}
 		Node returnNode = construction.newReturn(construction.getCurrentMem(), returnValues);
 		currentGraph.getEndBlock().addPred(returnNode);
