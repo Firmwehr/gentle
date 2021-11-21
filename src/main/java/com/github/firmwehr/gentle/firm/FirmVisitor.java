@@ -84,12 +84,11 @@ class FirmVisitor implements Visitor<Node> {
 
 	@Override
 	public Node visit(SMethod method) throws SemanticException {
-		this.slotTable = new SlotTable(method);
+		this.slotTable = SlotTable.forMethod(method);
 
 		Entity entity = this.entityHelper.computeMethodEntity(method);
 
-		// TODO: change countLocalVars to getLocalVars and return a Map<LVD, Integer>
-		this.currentGraph = new Graph(entity, Utils.countLocalVars(method) + 1);
+		this.currentGraph = new Graph(entity, this.slotTable.size());
 		this.construction = new Construction(currentGraph);
 
 		if (!method.isStatic()) {

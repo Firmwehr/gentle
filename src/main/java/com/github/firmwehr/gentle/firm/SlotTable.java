@@ -1,30 +1,63 @@
 package com.github.firmwehr.gentle.firm;
 
 import com.github.firmwehr.gentle.parser.ast.Ident;
+import com.github.firmwehr.gentle.semantic.SemanticException;
+import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SMethod;
+import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
 import com.github.firmwehr.gentle.source.SourceSpan;
 
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 
 public class SlotTable {
-	private int counter;
-	private final Map<LocalVariableDeclaration, Integer> toIndexMap = new LinkedHashMap<>();
+	private final Map<LocalVariableDeclaration, Integer> toIndexMap;
 
-	public SlotTable(SMethod method) {
+	public static SlotTable forMethod(SMethod method) throws SemanticException {
+		Map<LocalVariableDeclaration, Integer> map = new HashMap<>();
 		if (!method.isStatic()) {
 			LocalVariableDeclaration thisDummy = createThisDummy(method.classDecl());
-			this.toIndexMap.put(thisDummy, counter++);
+			map.put(thisDummy, map.size());
 		}
+		// parameters
+		for (LocalVariableDeclaration parameter : method.parameters()) {
+			map.put(parameter, map.size());
+		}
+		// local variables in body
+		Visitor<Void> visitor = new Visitor<>() {
+
+			@Override
+			public Void defaultReturnValue() {
+				return null;
+			}
+
+			@Override
+			public Void visit(SLocalVariableExpression localVariableExpression) {
+				map.putIfAbsent(localVariableExpression.localVariable(), map.size());
+				return null;
+			}
+		};
+		visitor.visit(method);
+		return new SlotTable(map);
+	}
+
+	private SlotTable(Map<LocalVariableDeclaration, Integer> map) {
+		this.toIndexMap = map;
 	}
 
 	public int computeIndex(LocalVariableDeclaration localVariable) {
-		return this.toIndexMap.computeIfAbsent(localVariable, ignored -> counter++);
+		return this.toIndexMap.computeIfAbsent(localVariable, ignored -> {
+			throw new IllegalStateException(ignored + " not discovered before");
+		});
 	}
 
-	private LocalVariableDeclaration createThisDummy(SClassDeclaration classDeclaration) {
+	public int size() {
+		return this.toIndexMap.size();
+	}
+
+	private static LocalVariableDeclaration createThisDummy(SClassDeclaration classDeclaration) {
 		return new LocalVariableDeclaration(classDeclaration.type(), SourceSpan.dummy(), Ident.dummy("this"));
 	}
 }
