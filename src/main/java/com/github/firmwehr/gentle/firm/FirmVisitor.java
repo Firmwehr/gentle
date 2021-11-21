@@ -357,6 +357,10 @@ class FirmVisitor implements Visitor<Node> {
 		};
 	}
 
+	public void finish() {
+		typeHelper.layoutTypes();
+	}
+
 	private Node condToBu(Node isZeroCond) {
 		return condToBu(isZeroCond, 1, 0);
 	}

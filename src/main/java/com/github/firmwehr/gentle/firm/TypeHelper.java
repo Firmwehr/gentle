@@ -72,6 +72,13 @@ public class TypeHelper {
 			decl -> new PointerType(new ClassType(decl.name().ident()))).getPointsTo();
 	}
 
+	public void layoutTypes() {
+		for (PointerType value : classTypes.values()) {
+			((ClassType) value.getPointsTo()).layoutFields();
+			value.getPointsTo().finishLayout();
+		}
+	}
+
 	public Type getStringType() {
 		return stringType;
 	}

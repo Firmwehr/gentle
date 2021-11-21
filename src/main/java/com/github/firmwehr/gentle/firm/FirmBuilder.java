@@ -20,12 +20,14 @@ public class FirmBuilder {
 		//		Backend.option("dump=all");
 		Firm.init("x86_64-linux-gnu", new String[]{"pic=1"});
 
-		Visitor<Node> generateVisitor = new FirmVisitor();
+		FirmVisitor generateVisitor = new FirmVisitor();
 
 		for (SClassDeclaration classDeclaration : program.classes().getAll()) {
 			generateVisitor.visit(classDeclaration);
 		}
 
+		generateVisitor.finish();
+		Util.lowerSels();
 		String basename = FilenameUtils.removeExtension(file.getFileName().toString());
 		String assemblerFile = basename + ".s";
 		Backend.createAssembler(assemblerFile, assemblerFile);
