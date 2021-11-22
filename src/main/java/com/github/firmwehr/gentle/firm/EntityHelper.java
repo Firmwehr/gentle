@@ -38,15 +38,17 @@ public class EntityHelper {
 		return fieldEntities.get(field);
 	}
 
+	public Entity getEntity(StdLibEntity entity) {
+		return entity.getEntity();
+	}
+
 	public Entity computeMethodEntity(SMethod method) {
 		return this.methodEntities.computeIfAbsent(method, this::createMethodEntity);
 	}
 
 	private Entity createMethodEntity(SMethod method) {
 		ClassType ownerType = typeHelper.getClassType(method.classDecl());
-		List<Type> typesList = method.parameters()
-			.stream()
-			.map(LocalVariableDeclaration::type)
+		List<Type> typesList = method.parameters().stream().map(LocalVariableDeclaration::type)
 			.map(typeHelper::getType)
 			.collect(Collectors.toCollection(ArrayList::new));
 

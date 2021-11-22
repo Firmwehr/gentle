@@ -14,7 +14,12 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SFieldAccessExpression
 import com.github.firmwehr.gentle.semantic.ast.expression.SIntegerValueExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SMethodInvocationExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SNewObjectExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNullExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemInReadExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutFlushExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutPrintlnExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SSystemOutWriteExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SThisExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SUnaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
@@ -22,6 +27,7 @@ import com.github.firmwehr.gentle.semantic.ast.statement.SReturnStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import com.github.firmwehr.gentle.source.SourceSpan;
+import firm.ClassType;
 import firm.Construction;
 import firm.Dump;
 import firm.Entity;
@@ -432,6 +438,68 @@ class FirmVisitor implements Visitor<Node> {
 		after.mature();
 
 		return null;
+	}
+
+
+	@Override
+	public Node visit(SSystemInReadExpression systemInReadExpression) throws SemanticException {
+		Entity getCharEntity = entityHelper.getEntity(StdLibEntity.GETCHAR);
+		Node getCharAddress = construction.newAddress(getCharEntity);
+		var call =
+			construction.newCall(construction.getCurrentMem(), getCharAddress, new Node[]{}, getCharEntity.getType());
+		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
+		Node proj = construction.newProj(call, Mode.getT(), Call.pnTResult);
+		return construction.newProj(proj, Mode.getIs(), 0);
+	}
+
+	@Override
+	public Node visit(SSystemOutFlushExpression systemOutFlushExpression) throws SemanticException {
+		Node stdOutAddress = construction.newAddress(entityHelper.getEntity(StdLibEntity.STDOUT));
+		Entity fflushEntity = entityHelper.getEntity(StdLibEntity.FFLUSH);
+		Node fflushAddress = construction.newAddress(fflushEntity);
+		Node stdOutLoad = construction.newLoad(construction.getCurrentMem(), stdOutAddress, Mode.getP());
+		construction.setCurrentMem(construction.newProj(stdOutLoad, Mode.getM(), Load.pnM));
+		Node stdOutResult = construction.newProj(stdOutLoad, Mode.getP(), Load.pnRes);
+		var call = construction.newCall(construction.getCurrentMem(), fflushAddress, new Node[]{stdOutResult},
+			fflushEntity.getType());
+		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
+		return defaultReturnValue(); // TODO the return value should never be used
+	}
+
+	@Override
+	public Node visit(SSystemOutPrintlnExpression systemOutPrintlnExpression) throws SemanticException {
+		Entity printlnEntity = entityHelper.getEntity(StdLibEntity.PRINTLN);
+		Node printlnAddress = construction.newAddress(printlnEntity);
+		Node argument = systemOutPrintlnExpression.argument().accept(this);
+		var call = construction.newCall(construction.getCurrentMem(), printlnAddress, new Node[]{argument},
+			printlnEntity.getType());
+		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
+		return defaultReturnValue(); // TODO the return value should never be used
+	}
+
+	@Override
+	public Node visit(SSystemOutWriteExpression systemOutWriteExpression) throws SemanticException {
+		Entity putCharEntity = entityHelper.getEntity(StdLibEntity.PUTCHAR);
+		Node putCharAddress = construction.newAddress(putCharEntity);
+		Node argument = systemOutWriteExpression.argument().accept(this);
+		var call = construction.newCall(construction.getCurrentMem(), putCharAddress, new Node[]{argument},
+			putCharEntity.getType());
+		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
+		return defaultReturnValue(); // TODO the return value should never be used
+	}
+
+	@Override
+	public Node visit(SNewObjectExpression newObjectExpression) throws SemanticException {
+		ClassType type = typeHelper.getClassType(newObjectExpression.classDecl());
+		int size = type.getSize();
+		Entity mallocEntity = entityHelper.getEntity(StdLibEntity.MALLOC);
+		Node mallocAddress = construction.newAddress(mallocEntity);
+		Node sizeConst = construction.newConst(size, Mode.getLu());
+		Node call = construction.newCall(construction.getCurrentMem(), mallocAddress, new Node[]{sizeConst},
+			mallocEntity.getType());
+		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
+		Node proj = construction.newProj(call, Mode.getT(), Call.pnTResult);
+		return construction.newProj(proj, Mode.getP(), 0);
 	}
 
 	private Node condToBu(Node isZeroCond) {
