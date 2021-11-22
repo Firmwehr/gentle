@@ -191,6 +191,7 @@ class FirmVisitor implements Visitor<Node> {
 			case GREATER_THAN -> construction.newCmp(lhs, binaryOperatorExpression.rhs().accept(this),
 				Relation.Greater);
 			case LOGICAL_OR -> {
+				construction.getCurrentBlock().mature();
 				Block afterBlock = construction.newBlock();
 				Block aIsTrueBlock = construction.newBlock();
 				Block aIsFalseBlock = construction.newBlock();
@@ -204,20 +205,24 @@ class FirmVisitor implements Visitor<Node> {
 				// A TRUE BLOCK
 				construction.setCurrentBlock(aIsTrueBlock);
 				aIsTrueBlock.addPred(aIsTrueProj);
+				aIsTrueBlock.mature();
 				Node constTrue = construction.newConst(1, Mode.getBu());
 				afterBlock.addPred(construction.newJmp());
 
 				// A FALSE BLOCK
 				construction.setCurrentBlock(aIsFalseBlock);
 				aIsFalseBlock.addPred(aIsFalseProj);
+				aIsFalseBlock.mature();
 				Node bValue = condToBu(condFromBooleanExpr(binaryOperatorExpression.rhs().accept(this)));
 				afterBlock.addPred(construction.newJmp());
 
 				// AFTER BLOCK
 				construction.setCurrentBlock(afterBlock);
+				afterBlock.mature();
 				yield construction.newPhi(new Node[]{constTrue, bValue}, Mode.getBu());
 			}
 			case LOGICAL_AND -> {
+				construction.getCurrentBlock().mature();
 				Block afterBlock = construction.newBlock();
 				Block aIsTrueBlock = construction.newBlock();
 				Block aIsFalseBlock = construction.newBlock();
@@ -231,17 +236,20 @@ class FirmVisitor implements Visitor<Node> {
 				// A FALSE BLOCK
 				construction.setCurrentBlock(aIsFalseBlock);
 				aIsFalseBlock.addPred(aIsFalseProj);
+				aIsFalseBlock.mature();
 				Node constFalse = construction.newConst(0, Mode.getBu());
 				afterBlock.addPred(construction.newJmp());
 
 				// A TRUE BLOCK
 				construction.setCurrentBlock(aIsTrueBlock);
 				aIsTrueBlock.addPred(aIsTrueProj);
+				aIsTrueBlock.mature();
 				Node bValue = condToBu(condFromBooleanExpr(binaryOperatorExpression.rhs().accept(this)));
 				afterBlock.addPred(construction.newJmp());
 
 				// AFTER BLOCK
 				construction.setCurrentBlock(afterBlock);
+				afterBlock.mature();
 				yield construction.newPhi(new Node[]{constFalse, bValue}, Mode.getBu());
 			}
 		};
@@ -270,6 +278,7 @@ class FirmVisitor implements Visitor<Node> {
 	@Override
 	public Node visit(SIfStatement ifStatement) throws SemanticException {
 		Block startBlock = construction.getCurrentBlock();
+		startBlock.mature();
 		Block afterBlock = construction.newBlock();
 
 		Node conditionValue = ifStatement.condition().accept(this);
@@ -283,6 +292,7 @@ class FirmVisitor implements Visitor<Node> {
 
 		Block trueBlock = construction.newBlock();
 		trueBlock.addPred(trueCaseNode);
+		trueBlock.mature();
 		construction.setCurrentBlock(trueBlock);
 		ifStatement.body().accept(this);
 		construction.setCurrentBlock(trueBlock);
@@ -294,6 +304,7 @@ class FirmVisitor implements Visitor<Node> {
 		if (ifStatement.elseBody().isPresent()) {
 			Block falseBlock = construction.newBlock();
 			falseBlock.addPred(falseCaseNode);
+			falseBlock.mature();
 
 			construction.setCurrentBlock(falseBlock);
 			ifStatement.elseBody().get().accept(this);
@@ -305,6 +316,7 @@ class FirmVisitor implements Visitor<Node> {
 		}
 
 		construction.setCurrentBlock(afterBlock);
+		afterBlock.mature();
 
 		return afterBlock;
 	}
@@ -388,6 +400,7 @@ class FirmVisitor implements Visitor<Node> {
 		Block isNotZeroBlock = construction.newBlock();
 		construction.setCurrentBlock(isNotZeroBlock);
 		isNotZeroBlock.addPred(isNotZeroProj);
+		isNotZeroBlock.mature();
 		afterBlock.addPred(construction.newJmp());
 
 		construction.setCurrentBlock(startBlock);
@@ -397,10 +410,12 @@ class FirmVisitor implements Visitor<Node> {
 		Block isZeroBlock = construction.newBlock();
 		construction.setCurrentBlock(isZeroBlock);
 		isZeroBlock.addPred(isZeroProj);
+		isZeroBlock.mature();
 		afterBlock.addPred(construction.newJmp());
 
 		// After the conditional
 		construction.setCurrentBlock(afterBlock);
+		afterBlock.mature();
 
 		Node constTrue = construction.newConst(valueForFalse, Mode.getBu());
 		Node constFalse = construction.newConst(valueForTrue, Mode.getBu());
