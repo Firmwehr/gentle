@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.source;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.fusesource.jansi.Ansi.ansi;
 
@@ -105,7 +106,10 @@ public record Source(String content) {
 	}
 
 	private List<String> getLines(int startRow, int amount) {
-		return content.lines().skip(startRow - 1).limit(amount).collect(Collectors.toList());
+		return Stream.concat(content.lines(), Stream.generate(() -> ""))
+			.skip(startRow - 1)
+			.limit(amount)
+			.collect(Collectors.toList());
 	}
 
 	public String formatMessageAt(SourceSpan span, String message) {
