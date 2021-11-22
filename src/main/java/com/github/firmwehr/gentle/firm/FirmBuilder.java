@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import firm.Backend;
+import firm.Dump;
 import firm.Firm;
 import firm.Util;
 import org.apache.commons.io.FilenameUtils;
@@ -21,15 +22,17 @@ public class FirmBuilder {
 
 		FirmVisitor generateVisitor = new FirmVisitor();
 
+		generateVisitor.layoutClasses(program.classes().getAll());
 		for (SClassDeclaration classDeclaration : program.classes().getAll()) {
 			generateVisitor.visit(classDeclaration);
 		}
 
 		Util.lowerSels();
 		String basename = FilenameUtils.removeExtension(file.getFileName().toString());
+		Dump.dumpTypeGraph("types.vcg");
 		String assemblerFile = basename + ".s";
 		Backend.createAssembler(assemblerFile, assemblerFile);
-
+		Runtime.getRuntime().exec(new String[]{"gcc", assemblerFile, "-g", "runtime.c", "-o", basename});
 		Firm.finish();
 	}
 }

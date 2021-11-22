@@ -14,6 +14,7 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SFieldAccessExpression
 import com.github.firmwehr.gentle.semantic.ast.expression.SIntegerValueExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SLocalVariableExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SMethodInvocationExpression;
+import com.github.firmwehr.gentle.semantic.ast.expression.SNewArrayExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNewObjectExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SNullExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SSystemInReadExpression;
@@ -47,6 +48,7 @@ import firm.nodes.Node;
 import firm.nodes.Start;
 import firm.nodes.Store;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -77,15 +79,21 @@ class FirmVisitor implements Visitor<Node> {
 	@Override
 	public Node visit(SClassDeclaration classDeclaration) throws SemanticException {
 		this.currentClass = classDeclaration;
-		for (SField sField : classDeclaration.fields().getAll()) {
-			visit(sField);
-		}
-		typeHelper.getClassType(classDeclaration).layoutFields();
-		typeHelper.getClassType(classDeclaration).finishLayout();
 		for (SMethod sMethod : classDeclaration.methods().getAll()) {
 			visit(sMethod);
 		}
 		return defaultReturnValue();
+	}
+
+	public void layoutClasses(Collection<SClassDeclaration> classDeclarations) {
+		for (SClassDeclaration classDeclaration : classDeclarations) {
+			currentClass = classDeclaration;
+			for (SField sField : classDeclaration.fields().getAll()) {
+				visit(sField);
+			}
+			typeHelper.getClassType(classDeclaration).layoutFields();
+			typeHelper.getClassType(classDeclaration).finishLayout();
+		}
 	}
 
 	@Override
@@ -179,7 +187,24 @@ class FirmVisitor implements Visitor<Node> {
 						entityHelper.getEntity(fieldAccess.field()));
 					Node storeNode = construction.newStore(construction.getCurrentMem(), member, rhs);
 					construction.setCurrentMem(construction.newProj(storeNode, Mode.getM(), Store.pnM));
-					yield storeNode;
+					yield rhs;
+				}
+				if (binaryOperatorExpression.lhs() instanceof SArrayAccessExpression arrayExpression) {
+					Node arrayNode = arrayExpression.expression().accept(this);
+					Node indexNode = arrayExpression.index().accept(this);
+
+					Type innerType = typeHelper.getType(arrayExpression.type());
+					Node typeSizeNode = construction.newConst(innerType.getSize(), Mode.getLs());
+					Node offsetNode = construction.newMul(construction.newConv(indexNode, Mode.getLs()), typeSizeNode);
+					Node dereferencedArrayNode =
+						construction.newLoad(construction.getCurrentMem(), arrayNode, Mode.getP());
+					construction.setCurrentMem(construction.newProj(dereferencedArrayNode, Mode.getM(), Load.pnM));
+					Node targetAddressNode =
+						construction.newAdd(construction.newProj(dereferencedArrayNode, Mode.getP(), Load.pnRes),
+							offsetNode);
+					Node arrayStore = construction.newStore(construction.getCurrentMem(), targetAddressNode, rhs);
+					construction.setCurrentMem(construction.newProj(arrayStore, Mode.getM(), Store.pnM));
+					yield rhs;
 				}
 				throw new RuntimeException(":(");
 			}
@@ -290,7 +315,10 @@ class FirmVisitor implements Visitor<Node> {
 		Mode innerMode = typeHelper.getMode(arrayExpression.type());
 		Node typeSizeNode = construction.newConst(innerType.getSize(), Mode.getLs());
 		Node offsetNode = construction.newMul(construction.newConv(indexNode, Mode.getLs()), typeSizeNode);
-		Node targetAddressNode = construction.newAdd(arrayNode, offsetNode);
+		Node dereferencedArrayNode = construction.newLoad(construction.getCurrentMem(), arrayNode, Mode.getP());
+		construction.setCurrentMem(construction.newProj(dereferencedArrayNode, Mode.getM(), Load.pnM));
+		Node targetAddressNode =
+			construction.newAdd(construction.newProj(dereferencedArrayNode, Mode.getP(), Load.pnRes), offsetNode);
 		Node loadNode = construction.newLoad(construction.getCurrentMem(), targetAddressNode, innerMode);
 		construction.setCurrentMem(construction.newProj(loadNode, Mode.getM(), Load.pnM));
 		return construction.newProj(loadNode, innerMode, Load.pnRes);
@@ -300,11 +328,13 @@ class FirmVisitor implements Visitor<Node> {
 	public Node visit(SIfStatement ifStatement) throws SemanticException {
 		Block startBlock = construction.getCurrentBlock();
 		returningBlocks.add(startBlock);
-		startBlock.mature();
+		// startBlock.mature();
 		Block afterBlock = construction.newBlock();
+		Block trueBlock = construction.newBlock();
+		Block falseBlock = construction.newBlock();
 
 		Node conditionValue = ifStatement.condition().accept(this);
-		construction.setCurrentBlock(startBlock);
+		// construction.setCurrentBlock(startBlock);
 
 		Node condition = condFromBooleanExpr(conditionValue);
 
@@ -312,33 +342,33 @@ class FirmVisitor implements Visitor<Node> {
 		Node falseCaseNode = construction.newProj(condition, Mode.getX(), 1);
 		Node trueCaseNode = construction.newProj(condition, Mode.getX(), 0);
 
-		Block trueBlock = construction.newBlock();
 		trueBlock.addPred(trueCaseNode);
 		trueBlock.mature();
+		falseBlock.addPred(falseCaseNode);
+		falseBlock.mature();
 		construction.setCurrentBlock(trueBlock);
 		ifStatement.body().accept(this);
-		construction.setCurrentBlock(trueBlock);
-		jumpIfNotReturned(trueBlock, afterBlock);
+		// construction.setCurrentBlock(trueBlock);
+		jumpIfNotReturned(construction.getCurrentBlock(), afterBlock);
 
-		construction.setCurrentBlock(startBlock);
+		// construction.setCurrentBlock(startBlock);
 
 		if (ifStatement.elseBody().isPresent()) {
-			Block falseBlock = construction.newBlock();
-			falseBlock.addPred(falseCaseNode);
-			falseBlock.mature();
 
 			construction.setCurrentBlock(falseBlock);
 			ifStatement.elseBody().get().accept(this);
+			// construction.setCurrentBlock(falseBlock);
+			jumpIfNotReturned(construction.getCurrentBlock(), afterBlock);
+		} else {
 			construction.setCurrentBlock(falseBlock);
 			jumpIfNotReturned(falseBlock, afterBlock);
-		} else {
-			afterBlock.addPred(falseCaseNode);
+			// afterBlock.addPred(falseCaseNode);
 		}
 
 		construction.setCurrentBlock(afterBlock);
 		afterBlock.mature();
 
-		return afterBlock;
+		return defaultReturnValue();
 	}
 
 	private void jumpIfNotReturned(Block from, Block to) {
@@ -494,11 +524,30 @@ class FirmVisitor implements Visitor<Node> {
 	@Override
 	public Node visit(SNewObjectExpression newObjectExpression) throws SemanticException {
 		ClassType type = typeHelper.getClassType(newObjectExpression.classDecl());
-		int size = type.getSize();
+		// malloc returns null if called with zero bytes (class without fields)
+		int size = Math.max(1, type.getSize());
+		System.out.println(type);
+		System.out.println(size);
 		Entity mallocEntity = entityHelper.getEntity(StdLibEntity.MALLOC);
 		Node mallocAddress = construction.newAddress(mallocEntity);
 		Node sizeConst = construction.newConst(size, Mode.getLu());
 		Node call = construction.newCall(construction.getCurrentMem(), mallocAddress, new Node[]{sizeConst},
+			mallocEntity.getType());
+		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
+		Node proj = construction.newProj(call, Mode.getT(), Call.pnTResult);
+		return construction.newProj(proj, Mode.getP(), 0);
+	}
+
+	@Override
+	public Node visit(SNewArrayExpression newArrayExpression) throws SemanticException {
+		Type type = typeHelper.getType(newArrayExpression.type());
+		int size = type.getSize();
+		Entity mallocEntity = entityHelper.getEntity(StdLibEntity.MALLOC);
+		Node mallocAddress = construction.newAddress(mallocEntity);
+		Node sizeConst = construction.newConst(size, Mode.getLu());
+		Node arraySize =
+			construction.newMul(sizeConst, construction.newConv(newArrayExpression.size().accept(this), Mode.getLu()));
+		Node call = construction.newCall(construction.getCurrentMem(), mallocAddress, new Node[]{arraySize},
 			mallocEntity.getType());
 		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
 		Node proj = construction.newProj(call, Mode.getT(), Call.pnTResult);
