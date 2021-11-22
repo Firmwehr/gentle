@@ -51,25 +51,33 @@ public class GentleCompiler {
 			flagsSet.add("check");
 		}
 
-		if (flagsSet.isEmpty()) {
-			UserOutput.userError("No operation specified.");
-			System.exit(1);
-		} else if (flagsSet.size() != 1) {
-			UserOutput.userError("Conflicting flags set. Received the following mutually exclusive flags: " + flagsSet);
-			System.exit(1);
-		} else if (arguments.echo()) {
-			echoCommand(arguments.path());
-		} else if (arguments.lextest()) {
-			lexTestCommand(arguments.path());
-		} else if (arguments.parsetest()) {
-			parseTestCommand(arguments.path());
-		} else if (arguments.printAst()) {
-			printAstCommand(arguments.path());
-		} else if (arguments.check()) {
-			checkCommand(arguments.path());
-		} else {
-			// This can never be reached
-			runCommand(arguments.path());
+		try {
+			if (flagsSet.isEmpty()) {
+				UserOutput.userError("No operation specified.");
+				System.exit(1);
+			} else if (flagsSet.size() != 1) {
+				UserOutput.userError(
+					"Conflicting flags set. Received the following mutually exclusive flags: " + flagsSet);
+				System.exit(1);
+			} else if (arguments.echo()) {
+				echoCommand(arguments.path());
+			} else if (arguments.lextest()) {
+				lexTestCommand(arguments.path());
+			} else if (arguments.parsetest()) {
+				parseTestCommand(arguments.path());
+			} else if (arguments.printAst()) {
+				printAstCommand(arguments.path());
+			} else if (arguments.check()) {
+				checkCommand(arguments.path());
+			} else {
+				// This can never be reached
+				runCommand(arguments.path());
+			}
+		} catch (Exception e) {
+			UserOutput.userMessage("something went wrong, pls annoy me mjtest");
+			UserOutput.outputMessage(e.toString());
+			//noinspection UseOfSystemOutOrSystemErr
+			e.printStackTrace(System.out);
 		}
 
 		System.exit(0);
