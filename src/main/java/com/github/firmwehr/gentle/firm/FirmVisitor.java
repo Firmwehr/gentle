@@ -19,6 +19,7 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SThisExpression;
 import com.github.firmwehr.gentle.semantic.ast.expression.SUnaryOperatorExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SReturnStatement;
+import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
 import firm.Construction;
 import firm.Dump;
 import firm.Entity;
@@ -384,6 +385,33 @@ class FirmVisitor implements Visitor<Node> {
 				yield condToBu(condFromBooleanExpr(expr), 0, 1);
 			}
 		};
+	}
+
+	@Override
+	public Node visit(SWhileStatement whileStatement) throws SemanticException {
+		Block header = construction.newBlock();
+		Block body = construction.newBlock();
+		Block after = construction.newBlock();
+
+		header.addPred(construction.newJmp());
+		construction.setCurrentBlock(header);
+		Node cond = condFromBooleanExpr(whileStatement.condition().accept(this));
+
+		Node trueCase = construction.newProj(cond, Mode.getX(), Cond.pnTrue);
+		Node falseCase = construction.newProj(cond, Mode.getX(), Cond.pnFalse);
+
+		construction.setCurrentBlock(body);
+		body.addPred(trueCase);
+		body.mature();
+		whileStatement.body().accept(this);
+		header.addPred(construction.newJmp());
+		header.mature();
+
+		construction.setCurrentBlock(after);
+		after.addPred(falseCase);
+		after.mature();
+
+		return null;
 	}
 
 	private Node condToBu(Node isZeroCond) {
