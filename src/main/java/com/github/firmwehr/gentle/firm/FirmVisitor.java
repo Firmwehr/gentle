@@ -124,8 +124,8 @@ class FirmVisitor implements Visitor<Node> {
 
 		Visitor.super.visit(method);
 
-		if (method.returnType() instanceof SVoidType && method.body().isEmpty() ||
-			!(method.body().get(method.body().size() - 1) instanceof SReturnStatement)) {
+		if (method.returnType() instanceof SVoidType &&
+			(method.body().isEmpty() || !(method.body().get(method.body().size() - 1) instanceof SReturnStatement))) {
 			visit(new SReturnStatement(Optional.empty(), SourceSpan.dummy()));
 		}
 
@@ -155,6 +155,9 @@ class FirmVisitor implements Visitor<Node> {
 		Node call = construction.newCall(construction.getCurrentMem(), address, fArguments, methodEntity.getType());
 		Node proj = construction.newProj(call, Mode.getT(), Call.pnTResult);
 		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
+		if (method.returnType() instanceof SVoidType) {
+			return defaultReturnValue();
+		}
 		// 0 as we only have one return element
 		return construction.newProj(proj, typeHelper.getMode(method.returnType().asExprType()), 0);
 	}
@@ -171,8 +174,10 @@ class FirmVisitor implements Visitor<Node> {
 					construction.setVariable(index, rhs);
 					yield rhs;
 				}
-				if (binaryOperatorExpression.lhs() instanceof SFieldAccessExpression ignored) {
-					Node storeNode = construction.newStore(construction.getCurrentMem(), lhs, rhs);
+				if (binaryOperatorExpression.lhs() instanceof SFieldAccessExpression fieldAccess) {
+					Node member = construction.newMember(fieldAccess.expression().accept(this),
+						entityHelper.getEntity(fieldAccess.field()));
+					Node storeNode = construction.newStore(construction.getCurrentMem(), member, rhs);
 					construction.setCurrentMem(construction.newProj(storeNode, Mode.getM(), Store.pnM));
 					yield storeNode;
 				}
@@ -214,8 +219,7 @@ class FirmVisitor implements Visitor<Node> {
 				Block aIsTrueBlock = construction.newBlock();
 				Block aIsFalseBlock = construction.newBlock();
 
-				Node aIsFalseCmp = construction.newCmp(lhs, construction.newConst(0, Mode.getBu()), Relation.Equal);
-				Node aIsFalseCond = construction.newCond(aIsFalseCmp);
+				Node aIsFalseCond = condFromBooleanExpr(lhs);
 
 				Node aIsTrueProj = construction.newProj(aIsFalseCond, Mode.getX(), Cond.pnFalse);
 				Node aIsFalseProj = construction.newProj(aIsFalseCond, Mode.getX(), Cond.pnTrue);
@@ -245,8 +249,7 @@ class FirmVisitor implements Visitor<Node> {
 				Block aIsTrueBlock = construction.newBlock();
 				Block aIsFalseBlock = construction.newBlock();
 
-				Node aIsFalseCmp = construction.newCmp(lhs, construction.newConst(0, Mode.getBu()), Relation.Equal);
-				Node aIsFalseCond = construction.newCond(aIsFalseCmp);
+				Node aIsFalseCond = condFromBooleanExpr(lhs);
 
 				Node aIsTrueProj = construction.newProj(aIsFalseCond, Mode.getX(), Cond.pnFalse);
 				Node aIsFalseProj = construction.newProj(aIsFalseCond, Mode.getX(), Cond.pnTrue);
@@ -347,16 +350,12 @@ class FirmVisitor implements Visitor<Node> {
 	}
 
 	private Node condFromBooleanExpr(Node conditionValue) {
-		Node condition;
 		if (conditionValue.getOpCode() == binding_irnode.ir_opcode.iro_Cmp) {
-			condition = construction.newCond(conditionValue);
-		} else {
-			Node cmp =
-				construction.newCmp(conditionValue, construction.newConst(0, conditionValue.getMode()),
-					Relation.Equal);
-			condition = construction.newCond(cmp);
+			conditionValue = condToBu(construction.newCond(conditionValue), 0, 1);
 		}
-		return condition;
+		Node cmp =
+			construction.newCmp(conditionValue, construction.newConst(0, conditionValue.getMode()), Relation.Equal);
+		return construction.newCond(cmp);
 	}
 
 	@Override
@@ -387,7 +386,11 @@ class FirmVisitor implements Visitor<Node> {
 	@Override
 	public Node visit(SFieldAccessExpression fieldAccessExpression) throws SemanticException {
 		Node exprNode = fieldAccessExpression.expression().accept(this);
-		return construction.newMember(exprNode, entityHelper.getEntity(fieldAccessExpression.field()));
+		Node member = construction.newMember(exprNode, entityHelper.getEntity(fieldAccessExpression.field()));
+		Mode mode = typeHelper.getMode(fieldAccessExpression.type());
+		Node load = construction.newLoad(construction.getCurrentMem(), member, mode);
+		construction.setCurrentMem(construction.newProj(load, Mode.getM(), Load.pnM));
+		return construction.newProj(load, mode, Load.pnRes);
 	}
 
 	@Override
