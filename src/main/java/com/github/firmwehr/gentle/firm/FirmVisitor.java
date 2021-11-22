@@ -38,7 +38,6 @@ import firm.nodes.Node;
 import firm.nodes.Start;
 import firm.nodes.Store;
 
-import java.util.Arrays;
 import java.util.List;
 
 class FirmVisitor implements Visitor<Node> {
@@ -166,14 +165,14 @@ class FirmVisitor implements Visitor<Node> {
 			case DIVIDE -> {
 				Node divNode =
 					construction.newDiv(construction.getCurrentMem(), lhs, binaryOperatorExpression.rhs().accept(this),
-						binding_ircons.op_pin_state.op_pin_state_exc_pinned);
+						binding_ircons.op_pin_state.op_pin_state_pinned);
 				construction.setCurrentMem(construction.newProj(divNode, Mode.getM(), Div.pnM));
 				yield construction.newProj(divNode, Mode.getIs(), Div.pnRes);
 			}
 			case MODULO -> {
 				Node modNode =
 					construction.newMod(construction.getCurrentMem(), lhs, binaryOperatorExpression.rhs().accept(this),
-						binding_ircons.op_pin_state.op_pin_state_exc_pinned);
+						binding_ircons.op_pin_state.op_pin_state_pinned);
 				construction.setCurrentMem(construction.newProj(modNode, Mode.getM(), Mod.pnM));
 				yield construction.newProj(modNode, Mode.getIs(), Div.pnRes);
 			}
