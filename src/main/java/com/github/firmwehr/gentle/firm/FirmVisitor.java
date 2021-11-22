@@ -20,6 +20,8 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SUnaryOperatorExpressi
 import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SReturnStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
+import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
+import com.github.firmwehr.gentle.source.SourceSpan;
 import firm.Construction;
 import firm.Dump;
 import firm.Entity;
@@ -39,7 +41,10 @@ import firm.nodes.Node;
 import firm.nodes.Start;
 import firm.nodes.Store;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 class FirmVisitor implements Visitor<Node> {
 
@@ -49,6 +54,7 @@ class FirmVisitor implements Visitor<Node> {
 	private SlotTable slotTable;
 	private Construction construction;
 	private Graph currentGraph;
+	private Set<Block> returningBlocks;
 
 	private SClassDeclaration currentClass;
 
@@ -85,6 +91,7 @@ class FirmVisitor implements Visitor<Node> {
 	@Override
 	public Node visit(SMethod method) throws SemanticException {
 		this.slotTable = SlotTable.forMethod(method);
+		this.returningBlocks = new HashSet<>();
 
 		Entity entity = this.entityHelper.computeMethodEntity(method);
 
@@ -110,6 +117,11 @@ class FirmVisitor implements Visitor<Node> {
 		}
 
 		Visitor.super.visit(method);
+
+		if (method.returnType() instanceof SVoidType && method.body().isEmpty() ||
+			!(method.body().get(method.body().size() - 1) instanceof SReturnStatement)) {
+			visit(new SReturnStatement(Optional.empty(), SourceSpan.dummy()));
+		}
 
 		Dump.dumpGraph(currentGraph, "before-mature");
 
@@ -278,6 +290,7 @@ class FirmVisitor implements Visitor<Node> {
 	@Override
 	public Node visit(SIfStatement ifStatement) throws SemanticException {
 		Block startBlock = construction.getCurrentBlock();
+		returningBlocks.add(startBlock);
 		startBlock.mature();
 		Block afterBlock = construction.newBlock();
 
@@ -296,8 +309,7 @@ class FirmVisitor implements Visitor<Node> {
 		construction.setCurrentBlock(trueBlock);
 		ifStatement.body().accept(this);
 		construction.setCurrentBlock(trueBlock);
-		Node trueToAfter = construction.newJmp();
-		afterBlock.addPred(trueToAfter);
+		jumpIfNotReturned(trueBlock, afterBlock);
 
 		construction.setCurrentBlock(startBlock);
 
@@ -309,8 +321,7 @@ class FirmVisitor implements Visitor<Node> {
 			construction.setCurrentBlock(falseBlock);
 			ifStatement.elseBody().get().accept(this);
 			construction.setCurrentBlock(falseBlock);
-			Node falseToAfter = construction.newJmp();
-			afterBlock.addPred(falseToAfter);
+			jumpIfNotReturned(falseBlock, afterBlock);
 		} else {
 			afterBlock.addPred(falseCaseNode);
 		}
@@ -319,6 +330,14 @@ class FirmVisitor implements Visitor<Node> {
 		afterBlock.mature();
 
 		return afterBlock;
+	}
+
+	private void jumpIfNotReturned(Block from, Block to) {
+		if (returningBlocks.contains(from)) {
+			return;
+		}
+		construction.setCurrentBlock(from);
+		to.addPred(construction.newJmp());
 	}
 
 	private Node condFromBooleanExpr(Node conditionValue) {
@@ -373,6 +392,7 @@ class FirmVisitor implements Visitor<Node> {
 		}
 		Node returnNode = construction.newReturn(construction.getCurrentMem(), returnValues);
 		currentGraph.getEndBlock().addPred(returnNode);
+		returningBlocks.add(construction.getCurrentBlock());
 		return returnNode;
 	}
 
