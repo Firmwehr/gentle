@@ -28,8 +28,8 @@ public class EntityHelper {
 	}
 
 
-	public void setFieldEntity(SField field, SClassDeclaration classDeclaration) {
-		ClassType ownerType = typeHelper.getClassType(classDeclaration);
+	public void setFieldEntity(SField field) {
+		ClassType ownerType = typeHelper.getClassType(field.classDecl());
 		Type ownType = typeHelper.getType(field.type());
 		fieldEntities.put(field, new Entity(ownerType, field.name().ident(), ownType));
 	}

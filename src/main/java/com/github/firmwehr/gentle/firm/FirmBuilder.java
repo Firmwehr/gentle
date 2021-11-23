@@ -20,12 +20,8 @@ public class FirmBuilder {
 		//		Backend.option("dump=all");
 		Firm.init("x86_64-linux-gnu", new String[]{"pic=1"});
 
-		FirmVisitor generateVisitor = new FirmVisitor();
-
-		generateVisitor.layoutClasses(program.classes().getAll());
-		for (SClassDeclaration classDeclaration : program.classes().getAll()) {
-			generateVisitor.visit(classDeclaration);
-		}
+		FirmGraphBuilder graphBuilder = new FirmGraphBuilder();
+		graphBuilder.buildGraph(program);
 
 		Util.lowerSels();
 		String basename = FilenameUtils.removeExtension(file.getFileName().toString());
