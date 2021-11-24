@@ -32,6 +32,7 @@ import com.github.firmwehr.gentle.semantic.ast.statement.SStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import com.github.firmwehr.gentle.source.SourceSpan;
+import com.google.common.base.Preconditions;
 import firm.ClassType;
 import firm.Construction;
 import firm.Dump;
@@ -41,7 +42,6 @@ import firm.Mode;
 import firm.Relation;
 import firm.Type;
 import firm.bindings.binding_ircons;
-import firm.bindings.binding_irnode;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cond;
@@ -56,6 +56,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class FirmGraphBuilder {
 
@@ -157,7 +158,7 @@ public class FirmGraphBuilder {
 		construction.setCurrentBlock(header);
 
 		Context newContext = context.withJumpTarget(body, after);
-		processCondition(newContext, whileStatement.condition());
+		processExpression(newContext, whileStatement.condition());
 
 		body.mature();
 		after.mature();
@@ -183,7 +184,7 @@ public class FirmGraphBuilder {
 		Block trueBlock = construction.newBlock();
 		Block falseBlock = construction.newBlock();
 		Context newContext = context.withJumpTarget(trueBlock, falseBlock);
-		processCondition(newContext, ifStatement.condition());
+		processExpression(newContext, ifStatement.condition());
 		trueBlock.mature();
 		falseBlock.mature();
 
@@ -216,36 +217,35 @@ public class FirmGraphBuilder {
 	}
 
 	private Node processExpression(Context context, SExpression expression) {
-		return switch (expression) {
-			case SArrayAccessExpression expr -> processArrayAccess(context, expr);
+		Node node = switch (expression) {
+			case SArrayAccessExpression expr -> processArrayAccess(context.withoutJumpTarget(), expr);
 			case SBinaryOperatorExpression expr -> processBinaryOperator(context, expr);
-			case SBooleanValueExpression expr -> processBooleanValue(context, expr);
-			case SFieldAccessExpression expr -> processFieldAccess(context, expr);
-			case SIntegerValueExpression expr -> processIntegerValue(context, expr);
-			case SLocalVariableExpression expr -> processLocalVariable(context, expr);
-			case SMethodInvocationExpression expr -> processMethodInvocation(context, expr);
-			case SNewArrayExpression expr -> processNewArray(context, expr);
-			case SNewObjectExpression expr -> processNewObject(context, expr);
-			case SNullExpression ignored -> processNull(context);
-			case SSystemInReadExpression ignored -> processSystemInRead(context);
-			case SSystemOutFlushExpression ignored -> processSystemOutFlush(context);
-			case SSystemOutPrintlnExpression expr -> processSystemOutPrintln(context, expr);
-			case SSystemOutWriteExpression expr -> processSystemOutWrite(context, expr);
-			case SThisExpression ignored -> processThis(context);
-			case SUnaryOperatorExpression expr -> processUnaryOperator(context, expr);
+			case SBooleanValueExpression expr -> processBooleanValue(context.withoutJumpTarget(), expr);
+			case SFieldAccessExpression expr -> processFieldAccess(context.withoutJumpTarget(), expr);
+			case SIntegerValueExpression expr -> processIntegerValue(context.withoutJumpTarget(), expr);
+			case SLocalVariableExpression expr -> processLocalVariable(context.withoutJumpTarget(), expr);
+			case SMethodInvocationExpression expr -> processMethodInvocation(context.withoutJumpTarget(), expr);
+			case SNewArrayExpression expr -> processNewArray(context.withoutJumpTarget(), expr);
+			case SNewObjectExpression expr -> processNewObject(context.withoutJumpTarget(), expr);
+			case SNullExpression ignored -> processNull(context.withoutJumpTarget());
+			case SSystemInReadExpression ignored -> processSystemInRead(context.withoutJumpTarget());
+			case SSystemOutFlushExpression ignored -> processSystemOutFlush(context.withoutJumpTarget());
+			case SSystemOutPrintlnExpression expr -> processSystemOutPrintln(context.withoutJumpTarget(), expr);
+			case SSystemOutWriteExpression expr -> processSystemOutWrite(context.withoutJumpTarget(), expr);
+			case SThisExpression ignored -> processThis(context.withoutJumpTarget());
+			case SUnaryOperatorExpression expr -> processUnaryOperator(context.withoutJumpTarget(), expr);
 		};
-	}
-
-	private Node processCondition(Context context, SExpression expression) {
-		Node node = processExpression(context, expression);
-		Optional<JumpTarget> jumpTarget = context.jumpTarget();
-		if (node.getMode().isInt() && node.getOpCode() != binding_irnode.ir_opcode.iro_Bad && jumpTarget.isPresent()) {
-			Node right = context.construction().newConst(0, Mode.getBu());
-			Context invertedContext =
-				context.withJumpTarget(jumpTarget.get().falseBlock(), jumpTarget.get().trueBlock());
-			return processRelation(invertedContext, node, right, Relation.Equal);
+		if (context.jumpTarget().isPresent() && !(expression instanceof SBinaryOperatorExpression)) {
+			return booleanToJump(context, node, context.jumpTarget().get());
 		}
 		return node;
+	}
+
+	private Node booleanToJump(Context context, Node node, JumpTarget jumpTarget) {
+		Preconditions.checkArgument(node.getMode().isInt(), "Expected boolean literal (Bu)");
+		Node right = context.construction().newConst(0, Mode.getBu());
+		Context invertedContext = context.withJumpTarget(jumpTarget.falseBlock(), jumpTarget.trueBlock());
+		return processRelation(invertedContext, node, right, Relation.Equal);
 	}
 
 	private Node processArrayAccess(Context context, SArrayAccessExpression expr) {
@@ -261,27 +261,7 @@ public class FirmGraphBuilder {
 		Construction construction = context.construction();
 		if (expr.operator() != BinaryOperator.ASSIGN && expr.type().asBooleanType().isPresent() &&
 			context.jumpTarget().isEmpty()) {
-			Block trueBlock = construction.newBlock();
-			Block falseBlock = construction.newBlock();
-			Block afterBlock = construction.newBlock();
-
-			Context newContext = context.withJumpTarget(trueBlock, falseBlock);
-			processBinaryOperator(newContext, expr);
-			trueBlock.mature();
-			falseBlock.mature();
-
-			assertNotReturning(context, falseBlock);
-			assertNotReturning(context, trueBlock);
-			construction.setCurrentBlock(falseBlock);
-			afterBlock.addPred(construction.newJmp());
-			construction.setCurrentBlock(trueBlock);
-			afterBlock.addPred(construction.newJmp());
-
-			construction.setCurrentBlock(afterBlock);
-			afterBlock.mature();
-			return construction.newPhi(
-				new Node[]{construction.newConst(0, Mode.getBu()), construction.newConst(1, Mode.getBu())},
-				Mode.getBu());
+			return condToBoolean(context, c -> processBinaryOperator(c, expr));
 		}
 		return switch (expr.operator()) {
 			case ASSIGN -> processAssignment(context, expr);
@@ -293,27 +273,53 @@ public class FirmGraphBuilder {
 			case LESS_OR_EQUAL -> processRelation(context, expr, Relation.LessEqual);
 			case GREATER_THAN -> processRelation(context, expr, Relation.Greater);
 			case GREATER_OR_EQUAL -> processRelation(context, expr, Relation.GreaterEqual);
-			case ADD -> construction.newAdd(processExpression(context, expr.lhs()),
-				processExpression(context, expr.rhs()));
-			case SUBTRACT -> construction.newSub(processExpression(context, expr.lhs()),
-				processExpression(context, expr.rhs()));
-			case MULTIPLY -> construction.newMul(processExpression(context, expr.lhs()),
-				processExpression(context, expr.rhs()));
+			case ADD -> construction.newAdd(processExpression(context.withoutJumpTarget(), expr.lhs()),
+				processExpression(context.withoutJumpTarget(), expr.rhs()));
+			case SUBTRACT -> construction.newSub(processExpression(context.withoutJumpTarget(), expr.lhs()),
+				processExpression(context.withoutJumpTarget(), expr.rhs()));
+			case MULTIPLY -> construction.newMul(processExpression(context.withoutJumpTarget(), expr.lhs()),
+				processExpression(context.withoutJumpTarget(), expr.rhs()));
 			case DIVIDE -> {
-				Node divNode = construction.newDiv(construction.getCurrentMem(), processExpression(context,
-						expr.lhs()),
-					processExpression(context, expr.rhs()), binding_ircons.op_pin_state.op_pin_state_pinned);
+				Node divNode = construction.newDiv(construction.getCurrentMem(),
+					processExpression(context.withoutJumpTarget(), expr.lhs()),
+					processExpression(context.withoutJumpTarget(), expr.rhs()),
+					binding_ircons.op_pin_state.op_pin_state_pinned);
 				construction.setCurrentMem(construction.newProj(divNode, Mode.getM(), Div.pnM));
 				yield construction.newProj(divNode, Mode.getIs(), Div.pnRes);
 			}
 			case MODULO -> {
-				Node modNode = construction.newMod(construction.getCurrentMem(), processExpression(context,
-						expr.lhs()),
-					processExpression(context, expr.rhs()), binding_ircons.op_pin_state.op_pin_state_pinned);
+				Node modNode = construction.newMod(construction.getCurrentMem(),
+					processExpression(context.withoutJumpTarget(), expr.lhs()),
+					processExpression(context.withoutJumpTarget(), expr.rhs()),
+					binding_ircons.op_pin_state.op_pin_state_pinned);
 				construction.setCurrentMem(construction.newProj(modNode, Mode.getM(), Mod.pnM));
 				yield construction.newProj(modNode, Mode.getIs(), Mod.pnRes);
 			}
 		};
+	}
+
+	private Node condToBoolean(Context context, Consumer<Context> processInner) {
+		Construction construction = context.construction();
+		Block trueBlock = construction.newBlock();
+		Block falseBlock = construction.newBlock();
+		Block afterBlock = construction.newBlock();
+
+		Context newContext = context.withJumpTarget(trueBlock, falseBlock);
+		processInner.accept(newContext);
+		trueBlock.mature();
+		falseBlock.mature();
+
+		assertNotReturning(context, falseBlock);
+		assertNotReturning(context, trueBlock);
+		construction.setCurrentBlock(falseBlock);
+		afterBlock.addPred(construction.newJmp());
+		construction.setCurrentBlock(trueBlock);
+		afterBlock.addPred(construction.newJmp());
+
+		construction.setCurrentBlock(afterBlock);
+		afterBlock.mature();
+		return construction.newPhi(
+			new Node[]{construction.newConst(0, Mode.getBu()), construction.newConst(1, Mode.getBu())}, Mode.getBu());
 	}
 
 	private void assertNotReturning(Context context, Block block) {
@@ -325,7 +331,7 @@ public class FirmGraphBuilder {
 	private Node processAssignment(Context context, SBinaryOperatorExpression expr) {
 		// TODO: Evaluate RHS before LHS, i.e. move the "Node rhs" up here?
 		Construction construction = context.construction();
-		return switch (expr.lhs()) {
+		Node node = switch (expr.lhs()) {
 			case SLocalVariableExpression localVar -> {
 				int index = context.slotTable().computeIndex(localVar.localVariable());
 				Node rhs = processExpression(context.withoutJumpTarget(), expr.rhs());
@@ -333,15 +339,16 @@ public class FirmGraphBuilder {
 				yield rhs;
 			}
 			case SFieldAccessExpression fieldAccess -> {
-				Node member = construction.newMember(processExpression(context, fieldAccess.expression()),
-					entityHelper.getEntity(fieldAccess.field()));
+				Node member =
+					construction.newMember(processExpression(context.withoutJumpTarget(), fieldAccess.expression()),
+						entityHelper.getEntity(fieldAccess.field()));
 				Node rhs = processExpression(context.withoutJumpTarget(), expr.rhs());
 				Node storeNode = construction.newStore(construction.getCurrentMem(), member, rhs);
 				construction.setCurrentMem(construction.newProj(storeNode, Mode.getM(), Store.pnM));
 				yield rhs;
 			}
 			case SArrayAccessExpression arrayAccess -> {
-				Node target = computeArrayAccessTarget(context, arrayAccess);
+				Node target = computeArrayAccessTarget(context.withoutJumpTarget(), arrayAccess);
 				Node rhs = processExpression(context.withoutJumpTarget(), expr.rhs());
 				Node arrayStore = construction.newStore(construction.getCurrentMem(), target, rhs);
 				construction.setCurrentMem(construction.newProj(arrayStore, Mode.getM(), Store.pnM));
@@ -349,6 +356,10 @@ public class FirmGraphBuilder {
 			}
 			default -> throw new IllegalStateException("unexpected lhs " + expr.lhs());
 		};
+		if (context.jumpTarget().isPresent()) {
+			return booleanToJump(context, node, context.jumpTarget().get());
+		}
+		return node;
 	}
 
 	private Node computeArrayAccessTarget(Context context, SArrayAccessExpression expr) {
@@ -366,10 +377,10 @@ public class FirmGraphBuilder {
 		JumpTarget jumpTarget = context.jumpTarget().orElseThrow(); // TODO exception
 		Block falseBlock = context.construction().newBlock();
 		Context newContext = context.withJumpTarget(jumpTarget.trueBlock(), falseBlock);
-		processCondition(newContext, expr.lhs());
+		processExpression(newContext, expr.lhs());
 		falseBlock.mature();
 		context.construction().setCurrentBlock(falseBlock);
-		processCondition(context, expr.rhs());
+		processExpression(context, expr.rhs());
 		return context.construction().newBad(Mode.getANY());
 	}
 
@@ -377,16 +388,16 @@ public class FirmGraphBuilder {
 		JumpTarget jumpTarget = context.jumpTarget().orElseThrow(); // TODO exception
 		Block trueBlock = context.construction().newBlock();
 		Context newContext = context.withJumpTarget(trueBlock, jumpTarget.falseBlock());
-		processCondition(newContext, expr.lhs());
+		processExpression(newContext, expr.lhs());
 		trueBlock.mature();
 		context.construction().setCurrentBlock(trueBlock);
-		processCondition(context, expr.rhs());
+		processExpression(context, expr.rhs());
 		return context.construction().newBad(Mode.getANY());
 	}
 
 	private Node processRelation(Context context, SBinaryOperatorExpression expr, Relation relation) {
-		Node left = processExpression(context, expr.lhs());
-		Node right = processExpression(context, expr.rhs());
+		Node left = processExpression(context.withoutJumpTarget(), expr.lhs());
+		Node right = processExpression(context.withoutJumpTarget(), expr.rhs());
 		return processRelation(context, left, right, relation);
 	}
 
@@ -547,10 +558,15 @@ public class FirmGraphBuilder {
 		return switch (expr.operator()) {
 			case NEGATION -> construction.newMinus(processExpression(context, expr.expression()));
 			case LOGICAL_NOT -> {
-				JumpTarget jumpTarget = context.jumpTarget().orElseThrow(); // TODO exception
-				Context invertedContext = context.withJumpTarget(jumpTarget.falseBlock(), jumpTarget.trueBlock());
-				yield processCondition(invertedContext, expr.expression());
-
+				if (context.jumpTarget().isPresent()) {
+					JumpTarget jumpTarget = context.jumpTarget().get();
+					Context invertedContext = context.withJumpTarget(jumpTarget.falseBlock(), jumpTarget.trueBlock());
+					yield processExpression(invertedContext, expr.expression());
+				}
+				// !b => (b == false)
+				Node innerExpr = processExpression(context, expr.expression());
+				Node constFalse = construction.newConst(0, Mode.getBu());
+				yield condToBoolean(context, c -> processRelation(c, innerExpr, constFalse, Relation.Equal));
 			}
 		};
 	}
