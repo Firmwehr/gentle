@@ -323,23 +323,26 @@ public class FirmGraphBuilder {
 	}
 
 	private Node processAssignment(Context context, SBinaryOperatorExpression expr) {
-		Node rhs = processExpression(context, expr.rhs());
+		// TODO: Evaluate RHS before LHS, i.e. move the "Node rhs" up here?
 		Construction construction = context.construction();
 		return switch (expr.lhs()) {
 			case SLocalVariableExpression localVar -> {
 				int index = context.slotTable().computeIndex(localVar.localVariable());
+				Node rhs = processExpression(context.withoutJumpTarget(), expr.rhs());
 				construction.setVariable(index, rhs);
 				yield rhs;
 			}
 			case SFieldAccessExpression fieldAccess -> {
 				Node member = construction.newMember(processExpression(context, fieldAccess.expression()),
 					entityHelper.getEntity(fieldAccess.field()));
+				Node rhs = processExpression(context.withoutJumpTarget(), expr.rhs());
 				Node storeNode = construction.newStore(construction.getCurrentMem(), member, rhs);
 				construction.setCurrentMem(construction.newProj(storeNode, Mode.getM(), Store.pnM));
 				yield rhs;
 			}
 			case SArrayAccessExpression arrayAccess -> {
 				Node target = computeArrayAccessTarget(context, arrayAccess);
+				Node rhs = processExpression(context.withoutJumpTarget(), expr.rhs());
 				Node arrayStore = construction.newStore(construction.getCurrentMem(), target, rhs);
 				construction.setCurrentMem(construction.newProj(arrayStore, Mode.getM(), Store.pnM));
 				yield rhs;
@@ -584,6 +587,10 @@ public class FirmGraphBuilder {
 
 		public boolean isReturning(Block block) {
 			return returningBlocks.contains(block);
+		}
+
+		public Context withoutJumpTarget() {
+			return new Context(construction, slotTable, Optional.empty(), returningBlocks);
 		}
 	}
 
