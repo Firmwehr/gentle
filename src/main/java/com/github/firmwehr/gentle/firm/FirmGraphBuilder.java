@@ -117,10 +117,9 @@ public class FirmGraphBuilder {
 
 	private void processMethodBody(Context context, SMethod method) {
 		List<SStatement> body = method.body();
-		for (SStatement statement : body) {
-			processStatement(context, statement);
-		}
-		if (method.returnType() instanceof SVoidType) {
+		processBlock(context, body);
+		if (method.returnType() instanceof SVoidType &&
+			!context.isReturning(context.construction().getCurrentBlock())) {
 			if (body.isEmpty() || !(body.get(body.size() - 1) instanceof SReturnStatement)) {
 				processStatement(context, new SReturnStatement(Optional.empty(), SourceSpan.dummy()));
 			}
@@ -130,12 +129,21 @@ public class FirmGraphBuilder {
 
 	private void processStatement(Context context, SStatement statement) {
 		switch (statement) {
-			case SBlock block -> block.statements().forEach(s -> processStatement(context, s));
+			case SBlock block -> processBlock(context, block.statements());
 			case SExpressionStatement expressionStatement -> processExpression(context,
 				expressionStatement.expression()); // TODO build block
 			case SIfStatement ifStatement -> processIf(context, ifStatement);
 			case SReturnStatement returnStatement -> processReturn(context, returnStatement);
 			case SWhileStatement whileStatement -> processWhile(context, whileStatement);
+		}
+	}
+
+	private void processBlock(Context context, List<SStatement> block) {
+		for (SStatement statement : block) {
+			processStatement(context, statement);
+			if (statement instanceof SReturnStatement) {
+				return; // don't process dead code
+			}
 		}
 	}
 
