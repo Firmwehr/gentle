@@ -62,6 +62,10 @@ public class EntityHelper {
 		}
 
 		MethodType methodType = new MethodType(types, returnType);
-		return new Entity(ownerType, method.name().ident(), methodType);
+		Entity entity = new Entity(ownerType, method.name().ident(), methodType);
+		if (!method.isStatic()) {
+			entity.setLdIdent(method.classDecl().name().ident() + "_" + method.name().ident());
+		}
+		return entity;
 	}
 }
