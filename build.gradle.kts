@@ -55,7 +55,18 @@ val integrationTest = task<Test>("integrationTest") {
 jib {
 	from.image = "eclipse-temurin:17"
 	to {
-		image = "firmwehr/gentle:latest"
+		image = "ghcr.io/firmwehr/gentle:latest"
+
+		// here be dragons
+		System.getenv("IMAGE_TAGS")?.apply {
+			tags = split("[,\\n]".toRegex())
+				.map { it.split(":")[1] }
+				.toCollection(mutableSetOf())
+		}
+
+		container {
+			environment = mapOf("GENTLE_ENABLE_LOG" to "true")
+		}
 	}
 }
 
