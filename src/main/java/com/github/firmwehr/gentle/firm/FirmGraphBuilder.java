@@ -106,7 +106,7 @@ public class FirmGraphBuilder {
 			}
 		}
 
-		processMethodBody(new Context(construction, slotTable), method);
+		processMethodBody(new Context(construction, slotTable, method), method);
 
 		Dump.dumpGraph(currentGraph, "before-mature");
 
@@ -118,6 +118,13 @@ public class FirmGraphBuilder {
 	private void processMethodBody(Context context, SMethod method) {
 		List<SStatement> body = method.body();
 		processBlock(context, body);
+
+		if (method.isStatic()) {
+			SIntegerValueExpression returnValue = new SIntegerValueExpression(0, SourceSpan.dummy());
+			processStatement(context, new SReturnStatement(Optional.of(returnValue), SourceSpan.dummy()));
+			return;
+		}
+
 		if (method.returnType() instanceof SVoidType &&
 			!context.isReturning(context.construction().getCurrentBlock())) {
 			if (body.isEmpty() || !(body.get(body.size() - 1) instanceof SReturnStatement)) {
@@ -208,6 +215,10 @@ public class FirmGraphBuilder {
 		Node[] returnValues = new Node[0];
 		if (returnStatement.returnValue().isPresent()) {
 			returnValues = new Node[]{processValueExpression(context, returnStatement.returnValue().get())};
+		}
+		if (context.currentMethod().isStatic()) {
+			returnValues =
+				new Node[]{processValueExpression(context, new SIntegerValueExpression(0, SourceSpan.dummy()))};
 		}
 		Construction construction = context.construction();
 		Node returnNode = construction.newReturn(construction.getCurrentMem(), returnValues);
@@ -609,11 +620,12 @@ public class FirmGraphBuilder {
 	private record Context(
 		Construction construction,
 		SlotTable slotTable,
-		Set<Block> returningBlocks
+		Set<Block> returningBlocks,
+		SMethod currentMethod
 	) {
 
-		public Context(Construction construction, SlotTable slotTable) {
-			this(construction, slotTable, new HashSet<>());
+		public Context(Construction construction, SlotTable slotTable, SMethod method) {
+			this(construction, slotTable, new HashSet<>(), method);
 		}
 
 		public void setReturns(Block block) {

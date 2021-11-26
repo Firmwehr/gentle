@@ -1,9 +1,9 @@
 package com.github.firmwehr.gentle.firm;
 
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
-import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SField;
 import com.github.firmwehr.gentle.semantic.ast.SMethod;
+import com.github.firmwehr.gentle.semantic.ast.basictype.SIntType;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import firm.ClassType;
 import firm.Entity;
@@ -48,7 +48,9 @@ public class EntityHelper {
 
 	private Entity createMethodEntity(SMethod method) {
 		ClassType ownerType = typeHelper.getClassType(method.classDecl());
-		List<Type> typesList = method.parameters().stream().map(LocalVariableDeclaration::type)
+		List<Type> typesList = method.parameters()
+			.stream()
+			.map(LocalVariableDeclaration::type)
 			.map(typeHelper::getType)
 			.collect(Collectors.toCollection(ArrayList::new));
 
@@ -59,6 +61,10 @@ public class EntityHelper {
 		Type[] returnType = new Type[0];
 		if (!(method.returnType() instanceof SVoidType)) {
 			returnType = new Type[]{typeHelper.getType(method.returnType().asExprType())};
+		}
+
+		if (method.isStatic()) {
+			returnType = new Type[]{typeHelper.getType(new SIntType())};
 		}
 
 		MethodType methodType = new MethodType(types, returnType);

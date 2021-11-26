@@ -1,7 +1,6 @@
 package com.github.firmwehr.gentle.firm;
 
 import com.github.firmwehr.gentle.semantic.SemanticException;
-import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import firm.Backend;
 import firm.Dump;
