@@ -13,9 +13,12 @@ import java.nio.file.Path;
 
 public class FirmBuilder {
 
+	static {
+		Firm.VERSION = Firm.FirmVersion.DEBUG;
+	}
+
 	public void convert(Path file, SProgram program) throws IOException, SemanticException {
-		System.out.println(Path.of("").toAbsolutePath());
-		System.in.read();
+		//		System.in.read();
 		//		Backend.option("dump=all");
 		Firm.init("x86_64-linux-gnu", new String[]{"pic=1"});
 
