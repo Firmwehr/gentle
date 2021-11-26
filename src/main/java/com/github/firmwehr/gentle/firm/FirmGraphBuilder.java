@@ -491,33 +491,32 @@ public class FirmGraphBuilder {
 	}
 
 	private Node processNewArray(Context context, SNewArrayExpression expr) {
-		// FIXME array size 0
-		// FIXME calloc
 		Type type = typeHelper.getType(expr.type().withDecrementedLevel().orElseThrow()); // TODO error handling
-		int size = type.getSize();
+		int typeSize = type.getSize();
 		Construction construction = context.construction();
-		Entity mallocEntity = entityHelper.getEntity(StdLibEntity.MALLOC);
-		Node mallocAddress = construction.newAddress(mallocEntity);
-		Node sizeConst = construction.newConst(size, Mode.getLu());
-		Node arraySize = construction.newMul(sizeConst,
-			construction.newConv(processValueExpression(context, expr.size()), Mode.getLu()));
-		return allocateMemory(construction, mallocEntity, mallocAddress, arraySize);
+
+		Node memberCount = construction.newConv(processValueExpression(context, expr.size()), Mode.getLu());
+
+		return allocateMemory(construction, typeSize, memberCount);
 	}
 
 	private Node processNewObject(Context context, SNewObjectExpression expr) {
 		Construction construction = context.construction();
 		ClassType type = typeHelper.getClassType(expr.classDecl());
-		// malloc returns null if called with zero bytes (class without fields)
-		int size = Math.max(1, type.getSize());
-		Entity mallocEntity = entityHelper.getEntity(StdLibEntity.MALLOC);
-		Node mallocAddress = construction.newAddress(mallocEntity);
-		Node sizeConst = construction.newConst(size, Mode.getLu());
-		return allocateMemory(construction, mallocEntity, mallocAddress, sizeConst);
+
+		return allocateMemory(construction, type.getSize(), construction.newConst(1, Mode.getLu()));
 	}
 
-	private Node allocateMemory(Construction construction, Entity mallocEntity, Node mallocAddress, Node sizeConst) {
-		Node call = construction.newCall(construction.getCurrentMem(), mallocAddress, new Node[]{sizeConst},
-			mallocEntity.getType());
+	private Node allocateMemory(
+		Construction construction, int memberSize, Node memberCount
+	) {
+		Entity allocateEntity = entityHelper.getEntity(StdLibEntity.ALLOCATE);
+		Node allocateAddress = construction.newAddress(allocateEntity);
+
+		Node[] arguments = {memberCount, construction.newConst(memberSize, Mode.getLu())};
+		Node call =
+			construction.newCall(construction.getCurrentMem(), allocateAddress, arguments, allocateEntity.getType());
+
 		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
 		Node proj = construction.newProj(call, Mode.getT(), Call.pnTResult);
 		return construction.newProj(proj, Mode.getP(), 0);

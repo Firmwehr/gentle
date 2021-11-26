@@ -13,7 +13,7 @@ public enum StdLibEntity {
 	/**
 	 * @see java.io.PrintStream#flush()
 	 */
-	FFLUSH(() -> create("fflush", Mode.getP(), Mode.getIs())),
+	FFLUSH(() -> create("fflush", Mode.getIs(), Mode.getP())),
 	/**
 	 * @see System#out
 	 */
@@ -25,7 +25,7 @@ public enum StdLibEntity {
 	/**
 	 * @see java.io.PrintStream#println(int) System.out.println
 	 */
-	PRINTLN(() -> create("println", Mode.getIs(), Mode.getANY())),
+	PRINTLN(() -> create("println", Mode.getANY(), Mode.getIs())),
 	/**
 	 * @see InputStream#read() System.in.read()
 	 */
@@ -33,7 +33,7 @@ public enum StdLibEntity {
 	/**
 	 * {@code new Object()}
 	 */
-	MALLOC(() -> create("malloc", Mode.getLu(), Mode.getP())),
+	ALLOCATE(() -> create("allocate", Mode.getP(), Mode.getLu(), Mode.getLu())),
 	;
 
 	private final Supplier<Entity> lazyEntityBuilder;
@@ -57,8 +57,12 @@ public enum StdLibEntity {
 		return new Entity(Program.getGlobalType(), name, methodType);
 	}
 
-	private static Entity create(String name, Mode in, Mode out) {
-		MethodType methodType = new MethodType(new Type[]{in.getType()}, new Type[]{out.getType()});
+	private static Entity create(String name, Mode out, Mode... in) {
+		Type[] inputs = new Type[in.length];
+		for (int i = 0; i < in.length; i++) {
+			inputs[i] = in[i].getType();
+		}
+		MethodType methodType = new MethodType(inputs, new Type[]{out.getType()});
 		return new Entity(Program.getGlobalType(), name, methodType);
 	}
 }
