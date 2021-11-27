@@ -97,6 +97,7 @@ public class GentleCompiler {
 			UserOutput.outputData(Files.readAllBytes(path));
 		} catch (IOException e) {
 			UserOutput.userError("Could not echo file '%s': %s", path, e.getMessage());
+			LOGGER.error("Echo failed", e);
 			System.exit(1);
 		}
 	}
@@ -115,12 +116,15 @@ public class GentleCompiler {
 			UserOutput.outputData(outputStream);
 		} catch (MalformedInputException e) {
 			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			LOGGER.error("Lexing failed", e);
 			System.exit(1);
 		} catch (IOException e) {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
+			LOGGER.error("Lexing failed", e);
 			System.exit(1);
 		} catch (LexerException e) {
 			UserOutput.userError(e);
+			LOGGER.error("Lexing failed", e);
 			System.exit(1);
 		}
 	}
@@ -133,12 +137,15 @@ public class GentleCompiler {
 			parser.parse(); // Result ignored
 		} catch (MalformedInputException e) {
 			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			LOGGER.error("Parsing failed", e);
 			System.exit(1);
 		} catch (IOException e) {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
+			LOGGER.error("Parsing failed", e);
 			System.exit(1);
 		} catch (LexerException | ParseException e) {
 			UserOutput.userError(e);
+			LOGGER.error("Parsing failed", e);
 			System.exit(1);
 		}
 	}
@@ -152,12 +159,15 @@ public class GentleCompiler {
 			UserOutput.outputMessage(PrettyPrinter.format(program));
 		} catch (MalformedInputException e) {
 			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			LOGGER.error("AST printing failed", e);
 			System.exit(1);
 		} catch (IOException e) {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
+			LOGGER.error("AST printing failed", e);
 			System.exit(1);
 		} catch (LexerException | ParseException e) {
 			UserOutput.userError(e);
+			LOGGER.error("AST printing failed", e);
 			System.exit(1);
 		}
 	}
@@ -171,12 +181,15 @@ public class GentleCompiler {
 			semanticAnalyzer.analyze(); // Result ignored
 		} catch (MalformedInputException e) {
 			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			LOGGER.error("Semantic checking failed", e);
 			System.exit(1);
 		} catch (IOException e) {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
+			LOGGER.error("Semantic checking failed", e);
 			System.exit(1);
 		} catch (LexerException | ParseException | SemanticException e) {
 			UserOutput.userError(e);
+			LOGGER.error("Semantic checking failed", e);
 			System.exit(1);
 		}
 	}
@@ -196,11 +209,14 @@ public class GentleCompiler {
 			new ExternalLinker().link(assemblyFile);
 		} catch (MalformedInputException e) {
 			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			LOGGER.error("Compiling using firm failed", e);
 			System.exit(1);
 		} catch (IOException e) {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
+			LOGGER.error("Compiling using firm failed", e);
 			System.exit(1);
 		} catch (LexerException | ParseException | SemanticException e) {
+			LOGGER.error("Compiling using firm failed", e);
 			UserOutput.userError(e);
 			System.exit(1);
 		}
