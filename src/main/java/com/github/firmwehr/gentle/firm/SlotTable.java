@@ -42,7 +42,7 @@ public class SlotTable {
 		try {
 			visitor.visit(method);
 		} catch (SemanticException e) {
-			throw new RuntimeException("TODO", e); // TODO
+			throw new AssertionError("Received exception in infallible visitor", e);
 		}
 		return new SlotTable(map);
 	}

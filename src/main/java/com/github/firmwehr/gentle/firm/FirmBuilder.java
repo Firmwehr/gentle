@@ -1,77 +1,79 @@
 package com.github.firmwehr.gentle.firm;
 
-import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import firm.Backend;
 import firm.Firm;
 import firm.Util;
-import org.apache.commons.io.FilenameUtils;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
+import java.util.EnumSet;
 
+import static java.util.stream.Collectors.joining;
+
+/**
+ * Converts a semantic program to a firm graph.
+ */
 public class FirmBuilder {
 
 	static {
+		// Must be set before Firm.init is called!
 		Firm.VERSION = Firm.FirmVersion.DEBUG;
 	}
 
-	public void convert(Path file, SProgram program) throws IOException, SemanticException {
-		//		System.in.read();
-		//		Backend.option("dump=all");
+	private final EnumSet<GraphDumpStage> dumpStages;
+
+	public FirmBuilder(GraphDumpStage... stages) {
+		this.dumpStages = EnumSet.noneOf(GraphDumpStage.class);
+		this.dumpStages.addAll(Arrays.asList(stages));
+	}
+
+	/**
+	 * Converts a semantic program to a firm graph.
+	 *
+	 * <p>This method does <em>not</em> call {@link Firm#finish()}.</p>
+	 *
+	 * @param assemblyOutputFile the file to write the assembly code to
+	 * @param program the program to convert
+	 *
+	 * @throws IOException if writing the assembly file fails
+	 */
+	public void convert(Path assemblyOutputFile, SProgram program) throws IOException {
+		if (!dumpStages.isEmpty()) {
+			Backend.option("dump=" + dumpStages.stream().map(GraphDumpStage::getFirmName).collect(joining(",")));
+		}
 		Firm.init("x86_64-linux-gnu", new String[]{"pic=1"});
 
 		FirmGraphBuilder graphBuilder = new FirmGraphBuilder();
 		graphBuilder.buildGraph(program);
 
+		// Lower "Member"
 		Util.lowerSels();
-		String basename = FilenameUtils.removeExtension(file.getFileName().toString());
-		String assemblerFile = basename + ".s";
-		Backend.createAssembler(assemblerFile, assemblerFile);
 
-		String runtimePath = extractRuntime().toAbsolutePath().toString();
-		String outputPath = file.resolveSibling("a.out").toAbsolutePath().toString();
-
-		executeGcc(assemblerFile, runtimePath, outputPath);
-
-		Firm.finish();
+		String assemblyFile = assemblyOutputFile.toAbsolutePath().toString();
+		Backend.createAssembler(assemblyFile, assemblyFile);
 	}
 
-	private Path extractRuntime() throws IOException {
-		try (InputStream inputStream = getClass().getResourceAsStream("/runtime.c")) {
-			if (inputStream == null) {
-				throw new IllegalStateException("Could not find runtime in resources folder");
-			}
+	public enum GraphDumpStage {
+		DUMP_INITIAL("initial"),
+		DUMP_AFTER_SCHEDULING("sched"),
+		DUMP_AFTER_PREPARE("prepared"),
+		DUMP_AFTER_REGISTER_ALLOCATION("regalloc"),
+		DUMP_FINAL_GRAPH("final");
 
-			Path tempFile = Files.createTempFile("gentle-runtime", ".c");
-			Files.copy(inputStream, tempFile, StandardCopyOption.REPLACE_EXISTING);
-			tempFile.toFile().deleteOnExit();
+		private final String firmName;
 
-			return tempFile;
-		}
-	}
-
-	private void executeGcc(String assemblerFile, String runtimePath, String outputPath) throws IOException {
-
-		ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-		Process gccProcess =
-			new ProcessBuilder("gcc", assemblerFile, "-g", runtimePath, "-o", outputPath).redirectOutput(
-				ProcessBuilder.Redirect.DISCARD).start();
-		gccProcess.getErrorStream().transferTo(byteArrayOutputStream);
-
-		int gccResult;
-		try {
-			gccResult = gccProcess.waitFor();
-		} catch (InterruptedException e) {
-			throw new RuntimeException(e); // TODO: Error handling
+		GraphDumpStage(String firmName) {
+			this.firmName = firmName;
 		}
 
-		if (gccResult != 0) {
-			throw new IOException("Gcc execution failed\n" + byteArrayOutputStream); // TODO: Exception handling
+		public String getFirmName() {
+			return firmName;
+		}
+
+		public static GraphDumpStage[] all() {
+			return values();
 		}
 	}
 }

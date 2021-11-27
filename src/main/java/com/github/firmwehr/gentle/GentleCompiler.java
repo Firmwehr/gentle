@@ -5,6 +5,7 @@ import com.github.firmwehr.gentle.cli.CommandArgumentsParser;
 import com.github.firmwehr.gentle.firm.FirmBuilder;
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
+import com.github.firmwehr.gentle.linking.ExternalLinker;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.output.UserOutput;
 import com.github.firmwehr.gentle.parser.ParseException;
@@ -16,6 +17,7 @@ import com.github.firmwehr.gentle.semantic.SemanticAnalyzer;
 import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import com.github.firmwehr.gentle.source.Source;
+import org.apache.commons.io.FilenameUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -186,7 +188,12 @@ public class GentleCompiler {
 			Parser parser = Parser.fromLexer(source, lexer);
 			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer(source, parser.parse());
 			SProgram program = semanticAnalyzer.analyze();
-			new FirmBuilder().convert(path, program);
+
+			String assemblyFilename = FilenameUtils.removeExtension(path.getFileName().toString()) + ".s";
+			Path assemblyFile = path.resolveSibling(assemblyFilename);
+
+			new FirmBuilder().convert(assemblyFile, program);
+			new ExternalLinker().link(assemblyFile);
 		} catch (MalformedInputException e) {
 			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
 			System.exit(1);

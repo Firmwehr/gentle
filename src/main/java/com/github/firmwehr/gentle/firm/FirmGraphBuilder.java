@@ -34,7 +34,6 @@ import com.github.firmwehr.gentle.source.SourceSpan;
 import com.google.common.base.Preconditions;
 import firm.ClassType;
 import firm.Construction;
-import firm.Dump;
 import firm.Entity;
 import firm.Graph;
 import firm.Mode;
@@ -108,11 +107,11 @@ public class FirmGraphBuilder {
 
 		processMethodBody(new Context(construction, slotTable, method), method);
 
-		Dump.dumpGraph(currentGraph, "before-mature");
+		//		Dump.dumpGraph(currentGraph, "before-mature");
 
 		construction.finish();
 
-		Dump.dumpGraph(currentGraph, "after-mature");
+		//		Dump.dumpGraph(currentGraph, "after-mature");
 	}
 
 	private void processMethodBody(Context context, SMethod method) {
@@ -137,7 +136,7 @@ public class FirmGraphBuilder {
 		switch (statement) {
 			case SBlock block -> processBlock(context, block.statements());
 			case SExpressionStatement expressionStatement -> processValueExpression(context,
-				expressionStatement.expression()); // TODO build block
+				expressionStatement.expression());
 			case SIfStatement ifStatement -> processIf(context, ifStatement);
 			case SReturnStatement returnStatement -> processReturn(context, returnStatement);
 			case SWhileStatement whileStatement -> processWhile(context, whileStatement);
@@ -388,7 +387,7 @@ public class FirmGraphBuilder {
 				construction.setCurrentMem(construction.newProj(arrayStore, Mode.getM(), Store.pnM));
 				yield rhs;
 			}
-			default -> throw new IllegalStateException("unexpected lhs " + expr.lhs());
+			default -> throw new IllegalArgumentException("unexpected lhs " + expr.lhs());
 		};
 	}
 
@@ -491,7 +490,7 @@ public class FirmGraphBuilder {
 	}
 
 	private Node processNewArray(Context context, SNewArrayExpression expr) {
-		Type type = typeHelper.getType(expr.type().withDecrementedLevel().orElseThrow()); // TODO error handling
+		Type type = typeHelper.getType(expr.type().withDecrementedLevel().orElseThrow());
 		int typeSize = type.getSize();
 		Construction construction = context.construction();
 
