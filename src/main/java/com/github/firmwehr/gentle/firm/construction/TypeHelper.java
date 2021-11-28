@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.firm.construction;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SBasicType;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SBooleanType;
@@ -43,7 +44,7 @@ public class TypeHelper {
 		if (normalType.arrayLevel() == 0) {
 			return getType(normalType.basicType());
 		}
-		return new PointerType(getType(normalType.withDecrementedLevel().get()));
+		return new PointerType(getType(normalType.withDecrementedLevel().orElseThrow()));
 	}
 
 	public Mode getMode(SBasicType basicType) {
@@ -73,13 +74,6 @@ public class TypeHelper {
 			decl -> new PointerType(new ClassType(decl.name().ident()))).getPointsTo();
 	}
 
-	public void layoutTypes() {
-		for (PointerType value : classTypes.values()) {
-			((ClassType) value.getPointsTo()).layoutFields();
-			value.getPointsTo().finishLayout();
-		}
-	}
-
 	public Type getStringType() {
 		return stringType;
 	}
@@ -88,7 +82,7 @@ public class TypeHelper {
 		return switch (returnType) {
 			case SNormalType normalType -> getMode(normalType);
 			case SVoidType ignored -> Mode.getANY();
-			case SNullType ignored -> throw new AssertionError("!?!");
+			case SNullType ignored -> throw new InternalCompilerException("tried to fetch mode for null type");
 		};
 	}
 
@@ -96,7 +90,7 @@ public class TypeHelper {
 		return switch (returnType) {
 			case SNormalType normalType -> getType(normalType);
 			case SVoidType ignored -> voidType;
-			case SNullType ignored -> throw new AssertionError("???");
+			case SNullType ignored -> throw new InternalCompilerException("tried to fetch type for null type");
 		};
 	}
 }

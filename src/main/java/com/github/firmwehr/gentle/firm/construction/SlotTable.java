@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.firm.construction;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.parser.ast.Ident;
 import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.Visitor;
@@ -42,7 +43,7 @@ public class SlotTable {
 		try {
 			visitor.visit(method);
 		} catch (SemanticException e) {
-			throw new AssertionError("Received exception in infallible visitor", e);
+			throw new InternalCompilerException("received exception in infallible visitor", e);
 		}
 		return new SlotTable(map);
 	}
@@ -52,8 +53,8 @@ public class SlotTable {
 	}
 
 	public int computeIndex(LocalVariableDeclaration localVariable) {
-		return this.toIndexMap.computeIfAbsent(localVariable, ignored -> {
-			throw new IllegalStateException(ignored + " not discovered before");
+		return this.toIndexMap.computeIfAbsent(localVariable, var -> {
+			throw new InternalCompilerException("encountered unknown variable " + var);
 		});
 	}
 

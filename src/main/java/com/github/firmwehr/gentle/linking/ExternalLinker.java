@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.linking;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import firm.Firm;
 
 import java.io.ByteArrayOutputStream;
@@ -19,20 +20,18 @@ public class ExternalLinker {
 	 * <p>This method does <em>not</em> call {@link Firm#finish()}.</p>
 	 *
 	 * @param assemblyFile the assembly file to link and assemble
-	 *
-	 * @throws IOException if an external command could not be invoked
 	 */
-	public void link(Path assemblyFile) throws IOException {
+	public void link(Path assemblyFile) {
 		String runtimePath = extractRuntime().toAbsolutePath().toString();
 		String outputPath = assemblyFile.resolveSibling("a.out").toAbsolutePath().toString();
 
 		executeGcc(assemblyFile.toAbsolutePath().toString(), runtimePath, outputPath);
 	}
 
-	private Path extractRuntime() throws IOException {
+	private Path extractRuntime() {
 		try (InputStream inputStream = getClass().getResourceAsStream("/runtime.c")) {
 			if (inputStream == null) {
-				throw new IllegalStateException("Could not find runtime in resources folder");
+				throw new InternalCompilerException("could not find runtime in resources folder");
 			}
 
 			Path tempFile = Files.createTempFile("gentle-runtime", ".c");
@@ -40,25 +39,29 @@ public class ExternalLinker {
 			tempFile.toFile().deleteOnExit();
 
 			return tempFile;
+		} catch (IOException e) {
+			throw new InternalCompilerException("runtime extraction failed", e);
 		}
 	}
 
-	private void executeGcc(String assemblyFile, String runtimePath, String outputPath) throws IOException {
+	private void executeGcc(String assemblyFile, String runtimePath, String outputPath) {
 		ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-		Process gccProcess =
-			new ProcessBuilder("gcc", assemblyFile, "-g", runtimePath, "-o", outputPath).redirectOutput(
-				ProcessBuilder.Redirect.DISCARD).start();
-		gccProcess.getErrorStream().transferTo(byteArrayOutputStream);
+		String[] command = {"gcc", assemblyFile, "-g", runtimePath, "-o", outputPath};
 
-		int gccResult;
+		ProcessBuilder processBuilder = new ProcessBuilder(command).redirectOutput(ProcessBuilder.Redirect.DISCARD);
+
 		try {
-			gccResult = gccProcess.waitFor();
-		} catch (InterruptedException e) {
-			throw new RuntimeException(e); // TODO: Error handling
-		}
+			Process gccProcess = processBuilder.start();
+			gccProcess.getErrorStream().transferTo(byteArrayOutputStream);
 
-		if (gccResult != 0) {
-			throw new IOException("Gcc execution failed\n" + byteArrayOutputStream); // TODO: Exception handling
+			int gccResult = gccProcess.waitFor();
+			if (gccResult != 0) {
+				throw new InternalCompilerException(
+					"gcc execution failed with the following stderr output\n" + byteArrayOutputStream);
+			}
+		} catch (InterruptedException | IOException e) {
+			throw new InternalCompilerException("error while executing gcc. Captured stderr:\n" + byteArrayOutputStream,
+				e);
 		}
 	}
 }

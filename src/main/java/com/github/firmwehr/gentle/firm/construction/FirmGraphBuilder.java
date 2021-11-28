@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.firm.construction;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.semantic.Namespace;
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
@@ -283,7 +284,8 @@ public class FirmGraphBuilder {
 			case LESS_OR_EQUAL -> processRelation(context, expr, Relation.LessEqual, target);
 			case GREATER_THAN -> processRelation(context, expr, Relation.Greater, target);
 			case GREATER_OR_EQUAL -> processRelation(context, expr, Relation.GreaterEqual, target);
-			default -> throw new IllegalArgumentException("Arithmetic expression in condition binary operator " + expr);
+			default -> throw new InternalCompilerException(
+				"Arithmetic expression in condition binary operator " + expr);
 		}
 	}
 
@@ -352,7 +354,7 @@ public class FirmGraphBuilder {
 
 	private void assertNotReturning(Context context, Block block) {
 		if (context.isReturning(block)) {
-			throw new IllegalStateException("Block should not return " + block);
+			throw new InternalCompilerException("block " + block + " should not return but is marked as returning");
 		}
 	}
 
@@ -388,7 +390,7 @@ public class FirmGraphBuilder {
 				construction.setCurrentMem(construction.newProj(arrayStore, Mode.getM(), Store.pnM));
 				yield rhs;
 			}
-			default -> throw new IllegalArgumentException("unexpected lhs " + expr.lhs());
+			default -> throw new InternalCompilerException("unexpected lhs in assignment. Got " + expr.lhs());
 		};
 	}
 
@@ -493,7 +495,11 @@ public class FirmGraphBuilder {
 	}
 
 	private Node processNewArray(Context context, SNewArrayExpression expr) {
-		Type type = typeHelper.getType(expr.type().withDecrementedLevel().orElseThrow());
+		Type type = typeHelper.getType(expr.type()
+			.withDecrementedLevel()
+			.orElseThrow(
+				() -> new InternalCompilerException("array type " + expr.type() + " could not be decremented")));
+
 		int typeSize = type.getSize();
 		Construction construction = context.construction();
 
@@ -563,7 +569,7 @@ public class FirmGraphBuilder {
 
 	private Node doSysout(Context context, SExpression argument, StdLibEntity entity) {
 		if (entity != StdLibEntity.PUTCHAR && entity != StdLibEntity.PRINTLN) {
-			throw new IllegalArgumentException("Expected PUTCHAR or PRINTLN, got " + entity);
+			throw new InternalCompilerException("expected PUTCHAR or PRINTLN, got " + entity);
 		}
 
 		Construction construction = context.construction();
