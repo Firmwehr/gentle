@@ -362,7 +362,8 @@ public class FirmGraphBuilder {
 	}
 
 	private Node processAssignment(Context context, SBinaryOperatorExpression expr) {
-		// TODO: Evaluate RHS before LHS, i.e. move the "Node rhs" up here?
+		// We need to evaluate the LHS before the RHS.
+		// https://docs.oracle.com/javase/specs/jls/se17/html/jls-15.html#jls-15.26.1
 		Construction construction = context.construction();
 
 		return switch (expr.lhs()) {
@@ -393,6 +394,8 @@ public class FirmGraphBuilder {
 
 	private Node computeArrayAccessTarget(Context context, SArrayAccessExpression expr) {
 		Construction construction = context.construction();
+		// We need to evaluate the reference before the index
+		// https://docs.oracle.com/javase/specs/jls/se17/html/jls-15.html#jls-15.26.1
 		Node arrayNode = processValueExpression(context, expr.expression());
 		Node indexNode = processValueExpression(context, expr.index());
 
