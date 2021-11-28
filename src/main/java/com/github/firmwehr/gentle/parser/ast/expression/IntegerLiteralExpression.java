@@ -11,6 +11,14 @@ public record IntegerLiteralExpression(
 ) implements Expression {
 	@Override
 	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
+		if (value.signum() < 0 && parens == Parentheses.INCLUDE) {
+			p.add("(");
+		}
+
 		p.add(value.toString());
+
+		if (value.signum() < 0 && parens == Parentheses.INCLUDE) {
+			p.add(")");
+		}
 	}
 }

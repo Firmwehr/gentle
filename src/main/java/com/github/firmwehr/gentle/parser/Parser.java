@@ -375,22 +375,25 @@ public class Parser {
 		} else if (tokens.peek().isOperator(Operator.MINUS)) {
 			Token start = tokens.take();
 
+			boolean startingWithIntLiteral = tokens.peek().isIntegerLiteral();
+
+			ExprWithParens expression = parseUnaryExpression();
+			SourceSpan span = SourceSpan.from(start.sourceSpan(), expression.parenSourceSpan());
+
 			// Special handling for negative integer literals
 			//
 			// "-3" is a single negative integer literal while "-(3)" is the negation of a positive integer literal.
 			// The AST has no way to represent parentheses, so without this special handling, the two cases become
 			// indistinguishable. This is a problem since "-2147483648" is a valid negative integer literal while
 			// "-(2147483648)" is the negation of an invalid positive integer literal and thus itself invalid.
-			expectingExpression();
-			Optional<IntegerLiteralToken> intLit = tokens.peek().asIntegerLiteralToken();
-			if (intLit.isPresent()) {
-				tokens.take();
-				SourceSpan span = SourceSpan.from(start.sourceSpan(), intLit.get().sourceSpan());
-				return new ExprWithParens(new IntegerLiteralExpression(intLit.get().value().negate(), span));
+			//
+			// One has to be careful though: The expression "-3.foo()" must be interpreted as "-(3.foo())", not
+			// "(-3).foo()" since postfix operations have a higher precedence than unary operations.
+			if (startingWithIntLiteral && expression.expression() instanceof IntegerLiteralExpression il) {
+				// The expression is a single, non-parenthesised integer literal
+				return new ExprWithParens(new IntegerLiteralExpression(il.value().negate(), span));
 			}
 
-			ExprWithParens expression = parseUnaryExpression();
-			SourceSpan span = SourceSpan.from(start.sourceSpan(), expression.parenSourceSpan());
 			return new ExprWithParens(
 				new UnaryOperatorExpression(UnaryOperator.NEGATION, expression.expression(), span));
 		} else {

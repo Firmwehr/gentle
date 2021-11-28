@@ -41,6 +41,11 @@ public class PrettyPrinterTest {
 					} else {
 						new HelloWorld().bar(42+0*1, -1);
 					}
+					int foo = - -1;
+					foo = -1;
+					foo = -1.bar();
+					foo = (-1).bar();
+					foo = - - -1[1][1];
 				}
 				public int bar(int a, int b) { return c = (a+b); }
 			}
@@ -61,6 +66,11 @@ public class PrettyPrinterTest {
 					} else {
 						(new HelloWorld()).bar(42 + (0 * 1), -1);
 					}
+					int foo = -(-1);
+					foo = (-1);
+					foo = (-(1.bar()));
+					foo = ((-1).bar());
+					foo = (-(-(-((1[1])[1]))));
 				}
 				public boolean[] array;
 				public int c;
@@ -72,7 +82,8 @@ public class PrettyPrinterTest {
 
 	@ParameterizedTest
 	@ArgumentsSource(ParserTestCaseProvider.class)
-	public void format_shouldReturnParsableStrings(ParserTestCaseProvider.ParserTestCase testCase) throws ParseException, LexerException {
+	public void format_shouldReturnParsableStrings(ParserTestCaseProvider.ParserTestCase testCase)
+		throws ParseException, LexerException {
 		Program program1 = parse(testCase.source());
 		String prettyPrinted = PrettyPrinter.format(program1);
 		Program program2 = parse(prettyPrinted);
