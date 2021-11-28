@@ -7,6 +7,7 @@ import com.github.firmwehr.gentle.parser.ast.Program;
 import com.github.firmwehr.gentle.parser.ast.Type;
 import com.github.firmwehr.gentle.parser.ast.expression.BinaryOperator;
 import com.github.firmwehr.gentle.parser.ast.expression.Expression;
+import com.github.firmwehr.gentle.parser.ast.expression.UnaryOperator;
 import com.github.firmwehr.gentle.parser.ast.statement.Statement;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.provider.Arguments;
@@ -519,7 +520,44 @@ public class ParserTestCaseProvider implements ArgumentsProvider {
 								.thenExpr(Expression.newNewArray(
 									Type.newVoid().atLevel(4),
 									Expression.newInt(5)
-								)))))))
+								))))))),
+		Arguments.of(new ParserTestCase(
+			"integer literal negations",
+			"""
+			class Foo {
+				public void bar() {
+					-1;
+					-(1);
+					1.foo();
+					-1.foo();
+					(-1).foo();
+					1[2];
+					-1[2];
+					(-1)[2];
+				}
+			}
+			""",
+			new Program()
+				.withDecl(ClassDeclaration.dummy("Foo")
+					.withMethod(Method.dummy("bar")
+						.withBody(Statement.newBlock()
+							.thenExpr(Expression.newInt(-1))
+							.thenExpr(Expression.newInt(1)
+								.withUnary(UnaryOperator.NEGATION))
+							.thenExpr(Expression.newInt(1)
+								.withCall("foo"))
+							.thenExpr(Expression.newInt(1)
+								.withCall("foo")
+								.withUnary(UnaryOperator.NEGATION))
+							.thenExpr(Expression.newInt(-1)
+								.withCall("foo"))
+							.thenExpr(Expression.newInt(1)
+								.withArrayAccess(Expression.newInt(2)))
+							.thenExpr(Expression.newInt(1)
+								.withArrayAccess(Expression.newInt(2))
+								.withUnary(UnaryOperator.NEGATION))
+							.thenExpr(Expression.newInt(-1)
+								.withArrayAccess(Expression.newInt(2))))))))
 		);
 		// @formatter:on
 	}
