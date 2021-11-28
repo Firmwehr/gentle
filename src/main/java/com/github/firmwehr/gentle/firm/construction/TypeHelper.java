@@ -47,6 +47,8 @@ public class TypeHelper {
 		return new PointerType(getType(normalType.withDecrementedLevel().orElseThrow()));
 	}
 
+	// IntelliJ does not understand instanceof switches yet, what it suggests is not possible
+	@SuppressWarnings("DuplicateBranchesInSwitch")
 	public Mode getMode(SBasicType basicType) {
 		return switch (basicType) {
 			case SBooleanType ignored -> Mode.getBu();

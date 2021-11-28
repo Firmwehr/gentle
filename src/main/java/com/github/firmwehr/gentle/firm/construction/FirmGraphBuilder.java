@@ -198,14 +198,11 @@ public class FirmGraphBuilder {
 		processStatement(context, ifStatement.body());
 		jumpIfNotReturning(context, afterBlock);
 
+		construction.setCurrentBlock(falseBlock);
 		if (ifStatement.elseBody().isPresent()) {
-			construction.setCurrentBlock(falseBlock);
 			processStatement(context, ifStatement.elseBody().get());
-			jumpIfNotReturning(context, afterBlock);
-		} else {
-			construction.setCurrentBlock(falseBlock);
-			jumpIfNotReturning(context, afterBlock);
 		}
+		jumpIfNotReturning(context, afterBlock);
 
 		construction.setCurrentBlock(afterBlock);
 		afterBlock.mature();
