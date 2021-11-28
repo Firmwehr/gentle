@@ -1,4 +1,4 @@
-package com.github.firmwehr.gentle.firm;
+package com.github.firmwehr.gentle.firm.construction;
 
 import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.basictype.SBasicType;

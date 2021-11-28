@@ -2,7 +2,7 @@ package com.github.firmwehr.gentle;
 
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandArgumentsParser;
-import com.github.firmwehr.gentle.firm.FirmBuilder;
+import com.github.firmwehr.gentle.firm.construction.FirmBuilder;
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.linking.ExternalLinker;

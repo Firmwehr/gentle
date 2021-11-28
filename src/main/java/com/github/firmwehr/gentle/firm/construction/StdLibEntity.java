@@ -1,4 +1,4 @@
-package com.github.firmwehr.gentle.firm;
+package com.github.firmwehr.gentle.firm.construction;
 
 import firm.Entity;
 import firm.MethodType;
