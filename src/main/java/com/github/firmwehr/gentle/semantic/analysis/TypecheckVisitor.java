@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.semantic.analysis;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
@@ -100,7 +101,8 @@ public class TypecheckVisitor implements Visitor<Optional<Void>> {
 		// This shouldn't happen since the parser should never produce a NewArrayExpression with array level 0, but
 		// better check again to be sure
 		if (newArrayExpression.type().arrayLevel() == 0) {
-			throw new IllegalArgumentException("Creating non-array array");
+			throw new InternalCompilerException(
+				"creating array for type with array level 0: " + newArrayExpression.type());
 		}
 
 		assertIsInt(newArrayExpression.size());

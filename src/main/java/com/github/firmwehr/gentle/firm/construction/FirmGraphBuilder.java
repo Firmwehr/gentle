@@ -285,7 +285,7 @@ public class FirmGraphBuilder {
 			case GREATER_THAN -> processRelation(context, expr, Relation.Greater, target);
 			case GREATER_OR_EQUAL -> processRelation(context, expr, Relation.GreaterEqual, target);
 			default -> throw new InternalCompilerException(
-				"Arithmetic expression in condition binary operator " + expr);
+				"arithmetic expression in condition binary operator " + expr);
 		}
 	}
 

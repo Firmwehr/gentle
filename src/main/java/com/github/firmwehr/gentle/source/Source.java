@@ -1,5 +1,7 @@
 package com.github.firmwehr.gentle.source;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
+
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -172,7 +174,7 @@ public record Source(String content) {
 	private String formatMultilineMessage(int startLineNr, int lineAmount, int start, int end, String message) {
 		List<String> lines = getLines(startLineNr, lineAmount);
 		if (lines.size() < 2) {
-			throw new IllegalArgumentException("too few lines");
+			throw new InternalCompilerException("too few lines");
 		}
 
 		int endLineNr = startLineNr + lineAmount - 1;

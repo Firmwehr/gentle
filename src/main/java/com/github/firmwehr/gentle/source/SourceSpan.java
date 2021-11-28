@@ -1,5 +1,7 @@
 package com.github.firmwehr.gentle.source;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
+
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -16,7 +18,7 @@ public record SourceSpan(
 ) {
 	public SourceSpan {
 		if (startOffset > endOffset) {
-			throw new IllegalArgumentException("start must not be later than end");
+			throw new InternalCompilerException("start must not be later than end");
 		}
 	}
 
