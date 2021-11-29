@@ -9,3 +9,7 @@ void* allocate(size_t nmemb, size_t memberSize) {
 void println(int input) {
     printf("%d\n", input);
 }
+
+void flush() {
+    fflush(stdout);
+}

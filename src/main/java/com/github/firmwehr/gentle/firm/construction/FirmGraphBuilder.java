@@ -544,14 +544,10 @@ public class FirmGraphBuilder {
 
 	private Node processSystemOutFlush(Context context) {
 		Construction construction = context.construction();
-		Node stdOutAddress = construction.newAddress(entityHelper.getEntity(StdLibEntity.STDOUT));
-		Entity fflushEntity = entityHelper.getEntity(StdLibEntity.FFLUSH);
-		Node fflushAddress = construction.newAddress(fflushEntity);
-		Node stdOutLoad = construction.newLoad(construction.getCurrentMem(), stdOutAddress, Mode.getP());
-		construction.setCurrentMem(construction.newProj(stdOutLoad, Mode.getM(), Load.pnM));
-		Node stdOutResult = construction.newProj(stdOutLoad, Mode.getP(), Load.pnRes);
-		var call = construction.newCall(construction.getCurrentMem(), fflushAddress, new Node[]{stdOutResult},
-			fflushEntity.getType());
+		Entity flushEntity = entityHelper.getEntity(StdLibEntity.FLUSH);
+		Node flushAddress = construction.newAddress(flushEntity);
+		var call = construction.newCall(construction.getCurrentMem(), flushAddress, new Node[0],
+			flushEntity.getType());
 		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
 		return construction.newBad(Mode.getANY());
 	}

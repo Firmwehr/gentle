@@ -11,13 +11,9 @@ import java.util.function.Supplier;
 
 public enum StdLibEntity {
 	/**
-	 * @see java.io.PrintStream#flush()
+	 * @see java.io.PrintStream#flush() System.out.flush()
 	 */
-	FFLUSH(() -> create("fflush", Mode.getIs(), Mode.getP())),
-	/**
-	 * @see System#out
-	 */
-	STDOUT(() -> new Entity(Program.getGlobalType(), "stdout", Mode.getP().getType())),
+	FLUSH(() -> create("flush", Mode.getANY())),
 	/**
 	 * @see java.io.PrintStream#write(int) System.out.write(int)
 	 */
