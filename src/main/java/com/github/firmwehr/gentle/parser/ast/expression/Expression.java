@@ -27,8 +27,16 @@ public sealed interface Expression extends PrettyPrint
 		return new IdentExpression(Ident.dummy(name));
 	}
 
+	static IntegerLiteralExpression newInt(long value, boolean negated) {
+		return new IntegerLiteralExpression(BigInteger.valueOf(value), negated, SourceSpan.dummy());
+	}
+
 	static IntegerLiteralExpression newInt(long value) {
-		return new IntegerLiteralExpression(BigInteger.valueOf(value), SourceSpan.dummy());
+		if (value < 0) {
+			return newInt(-value, true);
+		} else {
+			return newInt(value, false);
+		}
 	}
 
 	static LocalMethodCallExpression newCall(String name, Expression... arguments) {

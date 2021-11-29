@@ -375,7 +375,7 @@ public class Parser {
 		} else if (tokens.peek().isOperator(Operator.MINUS)) {
 			Token start = tokens.take();
 
-			boolean startingWithIntLiteral = tokens.peek().isIntegerLiteral();
+			boolean startingWithIL = tokens.peek().isIntegerLiteral();
 
 			ExprWithParens expression = parseUnaryExpression();
 			SourceSpan span = SourceSpan.from(start.sourceSpan(), expression.parenSourceSpan());
@@ -389,9 +389,9 @@ public class Parser {
 			//
 			// One has to be careful though: The expression "-3.foo()" must be interpreted as "-(3.foo())", not
 			// "(-3).foo()" since postfix operations have a higher precedence than unary operations.
-			if (startingWithIntLiteral && expression.expression() instanceof IntegerLiteralExpression il) {
-				// The expression is a single, non-parenthesised integer literal
-				return new ExprWithParens(new IntegerLiteralExpression(il.value().negate(), span));
+			if (startingWithIL && expression.expression() instanceof IntegerLiteralExpression il && !il.negated()) {
+				// The expression is a single, non-parenthesised, positive integer literal
+				return new ExprWithParens(new IntegerLiteralExpression(il.absValue(), true, span));
 			}
 
 			return new ExprWithParens(
@@ -490,7 +490,7 @@ public class Parser {
 		} else if (integerLiteralToken.isPresent()) {
 			tokens.take();
 			BigInteger value = integerLiteralToken.get().value();
-			return new ExprWithParens(new IntegerLiteralExpression(value, token.sourceSpan()));
+			return new ExprWithParens(new IntegerLiteralExpression(value, false, token.sourceSpan()));
 		} else if (identToken.isPresent()) {
 			tokens.take();
 			Ident name = Ident.fromToken(identToken.get());
