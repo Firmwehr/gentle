@@ -15,11 +15,18 @@ import firm.ClassType;
 import firm.Mode;
 import firm.PointerType;
 import firm.PrimitiveType;
+import firm.Program;
 import firm.Type;
 
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Firm has its own type concept, rooted at a {@link Program#getGlobalType() global type} and represented by the {@link
+ * Type} class and its subclasses. These types are <em>singletons</em> and should only be created once.
+ * <br>
+ * <p>The type helper translates our semantic types ({@link SExprType}) to firm type singletons.</p>
+ */
 public class TypeHelper {
 	private final Type stringType;
 	private final Type voidType;

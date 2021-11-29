@@ -9,6 +9,9 @@ import firm.Type;
 import java.io.InputStream;
 import java.util.function.Supplier;
 
+/**
+ * A firm {@link Entity} for standard functions, mostly implemented by a dedicated runtime.c.
+ */
 public enum StdLibEntity {
 	/**
 	 * @see java.io.PrintStream#flush() System.out.flush()
@@ -37,7 +40,6 @@ public enum StdLibEntity {
 	private Entity entity;
 
 	StdLibEntity(Supplier<Entity> lazyEntityBuilder) {
-
 		this.lazyEntityBuilder = lazyEntityBuilder;
 	}
 
