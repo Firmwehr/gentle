@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  * In firm most things identified by names (fields and methods in Gentle currently) are {@link Entity entities}. To use
  * our own field and method declarations in the firm graph we need to translate them to firm entities first.
  * <br>
- * <p>This class converts fields and methods to singleton firm entities,</p>
+ * <p>This class converts fields and methods to singleton firm entities.</p>
  */
 public class EntityHelper {
 	private final Map<SField, Entity> fieldEntities;

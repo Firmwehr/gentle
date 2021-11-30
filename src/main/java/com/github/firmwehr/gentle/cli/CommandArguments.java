@@ -26,7 +26,7 @@ public interface CommandArguments {
 	@Option(names = "--check", description = "exit with 0 iff the file is semantically valid")
 	boolean check();
 
-	@Option(names = "--compile-firm", description = "exit with 0 iff the file is semantically valid")
+	@Option(names = "--compile-firm", description = "generate a runnable a.out binary using the firm backend")
 	boolean compileFirm();
 
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",

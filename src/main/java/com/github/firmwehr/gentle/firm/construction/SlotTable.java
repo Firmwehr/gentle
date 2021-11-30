@@ -69,9 +69,8 @@ public class SlotTable {
 	}
 
 	public int computeIndex(LocalVariableDeclaration localVariable) {
-		return Optional.ofNullable(this.toIndexMap.get(localVariable)).orElseThrow(() -> {
-			throw new InternalCompilerException("encountered unknown variable " + localVariable);
-		});
+		return Optional.ofNullable(this.toIndexMap.get(localVariable))
+			.orElseThrow(() -> new InternalCompilerException("encountered unknown variable " + localVariable));
 	}
 
 	public int size() {
