@@ -6,19 +6,33 @@ import com.github.firmwehr.gentle.source.SourceSpan;
 import java.math.BigInteger;
 
 public record IntegerLiteralExpression(
-	BigInteger value,
+	BigInteger absValue,
+	boolean negated,
 	SourceSpan sourceSpan
 ) implements Expression {
+	public IntegerLiteralExpression {
+		if (absValue.signum() < 0) {
+			throw new IllegalArgumentException("absValue must not be negative");
+		}
+	}
+
 	@Override
 	public void prettyPrint(PrettyPrinter p, Parentheses parens) {
-		if (value.signum() < 0 && parens == Parentheses.INCLUDE) {
+		if (negated && parens == Parentheses.INCLUDE) {
 			p.add("(");
 		}
 
-		p.add(value.toString());
+		if (negated) {
+			p.add("-");
+		}
+		p.add(absValue.toString());
 
-		if (value.signum() < 0 && parens == Parentheses.INCLUDE) {
+		if (negated && parens == Parentheses.INCLUDE) {
 			p.add(")");
 		}
+	}
+
+	public BigInteger value() {
+		return negated ? absValue.negate() : absValue;
 	}
 }
