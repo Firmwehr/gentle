@@ -76,8 +76,14 @@ public class EntityHelper {
 		MethodType methodType = new MethodType(types, returnType);
 		Entity entity = new Entity(ownerType, method.name().ident(), methodType);
 		if (!method.isStatic()) {
-			entity.setLdIdent(method.classDecl().name().ident() + "_" + method.name().ident());
+			entity.setLdIdent(getLinkerName(method));
 		}
 		return entity;
+	}
+
+	private String getLinkerName(SMethod method) {
+		String className = method.classDecl().name().ident();
+		String methodName = method.name().ident();
+		return className + "." + methodName;
 	}
 }
