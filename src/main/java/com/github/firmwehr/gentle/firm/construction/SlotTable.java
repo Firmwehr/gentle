@@ -12,6 +12,7 @@ import com.github.firmwehr.gentle.source.SourceSpan;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Firm methods need to know how many local variables they contain and address them by index.
@@ -68,8 +69,8 @@ public class SlotTable {
 	}
 
 	public int computeIndex(LocalVariableDeclaration localVariable) {
-		return this.toIndexMap.computeIfAbsent(localVariable, var -> {
-			throw new InternalCompilerException("encountered unknown variable " + var);
+		return Optional.ofNullable(this.toIndexMap.get(localVariable)).orElseThrow(() -> {
+			throw new InternalCompilerException("encountered unknown variable " + localVariable);
 		});
 	}
 

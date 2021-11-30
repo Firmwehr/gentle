@@ -11,6 +11,7 @@ import java.util.function.Supplier;
 
 /**
  * A firm {@link Entity} for standard functions, mostly implemented by a dedicated runtime.c.
+ * <p>The actual entities are created lazily as no firm operations are allowed before calling Firm.init.</p>
  */
 public enum StdLibEntity {
 	/**
