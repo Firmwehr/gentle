@@ -90,7 +90,6 @@ public class FirmGraphBuilder {
 
 		if (!method.isStatic()) {
 			Node startNode = currentGraph.getStart();
-			construction.setCurrentMem(construction.newProj(startNode, Mode.getM(), Start.pnM));
 			Node argsTuple = construction.newProj(startNode, Mode.getT(), Start.pnTArgs);
 
 			// the implicit receiver parameter is at pos 0 and needs to be handled separately
