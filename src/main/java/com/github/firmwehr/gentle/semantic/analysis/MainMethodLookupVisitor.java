@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.semantic.analysis;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
@@ -51,10 +52,10 @@ public class MainMethodLookupVisitor implements Visitor<Optional<Void>> {
 		// These two cases are already prevented by the grammar and parser, so if these checks are not successful,
 		// something went wrong in our code.
 		if (!(method.returnType() instanceof SVoidType)) {
-			throw new IllegalArgumentException("The main method must have a void return type");
+			throw new InternalCompilerException("the main method must have a void return type");
 		}
 		if (method.parameters().size() != 1) {
-			throw new IllegalArgumentException("The main method must have exactly one parameter");
+			throw new InternalCompilerException("the main method must have exactly one parameter");
 		}
 
 		LocalVariableDeclaration parameter = method.parameters().get(0);

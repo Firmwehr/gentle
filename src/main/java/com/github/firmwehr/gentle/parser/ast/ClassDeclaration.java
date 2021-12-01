@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.parser.ast;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.parser.Util;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrint;
 import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
@@ -47,7 +48,7 @@ public record ClassDeclaration(
 				} else if (it instanceof MainMethod m) {
 					return m.name().ident();
 				} else {
-					throw new IllegalArgumentException("expected Method or MainMethod");
+					throw new InternalCompilerException("expected Method or MainMethod");
 				}
 			})).collect(Collectors.toList());
 

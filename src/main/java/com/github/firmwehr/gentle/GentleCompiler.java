@@ -2,8 +2,10 @@ package com.github.firmwehr.gentle;
 
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandArgumentsParser;
+import com.github.firmwehr.gentle.firm.construction.FirmBuilder;
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
+import com.github.firmwehr.gentle.linking.ExternalLinker;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.output.UserOutput;
 import com.github.firmwehr.gentle.parser.ParseException;
@@ -13,7 +15,9 @@ import com.github.firmwehr.gentle.parser.prettyprint.PrettyPrinter;
 import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.semantic.SemanticAnalyzer;
 import com.github.firmwehr.gentle.semantic.SemanticException;
+import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import com.github.firmwehr.gentle.source.Source;
+import org.apache.commons.io.FilenameUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -50,6 +54,9 @@ public class GentleCompiler {
 		if (arguments.check()) {
 			flagsSet.add("check");
 		}
+		if (arguments.compileFirm()) {
+			flagsSet.add("compileFirm");
+		}
 
 		try {
 			if (flagsSet.isEmpty()) {
@@ -69,6 +76,8 @@ public class GentleCompiler {
 				printAstCommand(arguments.path());
 			} else if (arguments.check()) {
 				checkCommand(arguments.path());
+			} else if (arguments.compileFirm()) {
+				compileFirm(arguments.path());
 			} else {
 				// This can never be reached
 				runCommand(arguments.path());
@@ -88,6 +97,7 @@ public class GentleCompiler {
 			UserOutput.outputData(Files.readAllBytes(path));
 		} catch (IOException e) {
 			UserOutput.userError("Could not echo file '%s': %s", path, e.getMessage());
+			LOGGER.error("Echo failed", e);
 			System.exit(1);
 		}
 	}
@@ -106,12 +116,15 @@ public class GentleCompiler {
 			UserOutput.outputData(outputStream);
 		} catch (MalformedInputException e) {
 			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			LOGGER.error("Lexing failed", e);
 			System.exit(1);
 		} catch (IOException e) {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
+			LOGGER.error("Lexing failed", e);
 			System.exit(1);
 		} catch (LexerException e) {
 			UserOutput.userError(e);
+			LOGGER.error("Lexing failed", e);
 			System.exit(1);
 		}
 	}
@@ -124,12 +137,15 @@ public class GentleCompiler {
 			parser.parse(); // Result ignored
 		} catch (MalformedInputException e) {
 			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			LOGGER.error("Parsing failed", e);
 			System.exit(1);
 		} catch (IOException e) {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
+			LOGGER.error("Parsing failed", e);
 			System.exit(1);
 		} catch (LexerException | ParseException e) {
 			UserOutput.userError(e);
+			LOGGER.error("Parsing failed", e);
 			System.exit(1);
 		}
 	}
@@ -143,12 +159,15 @@ public class GentleCompiler {
 			UserOutput.outputMessage(PrettyPrinter.format(program));
 		} catch (MalformedInputException e) {
 			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			LOGGER.error("AST printing failed", e);
 			System.exit(1);
 		} catch (IOException e) {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
+			LOGGER.error("AST printing failed", e);
 			System.exit(1);
 		} catch (LexerException | ParseException e) {
 			UserOutput.userError(e);
+			LOGGER.error("AST printing failed", e);
 			System.exit(1);
 		}
 	}
@@ -162,11 +181,42 @@ public class GentleCompiler {
 			semanticAnalyzer.analyze(); // Result ignored
 		} catch (MalformedInputException e) {
 			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			LOGGER.error("Semantic checking failed", e);
 			System.exit(1);
 		} catch (IOException e) {
 			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
+			LOGGER.error("Semantic checking failed", e);
 			System.exit(1);
 		} catch (LexerException | ParseException | SemanticException e) {
+			UserOutput.userError(e);
+			LOGGER.error("Semantic checking failed", e);
+			System.exit(1);
+		}
+	}
+
+	private static void compileFirm(Path path) {
+		try {
+			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			Lexer lexer = new Lexer(source, true);
+			Parser parser = Parser.fromLexer(source, lexer);
+			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer(source, parser.parse());
+			SProgram program = semanticAnalyzer.analyze();
+
+			String assemblyFilename = FilenameUtils.removeExtension(path.getFileName().toString()) + ".s";
+			Path assemblyFile = path.resolveSibling(assemblyFilename);
+
+			new FirmBuilder().convert(assemblyFile, program);
+			new ExternalLinker().link(assemblyFile);
+		} catch (MalformedInputException e) {
+			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
+			LOGGER.error("Compiling using firm failed", e);
+			System.exit(1);
+		} catch (IOException e) {
+			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
+			LOGGER.error("Compiling using firm failed", e);
+			System.exit(1);
+		} catch (LexerException | ParseException | SemanticException e) {
+			LOGGER.error("Compiling using firm failed", e);
 			UserOutput.userError(e);
 			System.exit(1);
 		}

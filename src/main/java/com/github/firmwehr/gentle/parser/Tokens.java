@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.parser;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.parser.tokens.EofToken;
@@ -59,7 +60,7 @@ public class Tokens {
 
 	public Token peek(int offset) {
 		if (offset < 0) {
-			throw new IllegalArgumentException("offset must not be negative");
+			throw new InternalCompilerException("offset must not be negative");
 		}
 
 		var i = index + offset;

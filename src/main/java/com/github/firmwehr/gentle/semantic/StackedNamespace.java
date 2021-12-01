@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.semantic;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.parser.ast.Ident;
 import com.github.firmwehr.gentle.source.Source;
 import org.javimmutable.collections.JImmutableMap;
@@ -37,14 +38,14 @@ public class StackedNamespace<T> {
 
 	public void leaveScope() {
 		if (scopes.size() <= 1) {
-			throw new IllegalStateException("Tried to leave outermost scope!");
+			throw new InternalCompilerException("tried to leave outermost scope!");
 		}
 		scopes.pollFirst();
 	}
 
 	public Optional<T> getOpt(Ident name) {
 		if (scopes.isEmpty()) {
-			throw new IllegalStateException("Scope stack is empty");
+			throw new InternalCompilerException("scope stack is empty");
 		}
 		return Optional.ofNullable(scopes.peekFirst().get(name.ident())).map(Entry::value);
 	}
@@ -55,7 +56,7 @@ public class StackedNamespace<T> {
 
 	public void put(Ident name, T t) throws SemanticException {
 		if (scopes.isEmpty()) {
-			throw new IllegalStateException("Scope stack is empty");
+			throw new InternalCompilerException("scope stack is empty");
 		}
 
 		JImmutableMap<String, Entry<T>> currentMap = scopes.peekFirst();

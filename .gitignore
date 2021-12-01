@@ -11,6 +11,12 @@
 # application stuff
 *.log
 
+# firm stuff
+/*.vcg
+/*.s
+/*.valid
+/*.mj
+
 # OS Stuff
 *.DS_Store
 
