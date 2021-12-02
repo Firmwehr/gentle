@@ -35,6 +35,7 @@ import com.github.firmwehr.gentle.source.SourceSpan;
 import com.google.common.base.Preconditions;
 import firm.ClassType;
 import firm.Construction;
+import firm.Dump;
 import firm.Entity;
 import firm.Graph;
 import firm.Mode;
@@ -111,7 +112,7 @@ public class FirmGraphBuilder {
 
 		construction.finish();
 
-		//		Dump.dumpGraph(currentGraph, "after-mature");
+		Dump.dumpGraph(currentGraph, "after-mature");
 	}
 
 	private void processMethodBody(Context context, SMethod method) {
@@ -326,6 +327,7 @@ public class FirmGraphBuilder {
 	}
 
 	private Node condToBool(Context context, Consumer<JumpTarget> processInner) {
+		// TODO: Can we use the MUX node in some cases?
 		Construction construction = context.construction();
 		Block trueBlock = construction.newBlock();
 		Block falseBlock = construction.newBlock();

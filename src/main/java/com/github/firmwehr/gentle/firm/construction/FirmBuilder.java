@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.firm.construction;
 
+import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import firm.Backend;
 import firm.Firm;
@@ -50,6 +51,8 @@ public class FirmBuilder {
 
 		// Lower "Member"
 		Util.lowerSels();
+
+		ConstantFolding.optimize();
 
 		String assemblyFile = assemblyOutputFile.toAbsolutePath().toString();
 		Backend.createAssembler(assemblyFile, assemblyFile);
