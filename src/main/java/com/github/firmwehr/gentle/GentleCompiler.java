@@ -41,7 +41,7 @@ public class GentleCompiler {
 				.command(CommandArguments::parsetest, GentleCompiler::parseTestCommand)
 				.command(CommandArguments::printAst, GentleCompiler::printAstCommand)
 				.command(CommandArguments::check, GentleCompiler::checkCommand)
-				.command(CommandArguments::compileFirm, GentleCompiler::compileFirm)
+				.command(CommandArguments::compileFirm, GentleCompiler::compileFirmCommand)
 				.dispatch(args);
 		} catch (Exception e) {
 			UserOutput.userMessage("something went wrong, pls annoy me mjtest");
@@ -155,7 +155,7 @@ public class GentleCompiler {
 		}
 	}
 
-	private static void compileFirm(Path path) {
+	private static void compileFirmCommand(Path path) {
 		try {
 			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
 			Lexer lexer = new Lexer(source, true);
