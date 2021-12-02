@@ -36,12 +36,13 @@ public class GentleCompiler {
 		LOGGER.info("Hello World, please be gentle UwU");
 
 		try {
-			new CommandDispatcher().command("--echo", CommandArguments::echo, GentleCompiler::echoCommand)
-				.command("--lextest", CommandArguments::lextest, GentleCompiler::lexTestCommand)
-				.command("--parsetest", CommandArguments::parsetest, GentleCompiler::parseTestCommand)
-				.command("--print-ast", CommandArguments::printAst, GentleCompiler::printAstCommand)
-				.command("--check", CommandArguments::check, GentleCompiler::checkCommand)
-				.command("--compile-firm", CommandArguments::compileFirm, GentleCompiler::compileFirmCommand)
+			new CommandDispatcher().command(CommandArguments.ECHO, CommandArguments::echo, GentleCompiler::echoCommand)
+				.command(CommandArguments.LEXTEST, CommandArguments::lextest, GentleCompiler::lexTestCommand)
+				.command(CommandArguments.PARSETEST, CommandArguments::parsetest, GentleCompiler::parseTestCommand)
+				.command(CommandArguments.PRINT_AST, CommandArguments::printAst, GentleCompiler::printAstCommand)
+				.command(CommandArguments.CHECK, CommandArguments::check, GentleCompiler::checkCommand)
+				.command(CommandArguments.COMPILE_FIRM, CommandArguments::compileFirm,
+					GentleCompiler::compileFirmCommand)
 				.dispatch(args);
 		} catch (Exception e) {
 			UserOutput.userMessage("something went wrong, pls annoy me mjtest");
