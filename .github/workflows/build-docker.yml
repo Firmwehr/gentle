@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - master
-  pull_request:
 
 env:
   JAVA_VERSION: 17
