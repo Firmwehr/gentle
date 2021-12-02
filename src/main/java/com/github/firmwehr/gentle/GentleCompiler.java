@@ -1,7 +1,7 @@
 package com.github.firmwehr.gentle;
 
 import com.github.firmwehr.gentle.cli.CommandArguments;
-import com.github.firmwehr.gentle.cli.CommandArgumentsParser;
+import com.github.firmwehr.gentle.cli.CommandDispatcher;
 import com.github.firmwehr.gentle.firm.construction.FirmBuilder;
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
@@ -26,8 +26,6 @@ import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.Set;
 
 public class GentleCompiler {
 
@@ -36,52 +34,16 @@ public class GentleCompiler {
 
 	public static void main(String[] args) {
 		LOGGER.info("Hello World, please be gentle UwU");
-		CommandArguments arguments = new CommandArgumentsParser().parseOrExit(args);
-
-		Set<String> flagsSet = new HashSet<>();
-		if (arguments.echo()) {
-			flagsSet.add("echo");
-		}
-		if (arguments.lextest()) {
-			flagsSet.add("lextest");
-		}
-		if (arguments.parsetest()) {
-			flagsSet.add("parseTest");
-		}
-		if (arguments.printAst()) {
-			flagsSet.add("printAst");
-		}
-		if (arguments.check()) {
-			flagsSet.add("check");
-		}
-		if (arguments.compileFirm()) {
-			flagsSet.add("compileFirm");
-		}
 
 		try {
-			if (flagsSet.isEmpty()) {
-				UserOutput.userError("No operation specified.");
-				System.exit(1);
-			} else if (flagsSet.size() != 1) {
-				UserOutput.userError(
-					"Conflicting flags set. Received the following mutually exclusive flags: " + flagsSet);
-				System.exit(1);
-			} else if (arguments.echo()) {
-				echoCommand(arguments.path());
-			} else if (arguments.lextest()) {
-				lexTestCommand(arguments.path());
-			} else if (arguments.parsetest()) {
-				parseTestCommand(arguments.path());
-			} else if (arguments.printAst()) {
-				printAstCommand(arguments.path());
-			} else if (arguments.check()) {
-				checkCommand(arguments.path());
-			} else if (arguments.compileFirm()) {
-				compileFirm(arguments.path());
-			} else {
-				// This can never be reached
-				runCommand(arguments.path());
-			}
+			new CommandDispatcher().command(CommandArguments.ECHO, CommandArguments::echo, GentleCompiler::echoCommand)
+				.command(CommandArguments.LEXTEST, CommandArguments::lextest, GentleCompiler::lexTestCommand)
+				.command(CommandArguments.PARSETEST, CommandArguments::parsetest, GentleCompiler::parseTestCommand)
+				.command(CommandArguments.PRINT_AST, CommandArguments::printAst, GentleCompiler::printAstCommand)
+				.command(CommandArguments.CHECK, CommandArguments::check, GentleCompiler::checkCommand)
+				.command(CommandArguments.COMPILE_FIRM, CommandArguments::compileFirm,
+					GentleCompiler::compileFirmCommand)
+				.dispatch(args);
 		} catch (Exception e) {
 			UserOutput.userMessage("something went wrong, pls annoy me mjtest");
 			UserOutput.outputMessage(e.toString());
@@ -194,7 +156,7 @@ public class GentleCompiler {
 		}
 	}
 
-	private static void compileFirm(Path path) {
+	private static void compileFirmCommand(Path path) {
 		try {
 			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
 			Lexer lexer = new Lexer(source, true);
@@ -217,24 +179,6 @@ public class GentleCompiler {
 			System.exit(1);
 		} catch (LexerException | ParseException | SemanticException e) {
 			LOGGER.error("Compiling using firm failed", e);
-			UserOutput.userError(e);
-			System.exit(1);
-		}
-	}
-
-	private static void runCommand(Path path) {
-		try {
-			Source source = new Source(Files.readString(path, FILE_CHARSET));
-			Lexer lexer = new Lexer(source, true);
-			Parser parser = Parser.fromLexer(source, lexer);
-			LOGGER.info("Parse result:\n%s", PrettyPrinter.format(parser.parse()));
-		} catch (MalformedInputException e) {
-			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
-			System.exit(1);
-		} catch (IOException e) {
-			UserOutput.userError("Could not read file '%s': %s", path, e.getMessage());
-			System.exit(1);
-		} catch (LexerException | ParseException e) {
 			UserOutput.userError(e);
 			System.exit(1);
 		}

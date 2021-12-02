@@ -10,23 +10,29 @@ import java.nio.file.Path;
 
 @Command(name = "gentle", description = "A small MiniJava compiler.", publicParser = true)
 public interface CommandArguments {
+	String ECHO = "--echo";
+	String LEXTEST = "--lextest";
+	String PARSETEST = "--parsetest";
+	String PRINT_AST = "--print-ast";
+	String CHECK = "--check";
+	String COMPILE_FIRM = "--compile-firm";
 
-	@Option(names = "--echo", description = "output the file as is")
+	@Option(names = ECHO, description = "output the file as is")
 	boolean echo();
 
-	@Option(names = "--lextest", description = "print all of the file's tokens")
+	@Option(names = LEXTEST, description = "print all of the file's tokens")
 	boolean lextest();
 
-	@Option(names = "--parsetest", description = "exit with 0 iff the file is syntactically valid")
+	@Option(names = PARSETEST, description = "exit with 0 iff the file is syntactically valid")
 	boolean parsetest();
 
-	@Option(names = "--print-ast", description = "parse and pretty-print the file")
+	@Option(names = PRINT_AST, description = "parse and pretty-print the file")
 	boolean printAst();
 
-	@Option(names = "--check", description = "exit with 0 iff the file is semantically valid")
+	@Option(names = CHECK, description = "exit with 0 iff the file is semantically valid")
 	boolean check();
 
-	@Option(names = "--compile-firm", description = "generate a runnable a.out binary using the firm backend")
+	@Option(names = COMPILE_FIRM, description = "generate a runnable a.out binary using the firm backend")
 	boolean compileFirm();
 
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",
