@@ -8,6 +8,10 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+/**
+ * Takes care of running the right command when its corresponding flag was passed as an argument. Also handles some edge
+ * cases, e.g. "no command was specified" or "too many commands were specified".
+ */
 public class CommandDispatcher {
 	private final List<CommandSpec> commands;
 
