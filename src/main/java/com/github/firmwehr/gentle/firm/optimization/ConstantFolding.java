@@ -3,7 +3,6 @@ package com.github.firmwehr.gentle.firm.optimization;
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.output.Logger;
 import firm.BackEdges;
-import firm.Dump;
 import firm.Graph;
 import firm.Mode;
 import firm.Program;
@@ -52,6 +51,8 @@ import java.util.Queue;
 import java.util.function.BinaryOperator;
 import java.util.stream.StreamSupport;
 
+import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
+
 public class ConstantFolding extends NodeVisitor.Default {
 	private static final Logger LOGGER = new Logger(ConstantFolding.class);
 
@@ -90,7 +91,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 					break;
 				}
 			}
-			Dump.dumpGraph(graph, "cf");
+			dumpGraph(graph, "cf");
 		}
 		LOGGER.info("Finished");
 	}
@@ -120,10 +121,10 @@ public class ConstantFolding extends NodeVisitor.Default {
 			if (!tarVal.isConstant()) {
 				continue;
 			}
-			LOGGER.debug("Considering %-25s with tarval %s", node, debugTarval(tarVal));
+			LOGGER.debug("Considering %-25s with tarval %s", node, debugTarVal(tarVal));
 
 			if (tarVal.getMode().isInt() && node.getOpCode() != binding_irnode.ir_opcode.iro_Const) {
-				LOGGER.debug("Replacing   %-25s with tarval %s", node, debugTarval(tarVal));
+				LOGGER.debug("Replacing   %-25s with tarval %s", node, debugTarVal(tarVal));
 				Graph.exchange(node, graph.newConst(tarVal));
 				hasChanged = true;
 			} else if (node instanceof Cond cond) {
@@ -131,7 +132,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 			}
 
 			if (hasChanged && LOGGER.isDebugEnabled()) {
-				Dump.dumpGraph(graph, "cf-fold");
+				dumpGraph(graph, "cf-fold");
 			}
 		}
 	}
@@ -241,7 +242,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 		LOGGER.debug("Merging %-25s with %-25s", block, pred.getBlock());
 		Graph.exchange(block, pred.getBlock());
 		if (LOGGER.isDebugEnabled()) {
-			Dump.dumpGraph(graph, "cf-merged");
+			dumpGraph(graph, "cf-merged");
 		}
 		hasChanged = true;
 	}
@@ -443,7 +444,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 		return constants.getOrDefault(node, TargetValue.getUnknown());
 	}
 
-	private static String debugTarval(TargetValue targetValue) {
+	private static String debugTarVal(TargetValue targetValue) {
 		if (targetValue.equals(TargetValue.getUnknown())) {
 			return "bottom";
 		}

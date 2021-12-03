@@ -32,10 +32,10 @@ import com.github.firmwehr.gentle.semantic.ast.statement.SStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import com.github.firmwehr.gentle.source.SourceSpan;
+import com.github.firmwehr.gentle.util.GraphDumper;
 import com.google.common.base.Preconditions;
 import firm.ClassType;
 import firm.Construction;
-import firm.Dump;
 import firm.Entity;
 import firm.Graph;
 import firm.Mode;
@@ -108,11 +108,9 @@ public class FirmGraphBuilder {
 
 		processMethodBody(new Context(construction, slotTable, method), method);
 
-		//		Dump.dumpGraph(currentGraph, "before-mature");
-
 		construction.finish();
 
-		Dump.dumpGraph(currentGraph, "after-mature");
+		GraphDumper.dumpGraph(currentGraph, "after-mature");
 	}
 
 	private void processMethodBody(Context context, SMethod method) {
