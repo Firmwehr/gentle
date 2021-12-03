@@ -15,7 +15,7 @@ public class ExternalLinker {
 	/**
 	 * Assembles and links a generated assembly file (and compiles the runtime in the process) to an {@code a.out}
 	 * file,
-	 * placed in the same directory as the assembly file.
+	 * placed in the current working directory.
 	 *
 	 * <p>This method does <em>not</em> call {@link Firm#finish()}.</p>
 	 *
@@ -23,7 +23,8 @@ public class ExternalLinker {
 	 */
 	public void link(Path assemblyFile) {
 		String runtimePath = extractRuntime().toAbsolutePath().toString();
-		String outputPath = assemblyFile.resolveSibling("a.out").toAbsolutePath().toString();
+		// The output should be relative *to our CWD*.
+		String outputPath = Path.of("a.out").toAbsolutePath().toString();
 
 		executeGcc(assemblyFile.toAbsolutePath().toString(), runtimePath, outputPath);
 	}
