@@ -40,8 +40,6 @@ import firm.nodes.Size;
 import firm.nodes.Sub;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -57,13 +55,17 @@ public class ConstantFolding extends NodeVisitor.Default {
 	private static final Logger LOGGER = new Logger(ConstantFolding.class);
 
 	private final Graph graph;
+	private final Map<Node, TargetValue> constants;
+	private final Deque<Node> worklist;
 
-	private final Map<Node, TargetValue> constants = new HashMap<>();
-	private final Deque<Node> worklist = new ArrayDeque<>();
 	private boolean hasChanged;
+	private Map<Node, Node> replacements;
 
 	public ConstantFolding(Graph graph) {
 		this.graph = graph;
+		this.worklist = new ArrayDeque<>();
+		this.constants = new HashMap<>();
+		this.replacements = new HashMap<>();
 	}
 
 	public static void optimize() {
@@ -111,11 +113,17 @@ public class ConstantFolding extends NodeVisitor.Default {
 			node.accept(this);
 		}
 
+		if (!replacements.isEmpty()) {
+			LOGGER.debugHeader("Replacing");
+			for (var entry : replacements.entrySet()) {
+				LOGGER.debug("Replacing   %-25s with %-25s", entry.getKey(), entry.getValue());
+				Graph.exchange(entry.getKey(), entry.getValue());
+			}
+		}
+
 		LOGGER.debugHeader("Folding");
 
-		var list = new ArrayList<>(constants.entrySet());
-		Collections.shuffle(list);
-		for (var entry : list) {
+		for (var entry : constants.entrySet()) {
 			TargetValue tarVal = entry.getValue();
 			Node node = entry.getKey();
 			if (!tarVal.isConstant()) {
@@ -250,6 +258,12 @@ public class ConstantFolding extends NodeVisitor.Default {
 	@Override
 	public void visit(Add node) {
 		updateTarVal(node, TargetValue::add);
+		if (tarValOf(node.getRight()).isNull()) {
+			replacements.put(node, node.getLeft());
+		}
+		if (tarValOf(node.getLeft()).isNull()) {
+			replacements.put(node, node.getRight());
+		}
 	}
 
 	@Override
@@ -328,6 +342,24 @@ public class ConstantFolding extends NodeVisitor.Default {
 	@Override
 	public void visit(Mul node) {
 		updateTarVal(node, TargetValue::mul);
+		TargetValue leftTarVal = tarValOf(node.getLeft());
+		TargetValue rightTarVal = tarValOf(node.getRight());
+
+		if (leftTarVal.isOne()) {
+			replacements.put(node, node.getRight());
+		}
+		if (rightTarVal.isOne()) {
+			replacements.put(node, node.getLeft());
+		}
+		if (leftTarVal.isNull() || rightTarVal.isNull()) {
+			replacements.put(node, graph.newConst(0, Mode.getIs()));
+		}
+		if (rightTarVal.isConstant() && rightTarVal.isNegative() && rightTarVal.abs().isOne()) {
+			replacements.put(node, graph.newMinus(node.getBlock(), node.getLeft()));
+		}
+		if (leftTarVal.isConstant() && leftTarVal.isNegative() && leftTarVal.abs().isOne()) {
+			replacements.put(node, graph.newMinus(node.getBlock(), node.getRight()));
+		}
 	}
 
 	@Override
@@ -394,6 +426,15 @@ public class ConstantFolding extends NodeVisitor.Default {
 	@Override
 	public void visit(Sub node) {
 		updateTarVal(node, TargetValue::sub);
+		if (tarValOf(node.getRight()).isNull()) {
+			replacements.put(node, node.getLeft());
+		}
+		if (tarValOf(node.getLeft()).isNull()) {
+			replacements.put(node, graph.newMinus(node.getBlock(), node.getRight()));
+		}
+		if (tarValOf(node.getLeft()).equals(tarValOf(node.getRight()))) {
+			replacements.put(node, graph.newConst(0, node.getLeft().getMode()));
+		}
 	}
 
 	private void updateTarVal(Binop node, BinaryOperator<TargetValue> op) {
