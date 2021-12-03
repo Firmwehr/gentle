@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.firm.optimization;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import firm.BackEdges;
 import firm.Dump;
 import firm.Graph;
@@ -7,10 +8,13 @@ import firm.Mode;
 import firm.Program;
 import firm.Relation;
 import firm.TargetValue;
+import firm.bindings.binding_irgopt;
+import firm.bindings.binding_irnode;
 import firm.nodes.Add;
 import firm.nodes.And;
 import firm.nodes.Bad;
 import firm.nodes.Binop;
+import firm.nodes.Block;
 import firm.nodes.Cmp;
 import firm.nodes.Cond;
 import firm.nodes.Const;
@@ -38,8 +42,10 @@ import firm.nodes.Sub;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BinaryOperator;
 import java.util.stream.StreamSupport;
@@ -79,16 +85,42 @@ public class ConstantFolding extends NodeVisitor.Default {
 		Collections.shuffle(list);
 		for (var entry : list) {
 			TargetValue tarVal = entry.getValue();
+			Node node = entry.getKey();
 			if (!tarVal.isConstant()) {
 				continue;
 			}
 
 			if (tarVal.getMode().isInt()) {
-				Graph.exchange(entry.getKey(), graph.newConst(tarVal));
-			} else if (tarVal.getMode().equals(Mode.getT())) {
+				Graph.exchange(node, graph.newConst(tarVal));
+			} else if (node.getOpCode() == binding_irnode.ir_opcode.iro_Cond) {
+				List<Node> nodes = StreamSupport.stream(BackEdges.getOuts(node).spliterator(), false)
+					.sorted(Comparator.comparingInt(edge -> edge.pos))
+					.map(edge -> edge.node)
+					.toList();
 
-			} else if (tarVal.getMode().equals(Mode.getF())) {
+				if (nodes.size() != 2) {
+					throw new InternalCompilerException("Expected two nodes for Cond " + node + ", got " + nodes);
+				}
 
+				Node trueProj = nodes.get(Cond.pnTrue);
+				Node falseProj = nodes.get(Cond.pnFalse);
+				BackEdges.Edge trueEdge = BackEdges.getOuts(trueProj).iterator().next();
+				Block trueBlock = (Block) trueEdge.node;
+				BackEdges.Edge falseEdge = BackEdges.getOuts(falseProj).iterator().next();
+				Block falseBlock = (Block) falseEdge.node;
+				if (tarVal.isOne()) {
+					Graph.killNode(falseProj);
+					Graph.killNode(trueProj);
+					trueBlock.setPred(trueEdge.pos, graph.newJmp(node.getBlock()));
+					falseBlock.setPred(falseEdge.pos, graph.newBad(Mode.getX()));
+				} else if (tarVal.isNull()) {
+					Graph.killNode(falseProj);
+					Graph.killNode(trueProj);
+					falseBlock.setPred(falseEdge.pos, graph.newJmp(node.getBlock()));
+					trueBlock.setPred(trueEdge.pos, graph.newBad(Mode.getX()));
+				}
+				binding_irgopt.remove_bads(graph.ptr);
+				binding_irgopt.remove_unreachable_code(graph.ptr);
 			}
 		}
 		Dump.dumpGraph(graph, "foo");
