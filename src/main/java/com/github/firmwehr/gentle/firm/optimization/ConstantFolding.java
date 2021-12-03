@@ -55,6 +55,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 
 	private final Map<Node, TargetValue> constants = new HashMap<>();
 	private final Deque<Node> worklist = new ArrayDeque<>();
+	private boolean hasChanged;
 
 	public ConstantFolding(Graph graph) {
 		this.graph = graph;
@@ -62,9 +63,21 @@ public class ConstantFolding extends NodeVisitor.Default {
 
 	public static void optimize() {
 		for (Graph graph : Program.getGraphs()) {
-			BackEdges.enable(graph);
-			new ConstantFolding(graph).fold();
-			BackEdges.disable(graph);
+			while (true) {
+				// Needs to be done in each iteration
+				BackEdges.enable(graph);
+				ConstantFolding folding = new ConstantFolding(graph);
+				folding.fold();
+				binding_irgopt.remove_bads(graph.ptr);
+				binding_irgopt.remove_unreachable_code(graph.ptr);
+				binding_irgopt.remove_bads(graph.ptr);
+
+				// Pls disable anyways
+				BackEdges.disable(graph);
+				if (!folding.hasChanged) {
+					break;
+				}
+			}
 		}
 	}
 
@@ -90,9 +103,11 @@ public class ConstantFolding extends NodeVisitor.Default {
 				continue;
 			}
 
-			if (tarVal.getMode().isInt()) {
+			if (tarVal.getMode().isInt() && node.getOpCode() != binding_irnode.ir_opcode.iro_Const) {
 				Graph.exchange(node, graph.newConst(tarVal));
 			} else if (node.getOpCode() == binding_irnode.ir_opcode.iro_Cond) {
+				hasChanged = true;
+
 				List<Node> nodes = StreamSupport.stream(BackEdges.getOuts(node).spliterator(), false)
 					.sorted(Comparator.comparingInt(edge -> edge.pos))
 					.map(edge -> edge.node)
@@ -119,8 +134,6 @@ public class ConstantFolding extends NodeVisitor.Default {
 					falseBlock.setPred(falseEdge.pos, graph.newJmp(node.getBlock()));
 					trueBlock.setPred(trueEdge.pos, graph.newBad(Mode.getX()));
 				}
-				binding_irgopt.remove_bads(graph.ptr);
-				binding_irgopt.remove_unreachable_code(graph.ptr);
 			}
 		}
 		Dump.dumpGraph(graph, "foo");
