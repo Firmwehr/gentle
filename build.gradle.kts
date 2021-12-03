@@ -93,7 +93,7 @@ dependencies {
 	implementation("net.java.dev.jna:jna:4.5.2")
 
 
-	implementation("com.github.Firmwehr:jFirm:b970d57751")
+	implementation("com.github.Firmwehr:jFirm:62c1a55f72")
 
 	// junit
 	val junitVersion = "5.8.1"
