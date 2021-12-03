@@ -40,12 +40,12 @@ import firm.nodes.Size;
 import firm.nodes.Sub;
 
 import java.util.ArrayDeque;
-import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.function.BiConsumer;
 import java.util.function.BinaryOperator;
 import java.util.stream.StreamSupport;
 
@@ -118,12 +118,19 @@ public class ConstantFolding extends NodeVisitor.Default {
 			for (var entry : replacements.entrySet()) {
 				LOGGER.debug("Replacing   %-25s with %-25s", entry.getKey(), entry.getValue());
 				Graph.exchange(entry.getKey(), entry.getValue());
+				for (var nodeEntry : replacements.entrySet()) {
+					if (nodeEntry.getValue().equals(entry.getKey())) {
+						nodeEntry.setValue(entry.getValue());
+					}
+				}
 			}
 		}
 
 		LOGGER.debugHeader("Folding");
 
+		boolean changedSomewhere = this.hasChanged;
 		for (var entry : constants.entrySet()) {
+			this.hasChanged = false;
 			TargetValue tarVal = entry.getValue();
 			Node node = entry.getKey();
 			if (!tarVal.isConstant()) {
@@ -133,7 +140,13 @@ public class ConstantFolding extends NodeVisitor.Default {
 
 			if (tarVal.getMode().isInt() && node.getOpCode() != binding_irnode.ir_opcode.iro_Const) {
 				LOGGER.debug("Replacing   %-25s with tarval %s", node, debugTarVal(tarVal));
-				Graph.exchange(node, graph.newConst(tarVal));
+				if (node instanceof Div div) {
+					replace(div, div.getMem(), graph.newConst(tarVal), Graph::exchange);
+				} else if (node instanceof Mod mod) {
+					replace(mod, mod.getMem(), graph.newConst(tarVal), Graph::exchange);
+				} else {
+					Graph.exchange(node, graph.newConst(tarVal));
+				}
 				hasChanged = true;
 			} else if (node instanceof Cond cond) {
 				replaceCondition(tarVal.isOne(), cond);
@@ -142,7 +155,9 @@ public class ConstantFolding extends NodeVisitor.Default {
 			if (hasChanged && LOGGER.isDebugEnabled()) {
 				dumpGraph(graph, "cf-fold");
 			}
+			changedSomewhere |= hasChanged;
 		}
+		this.hasChanged = changedSomewhere;
 	}
 
 	/**
@@ -154,9 +169,8 @@ public class ConstantFolding extends NodeVisitor.Default {
 	private void replaceCondition(boolean constantValue, Cond node) {
 		hasChanged = true;
 
-		List<Node> nodes = StreamSupport.stream(BackEdges.getOuts(node).spliterator(), false)
-			.map(edge -> edge.node)
-			.toList();
+		List<Node> nodes =
+			StreamSupport.stream(BackEdges.getOuts(node).spliterator(), false).map(edge -> edge.node).toList();
 
 		if (nodes.size() != 2) {
 			throw new InternalCompilerException("Expected two nodes for Cond " + node + ", got " + nodes);
@@ -310,24 +324,32 @@ public class ConstantFolding extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Div node) {
-		updateTarVal(node, combineBinOp(node.getLeft(), node.getRight(), TargetValue::div));
-		TargetValue rightVal = tarValOf(node.getRight());
-		if (rightVal.isOne()) {
+		boolean updated = updateTarVal(node, combineBinOp(node.getLeft(), node.getRight(), TargetValue::div));
+		if (updated) {
 			for (BackEdges.Edge out : BackEdges.getOuts(node)) {
-				if (out.node.getMode().equals(Mode.getM())) {
-					replacements.put(out.node, node.getMem());
-				} else {
-					replacements.put(out.node, node.getLeft());
+				if (!out.node.getMode().equals(Mode.getM())) {
+					// TODO helper???
+					for (BackEdges.Edge edge : BackEdges.getOuts(out.node)) {
+						worklist.add(edge.node);
+					}
 				}
 			}
 		}
+		TargetValue rightVal = tarValOf(node.getRight());
+		if (rightVal.isOne()) {
+			replace(node, node.getMem(), node.getLeft(), replacements::put);
+		}
 		if (rightVal.isConstant() && rightVal.abs().isOne() && rightVal.isNegative()) {
-			for (BackEdges.Edge out : BackEdges.getOuts(node)) {
-				if (out.node.getMode().equals(Mode.getM())) {
-					replacements.put(out.node, node.getMem());
-				} else {
-					replacements.put(out.node, graph.newMinus(node.getBlock(), node.getLeft()));
-				}
+			replace(node, node.getMem(), graph.newMinus(node.getBlock(), node.getLeft()), replacements::put);
+		}
+	}
+
+	private void replace(Node node, Node previousMemory, Node replacement, BiConsumer<Node, Node> replacementAction) {
+		for (BackEdges.Edge out : BackEdges.getOuts(node)) {
+			if (out.node.getMode().equals(Mode.getM())) {
+				replacementAction.accept(out.node, previousMemory);
+			} else {
+				replacementAction.accept(out.node, replacement);
 			}
 		}
 	}
@@ -354,7 +376,18 @@ public class ConstantFolding extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Mod node) {
-		updateTarVal(node, combineBinOp(node.getLeft(), node.getRight(), TargetValue::mod));
+		boolean updated = updateTarVal(node, combineBinOp(node.getLeft(), node.getRight(), TargetValue::mod));
+		if (updated) {
+			for (BackEdges.Edge out : BackEdges.getOuts(node)) {
+				if (!out.node.getMode().equals(Mode.getM())) {
+					// TODO helper???
+					for (BackEdges.Edge edge : BackEdges.getOuts(out.node)) {
+						worklist.add(edge.node);
+					}
+				}
+			}
+		}
+
 	}
 
 	@Override
@@ -370,7 +403,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 			replacements.put(node, node.getLeft());
 		}
 		if (leftTarVal.isNull() || rightTarVal.isNull()) {
-			replacements.put(node, graph.newConst(0, Mode.getIs()));
+			replacements.put(node, graph.newConst(0, node.getLeft().getMode()));
 		}
 		if (rightTarVal.isConstant() && rightTarVal.isNegative() && rightTarVal.abs().isOne()) {
 			replacements.put(node, graph.newMinus(node.getBlock(), node.getLeft()));
@@ -459,7 +492,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 		updateTarVal(node, combineBinOp(node.getLeft(), node.getRight(), op));
 	}
 
-	private void updateTarVal(Node node, TargetValue newVal) {
+	private boolean updateTarVal(Node node, TargetValue newVal) {
 		if (!newVal.equals(constants.get(node))) {
 			for (BackEdges.Edge out : BackEdges.getOuts(node)) {
 				// FIXME: Pls not on the queue
@@ -467,8 +500,10 @@ public class ConstantFolding extends NodeVisitor.Default {
 					worklist.addFirst(out.node);
 				}
 			}
-			constants.put(node, newVal);
+			constants.put(node, newVal.convertTo(node.getMode()));
+			return true;
 		}
+		return false;
 	}
 
 	@SuppressWarnings({"NonAsciiCharacters", "SpellCheckingInspection"})

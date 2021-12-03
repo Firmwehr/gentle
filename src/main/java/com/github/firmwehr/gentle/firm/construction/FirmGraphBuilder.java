@@ -400,7 +400,7 @@ public class FirmGraphBuilder {
 		Type innerType = typeHelper.getType(expr.type());
 		Node typeSizeNode = construction.newConst(innerType.getSize(), Mode.getLs());
 		Node offsetNode = construction.newMul(construction.newConv(indexNode, Mode.getLs()), typeSizeNode);
-		return construction.newAdd(arrayNode, offsetNode);
+		return construction.newConv(construction.newAdd(arrayNode, offsetNode), Mode.getP());
 	}
 
 	private void processLogicalOr(Context context, SBinaryOperatorExpression expr, JumpTarget jumpTarget) {
