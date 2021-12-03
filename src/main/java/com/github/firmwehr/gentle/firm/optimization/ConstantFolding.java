@@ -126,43 +126,53 @@ public class ConstantFolding extends NodeVisitor.Default {
 				LOGGER.debug("Replacing   %-25s with tarval %s", node, debugTarval(tarVal));
 				Graph.exchange(node, graph.newConst(tarVal));
 				hasChanged = true;
-			} else if (node.getOpCode() == binding_irnode.ir_opcode.iro_Cond) {
-				hasChanged = true;
-
-				List<Node> nodes = StreamSupport.stream(BackEdges.getOuts(node).spliterator(), false)
-					.sorted(Comparator.comparingInt(edge -> edge.pos))
-					.map(edge -> edge.node)
-					.toList();
-
-				if (nodes.size() != 2) {
-					throw new InternalCompilerException("Expected two nodes for Cond " + node + ", got " + nodes);
-				}
-
-				Node trueProj = ((Proj) nodes.get(0)).getNum() == Cond.pnTrue ? nodes.get(0) : nodes.get(1);
-				Node falseProj = ((Proj) nodes.get(0)).getNum() == Cond.pnFalse ? nodes.get(0) : nodes.get(1);
-
-				BackEdges.Edge trueEdge = BackEdges.getOuts(trueProj).iterator().next();
-				Block trueBlock = (Block) trueEdge.node;
-				BackEdges.Edge falseEdge = BackEdges.getOuts(falseProj).iterator().next();
-				Block falseBlock = (Block) falseEdge.node;
-
-				if (tarVal.isOne()) {
-					LOGGER.debug("Killing     %-25s| jumping unconditionally to %s", falseBlock, trueBlock);
-					trueBlock.setPred(trueEdge.pos, graph.newJmp(node.getBlock()));
-					falseBlock.setPred(falseEdge.pos, graph.newBad(Mode.getX()));
-				} else if (tarVal.isNull()) {
-					LOGGER.debug("Killing     %-25s| jumping unconditionally to %s", trueBlock, falseBlock);
-					falseBlock.setPred(falseEdge.pos, graph.newJmp(node.getBlock()));
-					trueBlock.setPred(trueEdge.pos, graph.newBad(Mode.getX()));
-				}
-
-				graph.keepAlive(node.getBlock());
+			} else if (node instanceof Cond cond) {
+				replaceCondition(tarVal.isOne(), cond);
 			}
 
 			if (hasChanged && LOGGER.isDebugEnabled()) {
 				Dump.dumpGraph(graph, "cf-fold");
 			}
 		}
+	}
+
+	/**
+	 * This replaces a condition node with an unconditional jump
+	 *
+	 * @param constantValue if true the condition is always true, if false it is always false
+	 * @param node the condition node
+	 */
+	private void replaceCondition(boolean constantValue, Cond node) {
+		hasChanged = true;
+
+		List<Node> nodes = StreamSupport.stream(BackEdges.getOuts(node).spliterator(), false)
+			.sorted(Comparator.comparingInt(edge -> edge.pos))
+			.map(edge -> edge.node)
+			.toList();
+
+		if (nodes.size() != 2) {
+			throw new InternalCompilerException("Expected two nodes for Cond " + node + ", got " + nodes);
+		}
+
+		Node trueProj = ((Proj) nodes.get(0)).getNum() == Cond.pnTrue ? nodes.get(0) : nodes.get(1);
+		Node falseProj = ((Proj) nodes.get(0)).getNum() == Cond.pnFalse ? nodes.get(0) : nodes.get(1);
+
+		BackEdges.Edge trueEdge = BackEdges.getOuts(trueProj).iterator().next();
+		Block trueBlock = (Block) trueEdge.node;
+		BackEdges.Edge falseEdge = BackEdges.getOuts(falseProj).iterator().next();
+		Block falseBlock = (Block) falseEdge.node;
+
+		if (constantValue) {
+			LOGGER.debug("Killing     %-25s| jumping unconditionally to %s", falseBlock, trueBlock);
+			trueBlock.setPred(trueEdge.pos, graph.newJmp(node.getBlock()));
+			falseBlock.setPred(falseEdge.pos, graph.newBad(Mode.getX()));
+		} else {
+			LOGGER.debug("Killing     %-25s| jumping unconditionally to %s", trueBlock, falseBlock);
+			falseBlock.setPred(falseEdge.pos, graph.newJmp(node.getBlock()));
+			trueBlock.setPred(trueEdge.pos, graph.newBad(Mode.getX()));
+		}
+
+		graph.keepAlive(node.getBlock());
 	}
 
 	/**
