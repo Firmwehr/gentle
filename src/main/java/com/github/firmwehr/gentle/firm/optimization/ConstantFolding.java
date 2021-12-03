@@ -155,7 +155,6 @@ public class ConstantFolding extends NodeVisitor.Default {
 		hasChanged = true;
 
 		List<Node> nodes = StreamSupport.stream(BackEdges.getOuts(node).spliterator(), false)
-			.sorted(Comparator.comparingInt(edge -> edge.pos))
 			.map(edge -> edge.node)
 			.toList();
 
@@ -312,6 +311,25 @@ public class ConstantFolding extends NodeVisitor.Default {
 	@Override
 	public void visit(Div node) {
 		updateTarVal(node, combineBinOp(node.getLeft(), node.getRight(), TargetValue::div));
+		TargetValue rightVal = tarValOf(node.getRight());
+		if (rightVal.isOne()) {
+			for (BackEdges.Edge out : BackEdges.getOuts(node)) {
+				if (out.node.getMode().equals(Mode.getM())) {
+					replacements.put(out.node, node.getMem());
+				} else {
+					replacements.put(out.node, node.getLeft());
+				}
+			}
+		}
+		if (rightVal.isConstant() && rightVal.abs().isOne() && rightVal.isNegative()) {
+			for (BackEdges.Edge out : BackEdges.getOuts(node)) {
+				if (out.node.getMode().equals(Mode.getM())) {
+					replacements.put(out.node, node.getMem());
+				} else {
+					replacements.put(out.node, graph.newMinus(node.getBlock(), node.getLeft()));
+				}
+			}
+		}
 	}
 
 	@Override
