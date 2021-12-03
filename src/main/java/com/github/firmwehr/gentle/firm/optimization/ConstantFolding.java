@@ -1,6 +1,7 @@
 package com.github.firmwehr.gentle.firm.optimization;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
+import com.github.firmwehr.gentle.output.Logger;
 import firm.BackEdges;
 import firm.Dump;
 import firm.Graph;
@@ -52,6 +53,8 @@ import java.util.function.BinaryOperator;
 import java.util.stream.StreamSupport;
 
 public class ConstantFolding extends NodeVisitor.Default {
+	private static final Logger LOGGER = new Logger(ConstantFolding.class);
+
 	private final Graph graph;
 
 	private final Map<Node, TargetValue> constants = new HashMap<>();
@@ -63,32 +66,38 @@ public class ConstantFolding extends NodeVisitor.Default {
 	}
 
 	public static void optimize() {
+		LOGGER.info("Started");
 		for (Graph graph : Program.getGraphs()) {
+			LOGGER.info("Running constant folding for %s", graph);
+
 			while (true) {
-				// Needs to be done in each iteration
+				// Needs to be done in each iteration apparently?
 				BackEdges.enable(graph);
+
 				ConstantFolding folding = new ConstantFolding(graph);
 				folding.fold();
-				System.out.println(graph);
 				binding_irgopt.remove_bads(graph.ptr);
 				binding_irgopt.remove_unreachable_code(graph.ptr);
-				System.out.println("Done");
 
 				// This should be done *after* we have removed unreachable code and bads to ensure it doesn't get
 				// confused with bad preds
 				folding.optimizeBlockChains();
 
-				// Pls disable anyways
+				// Disable them for good measure
 				BackEdges.disable(graph);
+
 				if (!folding.hasChanged) {
 					break;
 				}
 			}
 			Dump.dumpGraph(graph, "cf");
 		}
+		LOGGER.info("Finished");
 	}
 
 	private void fold() {
+		LOGGER.debugHeader("Analyzing");
+
 		graph.walkTopological(new Default() {
 			@Override
 			public void defaultVisit(Node n) {
@@ -101,6 +110,8 @@ public class ConstantFolding extends NodeVisitor.Default {
 			node.accept(this);
 		}
 
+		LOGGER.debugHeader("Folding");
+
 		var list = new ArrayList<>(constants.entrySet());
 		Collections.shuffle(list);
 		for (var entry : list) {
@@ -109,9 +120,12 @@ public class ConstantFolding extends NodeVisitor.Default {
 			if (!tarVal.isConstant()) {
 				continue;
 			}
+			LOGGER.debug("Considering %-25s with tarval %s", node, debugTarval(tarVal));
 
 			if (tarVal.getMode().isInt() && node.getOpCode() != binding_irnode.ir_opcode.iro_Const) {
+				LOGGER.debug("Replacing   %-25s with tarval %s", node, debugTarval(tarVal));
 				Graph.exchange(node, graph.newConst(tarVal));
+				hasChanged = true;
 			} else if (node.getOpCode() == binding_irnode.ir_opcode.iro_Cond) {
 				hasChanged = true;
 
@@ -124,8 +138,6 @@ public class ConstantFolding extends NodeVisitor.Default {
 					throw new InternalCompilerException("Expected two nodes for Cond " + node + ", got " + nodes);
 				}
 
-				Dump.dumpGraph(graph, "before-foo");
-
 				Node trueProj = ((Proj) nodes.get(0)).getNum() == Cond.pnTrue ? nodes.get(0) : nodes.get(1);
 				Node falseProj = ((Proj) nodes.get(0)).getNum() == Cond.pnFalse ? nodes.get(0) : nodes.get(1);
 
@@ -133,50 +145,33 @@ public class ConstantFolding extends NodeVisitor.Default {
 				Block trueBlock = (Block) trueEdge.node;
 				BackEdges.Edge falseEdge = BackEdges.getOuts(falseProj).iterator().next();
 				Block falseBlock = (Block) falseEdge.node;
+
 				if (tarVal.isOne()) {
+					LOGGER.debug("Killing     %-25s| jumping unconditionally to %s", falseBlock, trueBlock);
 					trueBlock.setPred(trueEdge.pos, graph.newJmp(node.getBlock()));
 					falseBlock.setPred(falseEdge.pos, graph.newBad(Mode.getX()));
 				} else if (tarVal.isNull()) {
+					LOGGER.debug("Killing     %-25s| jumping unconditionally to %s", trueBlock, falseBlock);
 					falseBlock.setPred(falseEdge.pos, graph.newJmp(node.getBlock()));
 					trueBlock.setPred(trueEdge.pos, graph.newBad(Mode.getX()));
 				}
 
 				graph.keepAlive(node.getBlock());
 			}
+
+			if (hasChanged && LOGGER.isDebugEnabled()) {
+				Dump.dumpGraph(graph, "cf-fold");
+			}
 		}
-		Dump.dumpGraph(graph, "foo");
 	}
 
 	/**
-	 * Merges blocks with their predecessor if they have a single input and the pred has an unconditional jump to them:
-	 *
-	 * <pre>
-	 *    ◄────┐  ▲  ┌───►
-	 *         │  │  │
-	 *         │  │  │
-	 *       ┌─┴──┴──┴─┐
-	 *       │         │
-	 *       │ ┌─────┐ │                     ◄────┐  ▲  ┌───►
-	 *       │ │ JMP │ │    ─────┐                │  │  │
-	 *       │ └──▲──┘ │         │                │  │  │
-	 *       │    │    │         │              ┌─┴──┴──┴─┐
-	 *       └────┼────┘         │              │         │
-	 *            │              │              │         │
-	 *            │              └───────►      │         │
-	 *       ┌────┴────┐                        │         │
-	 *       │         │                        │         │
-	 *       │         │                        └─────────┘
-	 *       │         │
-	 *       │         │
-	 *       │         │
-	 *       └─────────┘
-	 * </pre>
+	 * Optimizes blocks with a single predecessor.
 	 */
 	private void optimizeBlockChains() {
+		LOGGER.debugHeader("Optimizing block chains");
 		// We can not use walkBlocks as we exchange blocks while considering them, so we need to roll that ourselves
 		graph.incBlockVisited();
-
-		//		Dump.dumpGraph(graph, "eat-in");
 
 		Queue<Block> workQueue = new ArrayDeque<>();
 		workQueue.add(graph.getEndBlock());
@@ -195,7 +190,6 @@ public class ConstantFolding extends NodeVisitor.Default {
 			// This might exchange the block, so we need to collect the preds before it
 			tryMergeBlock(block);
 		}
-		Dump.dumpGraph(graph, "eat-out");
 	}
 
 	/**
@@ -234,9 +228,12 @@ public class ConstantFolding extends NodeVisitor.Default {
 			return;
 		}
 
+		LOGGER.debug("Merging %-25s with %-25s", block, pred.getBlock());
 		Graph.exchange(block, pred.getBlock());
+		if (LOGGER.isDebugEnabled()) {
+			Dump.dumpGraph(graph, "cf-merged");
+		}
 		hasChanged = true;
-		Dump.dumpGraph(graph, "eat");
 	}
 
 	@Override
@@ -434,5 +431,15 @@ public class ConstantFolding extends NodeVisitor.Default {
 
 	private TargetValue tarValOf(Node node) {
 		return constants.getOrDefault(node, TargetValue.getUnknown());
+	}
+
+	private static String debugTarval(TargetValue targetValue) {
+		if (targetValue.equals(TargetValue.getUnknown())) {
+			return "bottom";
+		}
+		if (targetValue.equals(TargetValue.getBad())) {
+			return "top";
+		}
+		return targetValue.toString();
 	}
 }

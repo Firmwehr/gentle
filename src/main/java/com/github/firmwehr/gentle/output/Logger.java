@@ -34,6 +34,13 @@ public class Logger {
 		this.headerLength = 7 + prefix.length() + 2 + 1;
 	}
 
+	public boolean isDebugEnabled() {
+		if (LOGGER_DISABLED) {
+			return false;
+		}
+		return level.ordinal() <= LogLevel.DEBUG.ordinal();
+	}
+
 	public void debug(String message, Throwable throwable) {
 		if (LOGGER_DISABLED) {
 			return;
@@ -42,6 +49,10 @@ public class Logger {
 			return;
 		}
 		debug(message + "%n%s", Throwables.getStackTraceAsString(throwable));
+	}
+
+	public void debugHeader(String message, Object... arguments) {
+		debug(ansi().bold().a(message).boldOff().toString(), arguments);
 	}
 
 	public void debug(String message, Object... arguments) {
