@@ -47,6 +47,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.function.BinaryOperator;
 import java.util.stream.StreamSupport;
 
@@ -68,9 +69,14 @@ public class ConstantFolding extends NodeVisitor.Default {
 				BackEdges.enable(graph);
 				ConstantFolding folding = new ConstantFolding(graph);
 				folding.fold();
+				System.out.println(graph);
 				binding_irgopt.remove_bads(graph.ptr);
 				binding_irgopt.remove_unreachable_code(graph.ptr);
-				binding_irgopt.remove_bads(graph.ptr);
+				System.out.println("Done");
+
+				// This should be done *after* we have removed unreachable code and bads to ensure it doesn't get
+				// confused with bad preds
+				folding.optimizeBlockChains();
 
 				// Pls disable anyways
 				BackEdges.disable(graph);
@@ -78,6 +84,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 					break;
 				}
 			}
+			Dump.dumpGraph(graph, "cf");
 		}
 	}
 
@@ -117,26 +124,119 @@ public class ConstantFolding extends NodeVisitor.Default {
 					throw new InternalCompilerException("Expected two nodes for Cond " + node + ", got " + nodes);
 				}
 
-				Node trueProj = nodes.get(Cond.pnTrue);
-				Node falseProj = nodes.get(Cond.pnFalse);
+				Dump.dumpGraph(graph, "before-foo");
+
+				Node trueProj = ((Proj) nodes.get(0)).getNum() == Cond.pnTrue ? nodes.get(0) : nodes.get(1);
+				Node falseProj = ((Proj) nodes.get(0)).getNum() == Cond.pnFalse ? nodes.get(0) : nodes.get(1);
+
 				BackEdges.Edge trueEdge = BackEdges.getOuts(trueProj).iterator().next();
 				Block trueBlock = (Block) trueEdge.node;
 				BackEdges.Edge falseEdge = BackEdges.getOuts(falseProj).iterator().next();
 				Block falseBlock = (Block) falseEdge.node;
 				if (tarVal.isOne()) {
-					Graph.killNode(falseProj);
-					Graph.killNode(trueProj);
 					trueBlock.setPred(trueEdge.pos, graph.newJmp(node.getBlock()));
 					falseBlock.setPred(falseEdge.pos, graph.newBad(Mode.getX()));
 				} else if (tarVal.isNull()) {
-					Graph.killNode(falseProj);
-					Graph.killNode(trueProj);
 					falseBlock.setPred(falseEdge.pos, graph.newJmp(node.getBlock()));
 					trueBlock.setPred(trueEdge.pos, graph.newBad(Mode.getX()));
 				}
+
+				graph.keepAlive(node.getBlock());
 			}
 		}
 		Dump.dumpGraph(graph, "foo");
+	}
+
+	/**
+	 * Merges blocks with their predecessor if they have a single input and the pred has an unconditional jump to them:
+	 *
+	 * <pre>
+	 *    ◄────┐  ▲  ┌───►
+	 *         │  │  │
+	 *         │  │  │
+	 *       ┌─┴──┴──┴─┐
+	 *       │         │
+	 *       │ ┌─────┐ │                     ◄────┐  ▲  ┌───►
+	 *       │ │ JMP │ │    ─────┐                │  │  │
+	 *       │ └──▲──┘ │         │                │  │  │
+	 *       │    │    │         │              ┌─┴──┴──┴─┐
+	 *       └────┼────┘         │              │         │
+	 *            │              │              │         │
+	 *            │              └───────►      │         │
+	 *       ┌────┴────┐                        │         │
+	 *       │         │                        │         │
+	 *       │         │                        └─────────┘
+	 *       │         │
+	 *       │         │
+	 *       │         │
+	 *       └─────────┘
+	 * </pre>
+	 */
+	private void optimizeBlockChains() {
+		// We can not use walkBlocks as we exchange blocks while considering them, so we need to roll that ourselves
+		graph.incBlockVisited();
+
+		//		Dump.dumpGraph(graph, "eat-in");
+
+		Queue<Block> workQueue = new ArrayDeque<>();
+		workQueue.add(graph.getEndBlock());
+
+		while (!workQueue.isEmpty()) {
+			Block block = workQueue.poll();
+			if (block.blockVisited()) {
+				continue;
+			}
+			block.markBlockVisited();
+
+			for (Node pred : block.getPreds()) {
+				workQueue.add((Block) pred.getBlock());
+			}
+
+			// This might exchange the block, so we need to collect the preds before it
+			tryMergeBlock(block);
+		}
+		Dump.dumpGraph(graph, "eat-out");
+	}
+
+	/**
+	 * Merges blocks with their predecessor if they have a single input and the pred has an unconditional jump to them:
+	 *
+	 * <pre>
+	 *   ◄────┐  ▲  ┌───►                   ◄────┐  ▲  ┌───►
+	 *        │  │  │                            │  │  │
+	 *        │  │  │                            │  │  │
+	 *      ┌─┴──┴──┴─┐                        ┌─┴──┴──┴─┐
+	 *      │         │                        │         │
+	 *      │ ┌─────┐ │                        │ ┌─────┐ │
+	 *      │ │ JMP │ │    ───────────────►    │ │ RND │ │
+	 *      │ └──▲──┘ │                        │ └─────┘ │
+	 *      │    │    │                        │         │
+	 *      └────┼────┘                        └─────────┘
+	 *           │
+	 *           │
+	 *      ┌────┴────┐
+	 *      │         │                           __  __
+	 *      │ ┌─────┐ │                           \ \/ /
+	 *      │ │ RND │ │    ───────────────►        \  /
+	 *      │ └─────┘ │                            /  \
+	 *      │         │                           /_/\_\
+	 *      └─────────┘
+	 * </pre>
+	 */
+	private void tryMergeBlock(Block block) {
+		if (block.getPredCount() != 1) {
+			return;
+		}
+		Node pred = block.getPred(0);
+
+		// Only exit from pred block must be a jump
+		if (pred.getOpCode() != binding_irnode.ir_opcode.iro_Jmp) {
+			return;
+		}
+
+		Graph.exchange(block, pred.getBlock());
+		hasChanged = true;
+		Dump.dumpGraph(graph, "eat");
 	}
 
 	@Override
@@ -205,7 +305,11 @@ public class ConstantFolding extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Minus node) {
-		updateTarVal(node, tarValOf(node.getOp()).neg());
+		TargetValue targetValue = tarValOf(node.getOp());
+		if (targetValue.isConstant()) {
+			targetValue = targetValue.neg();
+		}
+		updateTarVal(node, targetValue);
 	}
 
 	@Override
@@ -220,7 +324,11 @@ public class ConstantFolding extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Not node) {
-		updateTarVal(node, tarValOf(node.getOp()).not());
+		TargetValue targetValue = tarValOf(node.getOp());
+		if (targetValue.isConstant()) {
+			targetValue = targetValue.not();
+		}
+		updateTarVal(node, targetValue);
 	}
 
 	@Override
