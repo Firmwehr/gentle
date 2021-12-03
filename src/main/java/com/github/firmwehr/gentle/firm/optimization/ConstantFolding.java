@@ -477,13 +477,17 @@ public class ConstantFolding extends NodeVisitor.Default {
 	@Override
 	public void visit(Sub node) {
 		updateTarVal(node, TargetValue::sub);
-		if (tarValOf(node.getRight()).isNull()) {
+
+		TargetValue rightVal = tarValOf(node.getRight());
+		TargetValue leftVal = tarValOf(node.getLeft());
+
+		if (rightVal.isNull()) {
 			replacements.put(node, node.getLeft());
 		}
-		if (tarValOf(node.getLeft()).isNull()) {
+		if (leftVal.isNull()) {
 			replacements.put(node, graph.newMinus(node.getBlock(), node.getRight()));
 		}
-		if (tarValOf(node.getLeft()).equals(tarValOf(node.getRight()))) {
+		if (leftVal.isConstant() && leftVal.equals(rightVal)) {
 			replacements.put(node, graph.newConst(0, node.getLeft().getMode()));
 		}
 	}
