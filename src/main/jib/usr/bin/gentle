@@ -1,0 +1,3 @@
+#!/bin/sh
+
+java -cp @/app/jib-classpath-file com.github.firmwehr.gentle.GentleCompiler $@
