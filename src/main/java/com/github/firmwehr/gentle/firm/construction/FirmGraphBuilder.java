@@ -118,14 +118,11 @@ public class FirmGraphBuilder {
 		List<SStatement> body = method.body();
 		processBlock(context, body);
 
-		if (method.isStatic()) {
-			SIntegerValueExpression returnValue = new SIntegerValueExpression(0, SourceSpan.dummy());
-			processStatement(context, new SReturnStatement(Optional.of(returnValue), SourceSpan.dummy()));
+		if (!method.isStatic() && !(method.returnType() instanceof SVoidType)) {
 			return;
 		}
 
-		if (method.returnType() instanceof SVoidType &&
-			!context.isReturning(context.construction().getCurrentBlock())) {
+		if (!context.isReturning(context.construction().getCurrentBlock())) {
 			if (body.isEmpty() || !(body.get(body.size() - 1) instanceof SReturnStatement)) {
 				processStatement(context, new SReturnStatement(Optional.empty(), SourceSpan.dummy()));
 			}
