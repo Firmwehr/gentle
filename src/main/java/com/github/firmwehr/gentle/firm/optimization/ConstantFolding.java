@@ -57,9 +57,9 @@ public class ConstantFolding extends NodeVisitor.Default {
 	private final Graph graph;
 	private final Map<Node, TargetValue> constants;
 	private final Deque<Node> worklist;
+	private final Map<Node, Node> replacements;
 
-	private boolean hasChanged;
-	private Map<Node, Node> replacements;
+	private boolean hasChangedInCurrentIteration;
 
 	public ConstantFolding(Graph graph) {
 		this.graph = graph;
@@ -89,7 +89,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 				// Disable them for good measure
 				BackEdges.disable(graph);
 
-				if (!folding.hasChanged) {
+				if (!folding.hasChangedInCurrentIteration) {
 					break;
 				}
 			}
@@ -113,14 +113,19 @@ public class ConstantFolding extends NodeVisitor.Default {
 			node.accept(this);
 		}
 
+		// FIXME: Extract replacements to own class/pass: https://github.com/Firmwehr/gentle/issues/103
 		if (!replacements.isEmpty()) {
 			LOGGER.debugHeader("Replacing");
 			for (var entry : replacements.entrySet()) {
 				LOGGER.debug("Replacing   %-25s with %-25s", entry.getKey(), entry.getValue());
 				Graph.exchange(entry.getKey(), entry.getValue());
-				for (var nodeEntry : replacements.entrySet()) {
-					if (nodeEntry.getValue().equals(entry.getKey())) {
-						nodeEntry.setValue(entry.getValue());
+
+				// We might be registered as the replacement for another node
+				// (e.g. because we were on the left side of 'x + 0').
+				// In that case we need to register *our replacement* as the replacement.
+				for (var otherEntry : replacements.entrySet()) {
+					if (otherEntry.getValue().equals(entry.getKey())) {
+						otherEntry.setValue(entry.getValue());
 					}
 				}
 			}
@@ -128,9 +133,10 @@ public class ConstantFolding extends NodeVisitor.Default {
 
 		LOGGER.debugHeader("Folding");
 
-		boolean changedSomewhere = this.hasChanged;
+		boolean hasChangedInAnyIteration = this.hasChangedInCurrentIteration;
 		for (var entry : constants.entrySet()) {
-			this.hasChanged = false;
+			this.hasChangedInCurrentIteration = false;
+
 			TargetValue tarVal = entry.getValue();
 			Node node = entry.getKey();
 			if (!tarVal.isConstant()) {
@@ -138,8 +144,11 @@ public class ConstantFolding extends NodeVisitor.Default {
 			}
 			LOGGER.debug("Considering %-25s with tarval %s", node, debugTarVal(tarVal));
 
+			// Replacing const with const is meaningless and causes infinite iterations as hasChanged is always true
 			if (tarVal.getMode().isInt() && node.getOpCode() != binding_irnode.ir_opcode.iro_Const) {
 				LOGGER.debug("Replacing   %-25s with tarval %s", node, debugTarVal(tarVal));
+
+				// Add -> Const
 				if (node instanceof Div div) {
 					replace(div, div.getMem(), graph.newConst(tarVal), Graph::exchange);
 				} else if (node instanceof Mod mod) {
@@ -147,27 +156,27 @@ public class ConstantFolding extends NodeVisitor.Default {
 				} else {
 					Graph.exchange(node, graph.newConst(tarVal));
 				}
-				hasChanged = true;
+				hasChangedInCurrentIteration = true;
 			} else if (node instanceof Cond cond) {
 				replaceCondition(tarVal.isOne(), cond);
 			}
 
-			if (hasChanged && LOGGER.isDebugEnabled()) {
+			if (hasChangedInCurrentIteration && LOGGER.isDebugEnabled()) {
 				dumpGraph(graph, "cf-fold");
 			}
-			changedSomewhere |= hasChanged;
+			hasChangedInAnyIteration |= hasChangedInCurrentIteration;
 		}
-		this.hasChanged = changedSomewhere;
+		this.hasChangedInCurrentIteration = hasChangedInAnyIteration;
 	}
 
 	/**
-	 * This replaces a condition node with an unconditional jump
+	 * This replaces a condition node with an unconditional jump.
 	 *
 	 * @param constantValue if true the condition is always true, if false it is always false
 	 * @param node the condition node
 	 */
 	private void replaceCondition(boolean constantValue, Cond node) {
-		hasChanged = true;
+		hasChangedInCurrentIteration = true;
 
 		List<Node> nodes =
 			StreamSupport.stream(BackEdges.getOuts(node).spliterator(), false).map(edge -> edge.node).toList();
@@ -194,6 +203,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 			trueBlock.setPred(trueEdge.pos, graph.newBad(Mode.getX()));
 		}
 
+		// Infinite loops need to be reachable from the end block, this ensures that is the case
 		graph.keepAlive(node.getBlock());
 	}
 
@@ -265,7 +275,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 		if (LOGGER.isDebugEnabled()) {
 			dumpGraph(graph, "cf-merged");
 		}
-		hasChanged = true;
+		hasChangedInCurrentIteration = true;
 	}
 
 	@Override
@@ -324,26 +334,50 @@ public class ConstantFolding extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Div node) {
-		boolean updated = updateTarVal(node, combineBinOp(node.getLeft(), node.getRight(), TargetValue::div));
-		if (updated) {
+		updateTarValDivOrMod(node, node.getLeft(), node.getRight(), TargetValue::div);
+
+		// Some algebraic identities
+		TargetValue rightVal = tarValOf(node.getRight());
+
+		// a / 1 => a
+		if (rightVal.isOne()) {
+			replace(node, node.getMem(), node.getLeft(), replacements::put);
+		}
+		// a / -1 => -a
+		if (rightVal.isConstant() && rightVal.abs().isOne() && rightVal.isNegative()) {
+			replace(node, node.getMem(), graph.newMinus(node.getBlock(), node.getLeft()), replacements::put);
+		}
+	}
+
+	private void updateTarValDivOrMod(Node node, Node left, Node right, BinaryOperator<TargetValue> op) {
+		if (updateTarVal(node, combineBinOp(left, right, op))) {
 			for (BackEdges.Edge out : BackEdges.getOuts(node)) {
+				// Do not expand memory nodes
 				if (!out.node.getMode().equals(Mode.getM())) {
-					// TODO helper???
 					for (BackEdges.Edge edge : BackEdges.getOuts(out.node)) {
 						worklist.add(edge.node);
 					}
 				}
 			}
 		}
-		TargetValue rightVal = tarValOf(node.getRight());
-		if (rightVal.isOne()) {
-			replace(node, node.getMem(), node.getLeft(), replacements::put);
-		}
-		if (rightVal.isConstant() && rightVal.abs().isOne() && rightVal.isNegative()) {
-			replace(node, node.getMem(), graph.newMinus(node.getBlock(), node.getLeft()), replacements::put);
-		}
 	}
 
+	/**
+	 * <pre>
+	 * 	  Div
+	 * 	 /   \
+	 * 	M    Res
+	 * </pre>
+	 * Mod and Div have side effects on memory, we can't just replace them like everything else. Instead, we need to
+	 * rewire their memory and output projections.
+	 *
+	 * @param node the div/mod node to replace
+	 * @param previousMemory the memory input of the node
+	 * @param replacement the replacement (maybe constant) node
+	 * @param replacementAction the action implementing the replacement (e.g. {@link Graph#exchange(Node, Node)} or
+	 * 	adding it to the replacement map. We can not perform structural changes during constant folding iterations, as
+	 * 	that would invalidate parts of the current analysis. Therefore, it might need to be deferred.
+	 */
 	private void replace(Node node, Node previousMemory, Node replacement, BiConsumer<Node, Node> replacementAction) {
 		for (BackEdges.Edge out : BackEdges.getOuts(node)) {
 			if (out.node.getMode().equals(Mode.getM())) {
@@ -376,18 +410,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Mod node) {
-		boolean updated = updateTarVal(node, combineBinOp(node.getLeft(), node.getRight(), TargetValue::mod));
-		if (updated) {
-			for (BackEdges.Edge out : BackEdges.getOuts(node)) {
-				if (!out.node.getMode().equals(Mode.getM())) {
-					// TODO helper???
-					for (BackEdges.Edge edge : BackEdges.getOuts(out.node)) {
-						worklist.add(edge.node);
-					}
-				}
-			}
-		}
-
+		updateTarValDivOrMod(node, node.getLeft(), node.getRight(), TargetValue::mod);
 	}
 
 	@Override
@@ -396,21 +419,28 @@ public class ConstantFolding extends NodeVisitor.Default {
 		TargetValue leftTarVal = tarValOf(node.getLeft());
 		TargetValue rightTarVal = tarValOf(node.getRight());
 
+		// some algebraic identities
+		// 1 * a => a
 		if (leftTarVal.isOne()) {
 			replacements.put(node, node.getRight());
 		}
+		// a * 1 => a
 		if (rightTarVal.isOne()) {
 			replacements.put(node, node.getLeft());
 		}
+		// 0 * a => 0 && a * 0 => 0
 		if (leftTarVal.isNull() || rightTarVal.isNull()) {
 			replacements.put(node, graph.newConst(0, node.getLeft().getMode()));
 		}
+		// a * -1 => -a
 		if (rightTarVal.isConstant() && rightTarVal.isNegative() && rightTarVal.abs().isOne()) {
 			replacements.put(node, graph.newMinus(node.getBlock(), node.getLeft()));
 		}
+		// -1 * a => -a
 		if (leftTarVal.isConstant() && leftTarVal.isNegative() && leftTarVal.abs().isOne()) {
 			replacements.put(node, graph.newMinus(node.getBlock(), node.getRight()));
 		}
+		// TODO (maybe): 2 * a => a << 2
 	}
 
 	@Override
@@ -510,7 +540,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 		return false;
 	}
 
-	@SuppressWarnings({"NonAsciiCharacters", "SpellCheckingInspection"})
+	@SuppressWarnings("NonAsciiCharacters")
 	private TargetValue φΚοµβαιν(TargetValue α, TargetValue β) {
 		if (α.equals(TargetValue.getUnknown())) {
 			return β;
