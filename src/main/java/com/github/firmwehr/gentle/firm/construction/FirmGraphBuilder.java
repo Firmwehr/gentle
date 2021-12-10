@@ -308,11 +308,16 @@ public class FirmGraphBuilder {
 			case MULTIPLY -> construction.newMul(processValueExpression(context, expr.lhs()),
 				processValueExpression(context, expr.rhs()));
 			case DIVIDE -> {
-				Node divNode =
-					construction.newDiv(construction.getCurrentMem(), processValueExpression(context, expr.lhs()),
-						processValueExpression(context, expr.rhs()), binding_ircons.op_pin_state.op_pin_state_pinned);
+				Node lhs = processValueExpression(context, expr.lhs());
+				Node rhs = processValueExpression(context, expr.rhs());
+				Node leftPromoted = construction.newConv(lhs, Mode.getLs());
+				Node rightPromoted = construction.newConv(rhs, Mode.getLs());
+
+				Node divNode = construction.newDiv(construction.getCurrentMem(), leftPromoted, rightPromoted,
+					binding_ircons.op_pin_state.op_pin_state_pinned);
 				construction.setCurrentMem(construction.newProj(divNode, Mode.getM(), Div.pnM));
-				yield construction.newProj(divNode, Mode.getIs(), Div.pnRes);
+				Node projResult = construction.newProj(divNode, Mode.getLs(), Div.pnRes);
+				yield construction.newConv(projResult, Mode.getIs());
 			}
 			case MODULO -> {
 				Node modNode =

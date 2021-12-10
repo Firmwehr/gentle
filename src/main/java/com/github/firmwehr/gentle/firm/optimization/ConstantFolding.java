@@ -534,7 +534,11 @@ public class ConstantFolding extends NodeVisitor.Default {
 					worklist.addFirst(out.node);
 				}
 			}
-			constants.put(node, newVal.convertTo(node.getMode()));
+			TargetValue convertedTarVal = newVal;
+			if (newVal.isConstant() && node.getMode().isInt()) {
+				convertedTarVal = newVal.convertTo(node.getMode());
+			}
+			constants.put(node, convertedTarVal);
 			return true;
 		}
 		return false;
