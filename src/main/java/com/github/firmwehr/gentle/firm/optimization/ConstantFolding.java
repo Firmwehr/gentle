@@ -420,6 +420,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 		TargetValue leftTarVal = tarValOf(node.getLeft());
 		TargetValue rightTarVal = tarValOf(node.getRight());
 
+		// TODO: move to separate phase
 		// some algebraic identities
 		// 1 * a => a
 		if (leftTarVal.isOne()) {
