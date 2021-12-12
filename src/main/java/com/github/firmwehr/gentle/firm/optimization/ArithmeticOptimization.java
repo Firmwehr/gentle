@@ -31,7 +31,7 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 	public static void optimize() {
 		LOGGER.info("Started");
 		for (Graph graph : Program.getGraphs()) {
-			LOGGER.info("Running constant folding for %s", graph);
+			LOGGER.info("Running arithmetic optimization for %s", graph);
 
 			while (true) {
 				// Needs to be done in each iteration apparently?
@@ -47,6 +47,8 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 
 				if (!arithmeticOptimization.hasChanged) {
 					break;
+				} else if (LOGGER.isDebugEnabled()) {
+					dumpGraph(graph, "arithmetic-iteration");
 				}
 			}
 			dumpGraph(graph, "arithmetic");
