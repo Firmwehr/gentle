@@ -58,6 +58,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 	// stores associated lattice element for each visited note during fixed point iteration
 	private final Map<Node, TargetValue> constants;
 	private final Deque<Node> worklist;
+	// stores potential replacements for each node, since changing them during iteration would break iterator
 	private final Map<Node, Node> replacements;
 
 	// keeps track of chages in each iteration until fixed point is reached
