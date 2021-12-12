@@ -310,6 +310,7 @@ public class FirmGraphBuilder {
 			case DIVIDE -> {
 				Node lhs = processValueExpression(context, expr.lhs());
 				Node rhs = processValueExpression(context, expr.rhs());
+				// expansion to 64 bit to gracefully handle MIN_INT / -1 case which is valid in Java but causes floating point exception (sic) on x86
 				Node leftPromoted = construction.newConv(lhs, Mode.getLs());
 				Node rightPromoted = construction.newConv(rhs, Mode.getLs());
 
