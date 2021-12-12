@@ -7,6 +7,8 @@ import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import firm.Backend;
 import firm.DebugInfo;
 import firm.Firm;
+import firm.Graph;
+import firm.Program;
 import firm.Util;
 
 import java.io.IOException;
@@ -14,6 +16,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.EnumSet;
 
+import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 import static java.util.stream.Collectors.joining;
 
 /**
@@ -57,6 +60,9 @@ public class FirmBuilder {
 
 		// Lower "Member"
 		Util.lowerSels();
+		for (Graph graph : Program.getGraphs()) {
+			dumpGraph(graph, "lower-sel");
+		}
 
 		if (!CompilerArguments.get().noConstantFolding()) {
 			ConstantFolding.optimize();
