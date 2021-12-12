@@ -26,6 +26,8 @@ public class CommandDispatcher {
 
 	public void dispatch(String[] args) {
 		CommandArguments arguments = new CommandArgumentsParser().parseOrExit(args);
+		CompilerArguments.setArguments(arguments);
+
 		List<CommandSpec> requestedCommands = this.commands.stream().filter(cmd -> cmd.checkFlag(arguments)).toList();
 
 		if (requestedCommands.isEmpty()) {

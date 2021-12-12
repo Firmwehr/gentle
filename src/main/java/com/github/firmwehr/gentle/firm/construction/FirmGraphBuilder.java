@@ -32,6 +32,7 @@ import com.github.firmwehr.gentle.semantic.ast.statement.SStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import com.github.firmwehr.gentle.source.SourceSpan;
+import com.github.firmwehr.gentle.util.GraphDumper;
 import com.google.common.base.Preconditions;
 import firm.ClassType;
 import firm.Construction;
@@ -107,11 +108,9 @@ public class FirmGraphBuilder {
 
 		processMethodBody(new Context(construction, slotTable, method), method);
 
-		//		Dump.dumpGraph(currentGraph, "before-mature");
-
 		construction.finish();
 
-		//		Dump.dumpGraph(currentGraph, "after-mature");
+		GraphDumper.dumpGraph(currentGraph, "after-mature");
 	}
 
 	private void processMethodBody(Context context, SMethod method) {
@@ -306,11 +305,17 @@ public class FirmGraphBuilder {
 			case MULTIPLY -> construction.newMul(processValueExpression(context, expr.lhs()),
 				processValueExpression(context, expr.rhs()));
 			case DIVIDE -> {
-				Node divNode =
-					construction.newDiv(construction.getCurrentMem(), processValueExpression(context, expr.lhs()),
-						processValueExpression(context, expr.rhs()), binding_ircons.op_pin_state.op_pin_state_pinned);
+				Node lhs = processValueExpression(context, expr.lhs());
+				Node rhs = processValueExpression(context, expr.rhs());
+				// expansion to 64 bit to gracefully handle MIN_INT / -1 case which is valid in Java but causes floating point exception (sic) on x86
+				Node leftPromoted = construction.newConv(lhs, Mode.getLs());
+				Node rightPromoted = construction.newConv(rhs, Mode.getLs());
+
+				Node divNode = construction.newDiv(construction.getCurrentMem(), leftPromoted, rightPromoted,
+					binding_ircons.op_pin_state.op_pin_state_pinned);
 				construction.setCurrentMem(construction.newProj(divNode, Mode.getM(), Div.pnM));
-				yield construction.newProj(divNode, Mode.getIs(), Div.pnRes);
+				Node projResult = construction.newProj(divNode, Mode.getLs(), Div.pnRes);
+				yield construction.newConv(projResult, Mode.getIs());
 			}
 			case MODULO -> {
 				Node modNode =
@@ -323,6 +328,7 @@ public class FirmGraphBuilder {
 	}
 
 	private Node condToBool(Context context, Consumer<JumpTarget> processInner) {
+		// TODO: Can we use the MUX node in some cases?
 		Construction construction = context.construction();
 		Block trueBlock = construction.newBlock();
 		Block falseBlock = construction.newBlock();
@@ -397,7 +403,7 @@ public class FirmGraphBuilder {
 		Type innerType = typeHelper.getType(expr.type());
 		Node typeSizeNode = construction.newConst(innerType.getSize(), Mode.getLs());
 		Node offsetNode = construction.newMul(construction.newConv(indexNode, Mode.getLs()), typeSizeNode);
-		return construction.newAdd(arrayNode, offsetNode);
+		return construction.newConv(construction.newAdd(arrayNode, offsetNode), Mode.getP());
 	}
 
 	private void processLogicalOr(Context context, SBinaryOperatorExpression expr, JumpTarget jumpTarget) {

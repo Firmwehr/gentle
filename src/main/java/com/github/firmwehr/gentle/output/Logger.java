@@ -34,6 +34,32 @@ public class Logger {
 		this.headerLength = 7 + prefix.length() + 2 + 1;
 	}
 
+	public boolean isDebugEnabled() {
+		if (LOGGER_DISABLED) {
+			return false;
+		}
+		return level.ordinal() <= LogLevel.DEBUG.ordinal();
+	}
+
+	/**
+	 * Prints an emphasised debug message. This is useful if you want to separate multiple stages in your output, e.g.
+	 *
+	 * <pre>
+	 *     <em>Iterating to fixpoint</em>
+	 *     Stuff
+	 *     Stuff
+	 *     <em>Applying found values</em>
+	 *     Stuff
+	 *     Stuff
+	 * </pre>
+	 *
+	 * @param message the message to print, optionally with format arguments
+	 * @param arguments the format arguments
+	 */
+	public void debugHeader(String message, Object... arguments) {
+		debug(ansi().bold().a(message).boldOff().toString(), arguments);
+	}
+
 	public void debug(String message, Throwable throwable) {
 		if (LOGGER_DISABLED) {
 			return;

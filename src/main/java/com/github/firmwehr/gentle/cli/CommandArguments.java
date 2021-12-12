@@ -35,6 +35,9 @@ public interface CommandArguments {
 	@Option(names = COMPILE_FIRM, description = "generate a runnable a.out binary using the firm backend")
 	boolean compileFirm();
 
+	@Option(names = "--dump-graphs", description = "generate graph dump files")
+	boolean dumpGraphs();
+
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",
 		paramLabel = "FILE")
 	Path path();
