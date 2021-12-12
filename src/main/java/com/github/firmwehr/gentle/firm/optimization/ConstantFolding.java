@@ -86,7 +86,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 				// confused with bad preds
 				folding.optimizeBlockChains();
 
-				// Disable them for good measure
+				// testing has shown that back edges get disabled anyway for some reason, but we don't like problems
 				BackEdges.disable(graph);
 
 				if (!folding.hasChangedInCurrentIteration) {
