@@ -1,10 +1,14 @@
 package com.github.firmwehr.gentle.firm.construction;
 
+import com.github.firmwehr.gentle.cli.CompilerArguments;
+import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import firm.Backend;
 import firm.DebugInfo;
 import firm.Firm;
+import firm.Graph;
+import firm.Program;
 import firm.Util;
 
 import java.io.IOException;
@@ -12,6 +16,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.EnumSet;
 
+import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 import static java.util.stream.Collectors.joining;
 
 /**
@@ -55,8 +60,16 @@ public class FirmBuilder {
 
 		// Lower "Member"
 		Util.lowerSels();
+		for (Graph graph : Program.getGraphs()) {
+			dumpGraph(graph, "lower-sel");
+		}
 
-		ConstantFolding.optimize();
+		if (!CompilerArguments.get().noConstantFolding()) {
+			ConstantFolding.optimize();
+		}
+		if (!CompilerArguments.get().noArithmeticOptimizations()) {
+			ArithmeticOptimization.optimize();
+		}
 
 		String assemblyFile = assemblyOutputFile.toAbsolutePath().toString();
 		Backend.createAssembler(assemblyFile, assemblyFile);
