@@ -51,6 +51,21 @@ public class Logger {
 		debug(message + "%n%s", Throwables.getStackTraceAsString(throwable));
 	}
 
+	/**
+	 * Prints an emphasised debug message. This is useful if you want to separate multiple stages in your output, e.g.
+	 *
+	 * <pre>
+	 *     <em>Iterating to fixpoint</em>
+	 *     Stuff
+	 *     Stuff
+	 *     <em>Applying found values</em>
+	 *     Stuff
+	 *     Stuff
+	 * </pre>
+	 *
+	 * @param message the message to print, optionally with format arguments
+	 * @param arguments the format arguments
+	 */
 	public void debugHeader(String message, Object... arguments) {
 		debug(ansi().bold().a(message).boldOff().toString(), arguments);
 	}
