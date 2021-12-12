@@ -38,6 +38,12 @@ public interface CommandArguments {
 	@Option(names = "--dump-graphs", description = "generate graph dump files")
 	boolean dumpGraphs();
 
+	@Option(names = "--no-constant-folding", description = "do not perform constant folding optimization")
+	boolean noConstantFolding();
+
+	@Option(names = "--no-arithmetic-optimization", description = "do not perform arithmetic optimizations")
+	boolean noArithmeticOptimizations();
+
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",
 		paramLabel = "FILE")
 	Path path();
