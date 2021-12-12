@@ -41,16 +41,6 @@ public class Logger {
 		return level.ordinal() <= LogLevel.DEBUG.ordinal();
 	}
 
-	public void debug(String message, Throwable throwable) {
-		if (LOGGER_DISABLED) {
-			return;
-		}
-		if (level.ordinal() > LogLevel.DEBUG.ordinal()) {
-			return;
-		}
-		debug(message + "%n%s", Throwables.getStackTraceAsString(throwable));
-	}
-
 	/**
 	 * Prints an emphasised debug message. This is useful if you want to separate multiple stages in your output, e.g.
 	 *
@@ -68,6 +58,16 @@ public class Logger {
 	 */
 	public void debugHeader(String message, Object... arguments) {
 		debug(ansi().bold().a(message).boldOff().toString(), arguments);
+	}
+
+	public void debug(String message, Throwable throwable) {
+		if (LOGGER_DISABLED) {
+			return;
+		}
+		if (level.ordinal() > LogLevel.DEBUG.ordinal()) {
+			return;
+		}
+		debug(message + "%n%s", Throwables.getStackTraceAsString(throwable));
 	}
 
 	public void debug(String message, Object... arguments) {
