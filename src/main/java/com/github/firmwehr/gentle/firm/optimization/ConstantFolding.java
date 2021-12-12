@@ -15,6 +15,7 @@ import firm.nodes.And;
 import firm.nodes.Bad;
 import firm.nodes.Binop;
 import firm.nodes.Block;
+import firm.nodes.Call;
 import firm.nodes.Cmp;
 import firm.nodes.Cond;
 import firm.nodes.Const;
@@ -37,6 +38,7 @@ import firm.nodes.Shl;
 import firm.nodes.Shr;
 import firm.nodes.Shrs;
 import firm.nodes.Size;
+import firm.nodes.Start;
 import firm.nodes.Sub;
 
 import java.util.ArrayDeque;
@@ -493,7 +495,16 @@ public class ConstantFolding extends NodeVisitor.Default {
 	}
 
 	private TargetValue tarValOf(Node node) {
-		return constants.getOrDefault(node, TargetValue.getUnknown());
+		return constants.computeIfAbsent(node, ignored -> {
+			if (node instanceof Call) {
+				return TargetValue.getBad();
+			}
+			if (node instanceof Start) {
+				return TargetValue.getBad();
+			}
+
+			return TargetValue.getUnknown();
+		});
 	}
 
 	private static String debugTarVal(TargetValue targetValue) {
