@@ -59,6 +59,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 	private final Deque<Node> worklist;
 	private final Map<Node, Node> replacements;
 
+	// keeps track of chages in each iteration until fixed point is reached
 	private boolean hasChangedInCurrentIteration;
 
 	public ConstantFolding(Graph graph) {
