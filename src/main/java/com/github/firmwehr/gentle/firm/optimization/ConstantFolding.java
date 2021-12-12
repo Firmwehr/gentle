@@ -11,35 +11,47 @@ import firm.TargetValue;
 import firm.bindings.binding_irgopt;
 import firm.bindings.binding_irnode;
 import firm.nodes.Add;
+import firm.nodes.Address;
+import firm.nodes.Align;
 import firm.nodes.And;
 import firm.nodes.Bad;
 import firm.nodes.Binop;
+import firm.nodes.Bitcast;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cmp;
 import firm.nodes.Cond;
+import firm.nodes.Confirm;
 import firm.nodes.Const;
 import firm.nodes.Conv;
 import firm.nodes.Div;
+import firm.nodes.Dummy;
+import firm.nodes.Eor;
 import firm.nodes.Id;
+import firm.nodes.Jmp;
+import firm.nodes.Load;
 import firm.nodes.Member;
 import firm.nodes.Minus;
 import firm.nodes.Mod;
 import firm.nodes.Mul;
+import firm.nodes.Mulh;
+import firm.nodes.NoMem;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 import firm.nodes.Not;
+import firm.nodes.Offset;
 import firm.nodes.Or;
 import firm.nodes.Phi;
 import firm.nodes.Proj;
 import firm.nodes.Return;
-import firm.nodes.Sel;
 import firm.nodes.Shl;
 import firm.nodes.Shr;
 import firm.nodes.Shrs;
 import firm.nodes.Size;
 import firm.nodes.Start;
+import firm.nodes.Store;
 import firm.nodes.Sub;
+import firm.nodes.Unknown;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -407,16 +419,16 @@ public class ConstantFolding extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Proj node) {
+		// Some nodes (like Div) have multiple outgoing projections. If the Div is constant, we do not want to replace
+		// the memory output node with the Div constant - that makes no sense!
+		if (node.getMode().equals(Mode.getM())) {
+			return;
+		}
 		updateTarVal(node, tarValOf(node.getPred()));
 	}
 
 	@Override
 	public void visit(Return node) {
-	}
-
-	@Override
-	public void visit(Sel node) {
-		// TODO: Fold unchanged array values?
 	}
 
 	@Override
@@ -494,16 +506,56 @@ public class ConstantFolding extends NodeVisitor.Default {
 		return op.apply(first, second);
 	}
 
+	@SuppressWarnings("DuplicateBranchesInSwitch")
 	private TargetValue tarValOf(Node node) {
-		return constants.computeIfAbsent(node, ignored -> {
-			if (node instanceof Call) {
-				return TargetValue.getBad();
-			}
-			if (node instanceof Start) {
-				return TargetValue.getBad();
-			}
+		return constants.computeIfAbsent(node, ignore -> {
+			// Welcome to Whack-A-Mole! Compilerpraktkum Edition 2021 (Corona Release)
+			// Highscores:
+			//    Chris   : 4
+			//    Istannen: 4
+			// Please enter your score: __
 
-			return TargetValue.getUnknown();
+			return switch (node) {
+				case Add ignored -> TargetValue.getUnknown();
+				case Address ignored -> TargetValue.getUnknown();
+				case Align ignored -> TargetValue.getUnknown();
+				case And ignored -> TargetValue.getUnknown();
+				case Bad ignored -> TargetValue.getBad();
+				case Bitcast ignored -> TargetValue.getUnknown();
+				case Call ignored -> TargetValue.getBad();
+				case Cmp ignored -> TargetValue.getUnknown();
+				case Cond ignored -> TargetValue.getUnknown();
+				case Confirm ignored -> TargetValue.getUnknown();
+				case Const ignored -> TargetValue.getUnknown();
+				case Conv ignored -> TargetValue.getUnknown();
+				case Div ignored -> TargetValue.getUnknown();
+				case Dummy ignored -> TargetValue.getUnknown();
+				case Eor ignored -> TargetValue.getUnknown();
+				case Id id -> tarValOf(id.getPred());
+				case Jmp ignored -> TargetValue.getUnknown();
+				case Load ignored -> TargetValue.getBad();
+				case Member ignored -> TargetValue.getBad();
+				case Minus ignored -> TargetValue.getUnknown();
+				case Mod ignored -> TargetValue.getUnknown();
+				case Mul ignored -> TargetValue.getUnknown();
+				case Mulh ignored -> TargetValue.getUnknown();
+				case NoMem ignored -> TargetValue.getUnknown();
+				case Not ignored -> TargetValue.getUnknown();
+				case Offset ignored -> TargetValue.getUnknown();
+				case Or ignored -> TargetValue.getUnknown();
+				case Phi ignored -> TargetValue.getUnknown();
+				case Proj ignored -> TargetValue.getUnknown();
+				case Shl ignored -> TargetValue.getUnknown();
+				case Shr ignored -> TargetValue.getUnknown();
+				case Shrs ignored -> TargetValue.getUnknown();
+				case Size ignored -> TargetValue.getUnknown();
+				case Start ignored -> TargetValue.getBad();
+				case Store ignored -> TargetValue.getBad();
+				case Sub ignored -> TargetValue.getUnknown();
+				case Unknown ignored -> TargetValue.getUnknown();
+				default -> throw new InternalCompilerException(
+					"Unknown node type, can not determine constant folding default value");
+			};
 		});
 	}
 
