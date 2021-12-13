@@ -57,7 +57,6 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 	}
 
 	private void applyArithmeticOptimization() {
-		LOGGER.debugHeader("Analyzing");
 		graph.walkTopological(this);
 	}
 
@@ -138,7 +137,18 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 	}
 
 	private void exchange(Node victim, Node murderer) {
-		Graph.exchange(victim, murderer);
+		LOGGER.debug("Exchanging %-25s with %-25s", victim, murderer);
+		Node selectedReplacement = murderer;
+		if (!victim.getMode().equals(murderer.getMode())) {
+			if (murderer instanceof Const constant) {
+				selectedReplacement = victim.getGraph().newConst(constant.getTarval().convertTo(victim.getMode()));
+				LOGGER.debug("Changed    %-25s to %-25s", murderer, selectedReplacement);
+			} else {
+				selectedReplacement = victim.getGraph().newConv(victim.getBlock(), murderer, victim.getMode());
+				LOGGER.debug("Introduced conversion node %-25s to mode %s", selectedReplacement, victim.getMode());
+			}
+		}
+		Graph.exchange(victim, selectedReplacement);
 		hasChanged = true;
 	}
 
@@ -158,9 +168,9 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 	private void replace(Node node, Node previousMemory, Node replacement) {
 		for (BackEdges.Edge out : BackEdges.getOuts(node)) {
 			if (out.node.getMode().equals(Mode.getM())) {
-				Graph.exchange(out.node, previousMemory);
+				exchange(out.node, previousMemory);
 			} else {
-				Graph.exchange(out.node, replacement);
+				exchange(out.node, replacement);
 			}
 		}
 	}
