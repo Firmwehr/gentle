@@ -33,7 +33,7 @@ public class TypeHelper {
 	private final Map<SClassDeclaration, PointerType> classTypes;
 
 	public TypeHelper() {
-		this.stringType = new ClassType("String");
+		this.stringType = new PointerType(new ClassType("String"));
 		this.classTypes = new HashMap<>();
 		this.voidType = new PrimitiveType(Mode.getANY());
 	}

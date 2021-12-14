@@ -65,7 +65,7 @@ import java.util.stream.StreamSupport;
 import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 
 public class ConstantFolding extends NodeVisitor.Default {
-	private static final Logger LOGGER = new Logger(ConstantFolding.class, Logger.LogLevel.DEBUG);
+	private static final Logger LOGGER = new Logger(ConstantFolding.class);
 
 	private final Graph graph;
 	// stores associated lattice element for each visited note during fixed point iteration
