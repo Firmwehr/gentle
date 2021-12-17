@@ -4,14 +4,12 @@ import com.github.firmwehr.gentle.output.Logger;
 import com.google.common.base.Preconditions;
 import firm.Graph;
 
-import java.util.function.Predicate;
-
-public final class GraphOptimizationStep implements Predicate<Graph> {
+public final class GraphOptimizationStep {
 	private static final Logger LOGGER = new Logger(GraphOptimizationStep.class);
-	private String description;
-	private Predicate<Graph> optimizationFunction;
+	private final String description;
+	private final OptimizationFunction optimizationFunction;
 
-	private GraphOptimizationStep(String description, Predicate<Graph> optimizationFunction) {
+	private GraphOptimizationStep(String description, OptimizationFunction optimizationFunction) {
 		this.description = description;
 		this.optimizationFunction = optimizationFunction;
 	}
@@ -19,28 +17,23 @@ public final class GraphOptimizationStep implements Predicate<Graph> {
 
 	public boolean optimize(Graph graph) {
 		LOGGER.info("Running %s for %s", this.description, graph);
-		return this.optimizationFunction.test(graph);
-	}
-
-	@Override
-	public boolean test(Graph graph) {
-		return optimize(graph);
+		return this.optimizationFunction.optimize(graph);
 	}
 
 	public static Builder builder() {
 		return new Builder();
 	}
 
-	static class Builder {
+	public static class Builder {
 		private String description;
-		private Predicate<Graph> optimizationFunction;
+		private OptimizationFunction optimizationFunction;
 
 		public Builder withDescription(String description) {
 			this.description = description;
 			return this;
 		}
 
-		public Builder withOptimizationFunction(Predicate<Graph> optimizationFunction) {
+		public Builder withOptimizationFunction(OptimizationFunction optimizationFunction) {
 			this.optimizationFunction = optimizationFunction;
 			return this;
 		}
@@ -50,5 +43,11 @@ public final class GraphOptimizationStep implements Predicate<Graph> {
 			Preconditions.checkState(this.optimizationFunction != null, "Optimization Function must be set");
 			return new GraphOptimizationStep(this.description, this.optimizationFunction);
 		}
+	}
+
+	@FunctionalInterface
+	public interface OptimizationFunction {
+
+		boolean optimize(Graph graph);
 	}
 }
