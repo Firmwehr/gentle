@@ -4,7 +4,6 @@ import com.github.firmwehr.gentle.output.Logger;
 import firm.BackEdges;
 import firm.Graph;
 import firm.Mode;
-import firm.Program;
 import firm.TargetValue;
 import firm.bindings.binding_irgopt;
 import firm.nodes.Add;
@@ -28,32 +27,35 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		this.graph = graph;
 	}
 
-	public static void optimize() {
-		LOGGER.info("Started");
-		for (Graph graph : Program.getGraphs()) {
-			LOGGER.info("Running arithmetic optimization for %s", graph);
+	public static GraphOptimizationStep arithmeticOptimization() {
+		return GraphOptimizationStep.builder()
+			.withDescription("ArithmeticOptimization")
+			.withOptimizationFunction(graph -> {
+				int runs = 0;
+				while (true) {
+					// Needs to be done in each iteration apparently?
+					BackEdges.enable(graph);
 
-			while (true) {
-				// Needs to be done in each iteration apparently?
-				BackEdges.enable(graph);
+					ArithmeticOptimization arithmeticOptimization = new ArithmeticOptimization(graph);
+					arithmeticOptimization.applyArithmeticOptimization();
+					binding_irgopt.remove_bads(graph.ptr);
+					binding_irgopt.remove_unreachable_code(graph.ptr);
 
-				ArithmeticOptimization arithmeticOptimization = new ArithmeticOptimization(graph);
-				arithmeticOptimization.applyArithmeticOptimization();
-				binding_irgopt.remove_bads(graph.ptr);
-				binding_irgopt.remove_unreachable_code(graph.ptr);
+					// testing has shown that back edges get disabled anyway for some reason, but we don't like
+					// problems
+					BackEdges.disable(graph);
 
-				// testing has shown that back edges get disabled anyway for some reason, but we don't like problems
-				BackEdges.disable(graph);
-
-				if (!arithmeticOptimization.hasChanged) {
-					break;
-				} else if (LOGGER.isDebugEnabled()) {
-					dumpGraph(graph, "arithmetic-iteration");
+					if (!arithmeticOptimization.hasChanged) {
+						break;
+					} else if (LOGGER.isDebugEnabled()) {
+						dumpGraph(graph, "arithmetic-iteration");
+					}
+					runs++;
 				}
-			}
-			dumpGraph(graph, "arithmetic");
-		}
-		LOGGER.info("Finished");
+				dumpGraph(graph, "arithmetic");
+				return runs > 0;
+			})
+			.build();
 	}
 
 	private void applyArithmeticOptimization() {

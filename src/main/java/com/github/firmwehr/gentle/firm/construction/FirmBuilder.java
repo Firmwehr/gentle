@@ -3,6 +3,7 @@ package com.github.firmwehr.gentle.firm.construction;
 import com.github.firmwehr.gentle.cli.CompilerArguments;
 import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
+import com.github.firmwehr.gentle.firm.optimization.Optimizer;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import firm.Backend;
 import firm.DebugInfo;
@@ -64,12 +65,16 @@ public class FirmBuilder {
 			dumpGraph(graph, "lower-sel");
 		}
 
+		Optimizer.Builder builder = Optimizer.builder();
+
 		if (!CompilerArguments.get().noConstantFolding()) {
-			ConstantFolding.optimize();
+			builder.addStep(ConstantFolding.constantFolding());
 		}
 		if (!CompilerArguments.get().noArithmeticOptimizations()) {
-			ArithmeticOptimization.optimize();
+			builder.addStep(ArithmeticOptimization.arithmeticOptimization());
 		}
+		Optimizer optimizer = builder.build();
+		optimizer.optimize();
 
 		String assemblyFile = assemblyOutputFile.toAbsolutePath().toString();
 		Backend.createAssembler(assemblyFile, assemblyFile);
