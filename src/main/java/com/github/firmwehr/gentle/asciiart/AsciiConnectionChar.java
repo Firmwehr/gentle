@@ -44,6 +44,20 @@ public enum AsciiConnectionChar {
 		};
 	}
 
+	public boolean isArrow() {
+		return switch (this) {
+			case ARROW_DOWN, ARROW_RIGHT, ARROW_LEFT, ARROW_UP -> true;
+			default -> false;
+		};
+	}
+
+	public boolean isT() {
+		return switch (this) {
+			case T_DOWN, T_RIGHT, T_LEFT, T_UP -> true;
+			default -> false;
+		};
+	}
+
 	public static Optional<AsciiConnectionChar> forChar(char character) {
 		for (AsciiConnectionChar value : values()) {
 			if (value.getCharacter() == character) {

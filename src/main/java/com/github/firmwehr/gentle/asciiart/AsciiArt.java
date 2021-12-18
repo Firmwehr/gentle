@@ -48,71 +48,84 @@ public class AsciiArt {
 	public void parse() {
 		Point boxCorner = grid.find('┌').orElseThrow();
 		System.out.println(boxCorner);
-		parseBoxy(boxCorner, true);
+		parseBox(boxCorner);
 		for (AsciiBox value : boxMap.values()) {
 			System.out.println(value);
 		}
 	}
 
-	public Optional<AsciiBox> parseBoxy(Point potentialStart) {
-		return parseBoxy(potentialStart, false);
-	}
-
-	public Optional<AsciiBox> parseBoxy(Point potentialStart, boolean allowCorner) {
+	public Optional<AsciiBox> parseBox(Point potentialStart) {
 		AsciiConnectionChar connectionChar = AsciiConnectionChar.forChar(grid.get(potentialStart)).orElseThrow();
-		Point topLeft;
-		Point bottomRight;
-		switch (connectionChar) {
-			case VERTICAL, HORIZONTAL, CORNER_TOP_RIGHT, CORNER_BOT_RIGHT, CORNER_BOT_LEFT -> {
-				return Optional.empty();
-			}
-			case CORNER_TOP_LEFT, ARROW_DOWN, T_UP -> {
-				Point topRight = grid.findInRow(potentialStart, CORNER_TOP_RIGHT.getCharacter(), RIGHT);
-				topLeft = grid.findInRow(potentialStart, CORNER_TOP_LEFT.getCharacter(), LEFT);
-				Point bottomLeft = grid.findInColumn(topLeft, CORNER_BOT_LEFT.getCharacter(), DOWN);
-				bottomRight = grid.findInColumn(topRight, CORNER_BOT_RIGHT.getCharacter(), DOWN);
-
-				if (bottomLeft.y() != bottomRight.y()) {
-					return Optional.empty();
-				}
-			}
-			case ARROW_UP, T_DOWN -> {
-				bottomRight = grid.findInRow(potentialStart, CORNER_BOT_RIGHT.getCharacter(), RIGHT);
-				Point bottomLeft = grid.findInRow(potentialStart, CORNER_BOT_LEFT.getCharacter(), LEFT);
-				topLeft = grid.findInColumn(bottomLeft, CORNER_TOP_LEFT.getCharacter(), UP);
-				Point topRight = grid.findInColumn(bottomRight, CORNER_TOP_RIGHT.getCharacter(), UP);
-
-				if (topLeft.y() != topRight.y()) {
-					return Optional.empty();
-				}
-			}
-			case ARROW_LEFT, T_RIGHT -> {
-				Point topRight = grid.findInColumn(potentialStart, CORNER_TOP_RIGHT.getCharacter(), UP);
-				bottomRight = grid.findInColumn(potentialStart, CORNER_BOT_RIGHT.getCharacter(), DOWN);
-				topLeft = grid.findInRow(topRight, CORNER_TOP_LEFT.getCharacter(), LEFT);
-				Point bottomLeft = grid.findInRow(bottomRight, CORNER_BOT_LEFT.getCharacter(), LEFT);
-
-				if (topLeft.x() != bottomLeft.x()) {
-					return Optional.empty();
-				}
-			}
-			case ARROW_RIGHT, T_LEFT -> {
-				topLeft = grid.findInColumn(potentialStart, CORNER_TOP_LEFT.getCharacter(), UP);
-				Point bottomLeft = grid.findInColumn(potentialStart, CORNER_BOT_LEFT.getCharacter(), DOWN);
-				Point topRight = grid.findInRow(topLeft, CORNER_TOP_RIGHT.getCharacter(), RIGHT);
-				bottomRight = grid.findInRow(bottomLeft, CORNER_BOT_RIGHT.getCharacter(), RIGHT);
-
-				if (topRight.x() != bottomRight.x()) {
-					return Optional.empty();
-				}
-			}
-			default -> throw new IllegalArgumentException(":(");
+		Optional<BoundingBox> boundingBox = findBoundingBoxFromHit(connectionChar, potentialStart);
+		if (boundingBox.isEmpty()) {
+			return Optional.empty();
 		}
+		Point topLeft = boundingBox.get().topLeft();
+		Point bottomRight = boundingBox.get().bottomRight();
 
 		if (boxMap.containsKey(topLeft)) {
 			return Optional.of(boxMap.get(topLeft));
 		}
 
+		List<String> lines = parseBoxLines(topLeft, bottomRight);
+		AsciiBox box = new AsciiBox(lines, new ArrayList<>(), new ArrayList<>(), topLeft, bottomRight);
+
+		boxMap.put(topLeft, box);
+		populateBoxConnections(box);
+
+		return Optional.of(box);
+	}
+
+	private Optional<BoundingBox> findBoundingBoxFromHit(AsciiConnectionChar connectionChar, Point hit) {
+		Optional<Point> topLeft;
+		Optional<Point> topRight;
+		Optional<Point> botLeft;
+		Optional<Point> botRight;
+
+		switch (connectionChar) {
+			case T_UP, ARROW_DOWN, CORNER_TOP_LEFT -> {
+				topLeft = grid.findInRow(hit, CORNER_TOP_LEFT.getCharacter(), LEFT);
+				topRight = grid.findInRow(hit, CORNER_TOP_RIGHT.getCharacter(), RIGHT);
+				botLeft = topLeft.flatMap(it -> grid.findInColumn(it, CORNER_BOT_LEFT.getCharacter(), DOWN));
+				botRight = topRight.flatMap(it -> grid.findInColumn(it, CORNER_BOT_RIGHT.getCharacter(), DOWN));
+			}
+			case T_DOWN, ARROW_UP, CORNER_TOP_RIGHT -> {
+				botLeft = grid.findInRow(hit, CORNER_BOT_LEFT.getCharacter(), LEFT);
+				botRight = grid.findInRow(hit, CORNER_BOT_RIGHT.getCharacter(), RIGHT);
+				topLeft = botLeft.flatMap(it -> grid.findInColumn(it, CORNER_TOP_LEFT.getCharacter(), UP));
+				topRight = botRight.flatMap(it -> grid.findInColumn(it, CORNER_TOP_RIGHT.getCharacter(), UP));
+			}
+			case T_LEFT, ARROW_RIGHT, CORNER_BOT_LEFT -> {
+				topLeft = grid.findInColumn(hit, CORNER_TOP_LEFT.getCharacter(), UP);
+				botLeft = grid.findInColumn(hit, CORNER_BOT_LEFT.getCharacter(), DOWN);
+				topRight = topLeft.flatMap(it -> grid.findInRow(it, CORNER_TOP_RIGHT.getCharacter(), RIGHT));
+				botRight = botLeft.flatMap(it -> grid.findInRow(it, CORNER_BOT_RIGHT.getCharacter(), RIGHT));
+			}
+			case T_RIGHT, ARROW_LEFT, CORNER_BOT_RIGHT -> {
+				topRight = grid.findInColumn(hit, CORNER_TOP_RIGHT.getCharacter(), UP);
+				botRight = grid.findInColumn(hit, CORNER_BOT_RIGHT.getCharacter(), DOWN);
+				topLeft = topRight.flatMap(it -> grid.findInRow(it, CORNER_TOP_LEFT.getCharacter(), LEFT));
+				botLeft = botRight.flatMap(it -> grid.findInRow(it, CORNER_BOT_LEFT.getCharacter(), LEFT));
+			}
+			default -> {
+				return Optional.empty();
+			}
+		}
+
+		if (topLeft.isEmpty() || topRight.isEmpty() || botLeft.isEmpty() || botRight.isEmpty()) {
+			return Optional.empty();
+		}
+		if (topLeft.get().x() != botLeft.get().x() || topRight.get().x() != botRight.get().x()) {
+			return Optional.empty();
+		}
+		if (topLeft.get().y() != topRight.get().y() || botLeft.get().y() != botRight.get().y()) {
+			return Optional.empty();
+		}
+
+		return Optional.of(new BoundingBox(topLeft.get(), botRight.get()));
+	}
+
+	private List<String> parseBoxLines(Point topLeft, Point bottomRight) {
 		List<String> lines = new ArrayList<>();
 		for (int y = topLeft.y() + 1; y < bottomRight.y(); y++) {
 			Point lineStart = new Point(topLeft.x() + 1, y);
@@ -124,41 +137,38 @@ public class AsciiArt {
 		if (lines.isEmpty()) {
 			throw new IllegalArgumentException("Empty box found at " + topLeft + " -> " + bottomRight);
 		}
+		return lines;
+	}
 
-		AsciiBox box = new AsciiBox(lines, new ArrayList<>(), new ArrayList<>(), topLeft, bottomRight);
-		boxMap.put(topLeft, box);
-
+	private void populateBoxConnections(AsciiBox box) {
 		for (Point point : box.edge()) {
 			Optional<AsciiConnectionChar> connectionCharOptional = AsciiConnectionChar.forChar(grid.get(point));
 			if (connectionCharOptional.isEmpty()) {
 				continue;
 			}
 			AsciiConnectionChar foundChar = connectionCharOptional.get();
-			switch (foundChar) {
-				case ARROW_DOWN, ARROW_UP, ARROW_LEFT, ARROW_RIGHT -> {
-					List<Connection> connections = foundChar.getNeighbours()
-						.stream()
-						.map(point::translate)
-						.flatMap(pointy -> exploreConnection(pointy, box).stream())
-						.toList();
-					box.ins().addAll(connections);
-				}
-				case T_DOWN, T_UP, T_LEFT, T_RIGHT -> {
-					List<Connection> connections = foundChar.getNeighbours()
-						.stream()
-						.map(point::translate)
-						.flatMap(pointy -> exploreConnection(pointy, box).stream())
-						.toList();
-					box.outs().addAll(connections);
-				}
+			if (!foundChar.isArrow() && !foundChar.isT()) {
+				continue;
+			}
+
+			boolean isOutgoing = foundChar.isT();
+			List<Connection> connections = foundChar.getNeighbours()
+				.stream()
+				.map(point::translate)
+				.filter(not(box::contains))
+				.flatMap(pointy -> exploreConnections(pointy, box, isOutgoing).stream())
+				.toList();
+
+			if (isOutgoing) {
+				box.outs().addAll(connections);
+			} else {
+				box.ins().addAll(connections);
 			}
 		}
-
-		return Optional.of(box);
 	}
 
-	public List<Connection> exploreConnection(Point start, AsciiBox source) {
-		List<Connection> endpoints = new ArrayList<>();
+	public List<Connection> exploreConnections(Point start, AsciiBox source, boolean isOutgoing) {
+		List<Connection> connections = new ArrayList<>();
 
 		Set<Point> seen = new HashSet<>();
 		Queue<Point> workQueue = new ArrayDeque<>();
@@ -169,32 +179,31 @@ public class AsciiArt {
 			if (!seen.add(point)) {
 				continue;
 			}
-			if (source.isInside(point)) {
+			if (source.contains(point)) {
 				continue;
 			}
-			Optional<AsciiConnectionChar> connectionCharOpt = AsciiConnectionChar.forChar(grid.get(point));
-
-			if (connectionCharOpt.isEmpty()) {
+			if (AsciiConnectionChar.forChar(grid.get(point)).isEmpty()) {
 				continue;
 			}
-			AsciiConnectionChar connectionChar = connectionCharOpt.get();
+			AsciiConnectionChar connectionChar = AsciiConnectionChar.forChar(grid.get(point)).get();
 
 			if (connectionChar.canConnectBoxes()) {
-				Optional<AsciiBox> connectedBox = parseBoxy(point);
+				Optional<AsciiBox> connectedBox = parseBox(point);
 				if (connectedBox.isPresent()) {
 					AsciiBox box = connectedBox.get();
-					endpoints.add(new Connection(box, start, box, point));
+					if (isOutgoing) {
+						connections.add(new Connection(source, start, box, point));
+					} else {
+						connections.add(new Connection(box, start, source, point));
+					}
 					continue;
 				}
 			}
-			connectionChar.getNeighbours()
-				.stream()
-				.map(point::translate)
-				.filter(not(source::isInside))
-				.forEach(workQueue::add);
+
+			connectionChar.getNeighbours().stream().map(point::translate).forEach(workQueue::add);
 		}
 
-		return endpoints;
+		return connections;
 	}
 
 	public static void main(String[] args) {

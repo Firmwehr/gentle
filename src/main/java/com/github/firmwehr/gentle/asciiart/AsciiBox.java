@@ -16,7 +16,7 @@ public record AsciiBox(
 		return topLeft();
 	}
 
-	public boolean isInside(Point point) {
+	public boolean contains(Point point) {
 		boolean insideX = point.x() >= topLeft.x() && point.x() <= bottomRight.x();
 		boolean insideY = point.y() >= topLeft.y() && point.y() <= bottomRight.y();
 		return insideX && insideY;

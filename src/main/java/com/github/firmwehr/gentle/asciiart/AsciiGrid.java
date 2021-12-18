@@ -71,47 +71,28 @@ public class AsciiGrid {
 		return Optional.empty();
 	}
 
-	public Point findInColumn(Point start, char needle, VerticalDirection direction) {
+	public Optional<Point> findInColumn(Point start, char needle, VerticalDirection direction) {
 		for (int y = start.y(); y < getHeight() && y >= 0; y += direction.delta()) {
 			char character = get(start.x(), y);
 
 			if (character == needle) {
-				return new Point(start.x(), y);
+				return Optional.of(new Point(start.x(), y));
 			}
 		}
 
-		throw new IllegalArgumentException("Could not find needle");
+		return Optional.empty();
 	}
 
-	public Point findInRow(Point start, char needle, HorizontalDirection direction) {
+	public Optional<Point> findInRow(Point start, char needle, HorizontalDirection direction) {
 		for (int x = start.x(); x < getWidth() && x >= 0; x += direction.delta()) {
 			char character = get(x, start.y());
 
 			if (character == needle) {
-				return new Point(x, start.y());
+				return Optional.of(new Point(x, start.y()));
 			}
 		}
 
-		throw new IllegalArgumentException("Could not find needle");
-	}
-
-	public String readRowFromUntil(Point start, char needle, HorizontalDirection direction) {
-		StringBuilder line = new StringBuilder();
-
-		for (int x = start.x(); x < getWidth() && x >= 0; x += direction.delta) {
-			char character = get(x, start.y());
-
-			if (character == needle) {
-				break;
-			}
-			line.append(character);
-		}
-
-		if (direction == HorizontalDirection.LEFT) {
-			line.reverse();
-		}
-
-		return line.toString();
+		return Optional.empty();
 	}
 
 	public String readRowUntilCol(Point start, int maxX) {
