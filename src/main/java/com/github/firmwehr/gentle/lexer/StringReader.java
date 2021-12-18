@@ -72,6 +72,10 @@ public class StringReader {
 		return underlying.substring(position, Math.min(underlying.length(), position + amount));
 	}
 
+	public boolean peekIgnoreCase(String input) {
+		return peek(input.length()).equalsIgnoreCase(input);
+	}
+
 	public char readChar() {
 		return underlying.charAt(position++);
 	}

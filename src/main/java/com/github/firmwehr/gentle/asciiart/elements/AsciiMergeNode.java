@@ -1,4 +1,7 @@
-package com.github.firmwehr.gentle.asciiart;
+package com.github.firmwehr.gentle.asciiart.elements;
+
+import com.github.firmwehr.gentle.asciiart.util.Connection;
+import com.github.firmwehr.gentle.asciiart.util.Point;
 
 import java.util.List;
 import java.util.Objects;
@@ -8,7 +11,7 @@ public final class AsciiMergeNode implements AsciiElement {
 	private final Point location;
 	private Connection out;
 
-	AsciiMergeNode(List<Connection> in, Point location) {
+	public AsciiMergeNode(List<Connection> in, Point location) {
 		this.in = in;
 		this.location = location;
 	}
@@ -18,7 +21,7 @@ public final class AsciiMergeNode implements AsciiElement {
 		return point.equals(location);
 	}
 
-	void setOut(Connection out) {
+	public void setOut(Connection out) {
 		this.out = out;
 	}
 

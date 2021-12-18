@@ -1,4 +1,7 @@
-package com.github.firmwehr.gentle.asciiart;
+package com.github.firmwehr.gentle.asciiart.elements;
+
+import com.github.firmwehr.gentle.asciiart.util.Connection;
+import com.github.firmwehr.gentle.asciiart.util.Point;
 
 import java.util.ArrayList;
 import java.util.List;

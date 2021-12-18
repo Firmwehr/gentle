@@ -1,4 +1,4 @@
-package com.github.firmwehr.gentle.asciiart;
+package com.github.firmwehr.gentle.asciiart.util;
 
 public record Point(
 	int x,

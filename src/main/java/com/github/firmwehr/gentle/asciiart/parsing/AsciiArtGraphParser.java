@@ -1,4 +1,13 @@
-package com.github.firmwehr.gentle.asciiart;
+package com.github.firmwehr.gentle.asciiart.parsing;
+
+import com.github.firmwehr.gentle.asciiart.elements.AsciiBox;
+import com.github.firmwehr.gentle.asciiart.elements.AsciiElement;
+import com.github.firmwehr.gentle.asciiart.elements.AsciiMergeNode;
+import com.github.firmwehr.gentle.asciiart.util.AsciiConnectionChar;
+import com.github.firmwehr.gentle.asciiart.util.AsciiGrid;
+import com.github.firmwehr.gentle.asciiart.util.BoundingBox;
+import com.github.firmwehr.gentle.asciiart.util.Connection;
+import com.github.firmwehr.gentle.asciiart.util.Point;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -10,17 +19,17 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 
-import static com.github.firmwehr.gentle.asciiart.AsciiConnectionChar.CORNER_BOT_LEFT;
-import static com.github.firmwehr.gentle.asciiart.AsciiConnectionChar.CORNER_BOT_RIGHT;
-import static com.github.firmwehr.gentle.asciiart.AsciiConnectionChar.CORNER_TOP_LEFT;
-import static com.github.firmwehr.gentle.asciiart.AsciiConnectionChar.CORNER_TOP_RIGHT;
-import static com.github.firmwehr.gentle.asciiart.AsciiGrid.HorizontalDirection.LEFT;
-import static com.github.firmwehr.gentle.asciiart.AsciiGrid.HorizontalDirection.RIGHT;
-import static com.github.firmwehr.gentle.asciiart.AsciiGrid.VerticalDirection.DOWN;
-import static com.github.firmwehr.gentle.asciiart.AsciiGrid.VerticalDirection.UP;
+import static com.github.firmwehr.gentle.asciiart.util.AsciiConnectionChar.CORNER_BOT_LEFT;
+import static com.github.firmwehr.gentle.asciiart.util.AsciiConnectionChar.CORNER_BOT_RIGHT;
+import static com.github.firmwehr.gentle.asciiart.util.AsciiConnectionChar.CORNER_TOP_LEFT;
+import static com.github.firmwehr.gentle.asciiart.util.AsciiConnectionChar.CORNER_TOP_RIGHT;
+import static com.github.firmwehr.gentle.asciiart.util.AsciiGrid.HorizontalDirection.LEFT;
+import static com.github.firmwehr.gentle.asciiart.util.AsciiGrid.HorizontalDirection.RIGHT;
+import static com.github.firmwehr.gentle.asciiart.util.AsciiGrid.VerticalDirection.DOWN;
+import static com.github.firmwehr.gentle.asciiart.util.AsciiGrid.VerticalDirection.UP;
 import static java.util.function.Predicate.not;
 
-public class AsciiArt {
+public class AsciiArtGraphParser {
 	private static final String EXAMPLE = """
 		  ┌─────────────────┐    ┌────────┐
 		  │typeSize: Const *│    │index: *│
@@ -42,22 +51,17 @@ public class AsciiArt {
 	private final Map<Point, AsciiBox> boxMap;
 	private final Map<Point, AsciiMergeNode> nodeMap;
 
-	public AsciiArt(AsciiGrid grid) {
+	public AsciiArtGraphParser(AsciiGrid grid) {
 		this.grid = grid;
 		this.boxMap = new HashMap<>();
 		this.nodeMap = new HashMap<>();
 	}
 
-	public void parse() {
+	public AsciiElement parse() {
 		Point boxCorner = grid.find('┌').orElseThrow();
-		System.out.println(boxCorner);
-		parseBox(boxCorner);
-		for (AsciiBox value : boxMap.values()) {
-			System.out.println(value);
-		}
-		for (AsciiMergeNode value : nodeMap.values()) {
-			System.out.println(value);
-		}
+
+		return parseBox(boxCorner).orElseThrow(
+			() -> new IllegalArgumentException("Nothing found :/ Do you have a top left corner?"));
 	}
 
 	public Optional<AsciiBox> parseBox(Point potentialStart) {
@@ -284,6 +288,6 @@ public class AsciiArt {
 	}
 
 	public static void main(String[] args) {
-		new AsciiArt(AsciiGrid.fromString(EXAMPLE)).parse();
+		System.out.println(new AsciiArtGraphParser(AsciiGrid.fromString(EXAMPLE)).parse());
 	}
 }
