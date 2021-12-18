@@ -22,27 +22,30 @@ import static java.util.function.Predicate.not;
 
 public class AsciiArt {
 	private static final String EXAMPLE = """
-		           ┌──────────────────┐  ┌────────────────┐   ┌────────────┐
-		           │ mem: * ; +memory │  │lhs: * ; -memory│   │rhs: Const 1│
-		           └────────────┬─────┘  └───┬────────────┘   └────┬───────┘
-		                        │            │                     │
-		                        └────────┐   │   ┌─────────────────┘
-		                                 │   │   │
-		                                ┌▼───▼───▼─┐
-		                     ┌──────────┤ div: Div ├──────┐
-		                     │          └──────────┘      │
-		                     │                            │
-		┌────────────────────▼───────┐           ┌────────▼───────────────────┐
-		│ memOuts: * ; +memory ; list│           │dataOuts: * ; -memory ; list│
-		└────────────────────────────┘           └────────────────────────────┘
-		""";
+		  ┌─────────────────┐    ┌────────┐
+		  │typeSize: Const *│    │index: *│
+		  └───────────┬─────┘    └───┬────┘
+		              │              │
+		              └─────┐   ┌────┘
+		                    │   │
+		┌────────┐       ┌──▼───▼────┐
+		│ base: *│       │offset: Add│
+		└────┬───┘       └─────┬─────┘
+		     │                 │
+		     └───────┬─────────┘
+		             │
+		      ┌──────▼─────┐
+		      │address: Add│
+		      └────────────┘""";
 
 	private final AsciiGrid grid;
 	private final Map<Point, AsciiBox> boxMap;
+	private final Map<Point, AsciiMergeNode> nodeMap;
 
 	public AsciiArt(AsciiGrid grid) {
 		this.grid = grid;
 		this.boxMap = new HashMap<>();
+		this.nodeMap = new HashMap<>();
 	}
 
 	public void parse() {
@@ -50,6 +53,9 @@ public class AsciiArt {
 		System.out.println(boxCorner);
 		parseBox(boxCorner);
 		for (AsciiBox value : boxMap.values()) {
+			System.out.println(value);
+		}
+		for (AsciiMergeNode value : nodeMap.values()) {
 			System.out.println(value);
 		}
 	}
@@ -167,7 +173,7 @@ public class AsciiArt {
 		}
 	}
 
-	public List<Connection> exploreConnections(Point start, AsciiBox source, boolean isOutgoing) {
+	public List<Connection> exploreConnections(Point start, AsciiElement source, boolean outgoing) {
 		List<Connection> connections = new ArrayList<>();
 
 		Set<Point> seen = new HashSet<>();
@@ -191,11 +197,82 @@ public class AsciiArt {
 				Optional<AsciiBox> connectedBox = parseBox(point);
 				if (connectedBox.isPresent()) {
 					AsciiBox box = connectedBox.get();
-					if (isOutgoing) {
+					if (outgoing && connectionChar.isArrow()) {
 						connections.add(new Connection(source, start, box, point));
-					} else {
+					} else if (!outgoing && connectionChar.isT()) {
 						connections.add(new Connection(box, start, source, point));
 					}
+					continue;
+				} else if (connectionChar.isT()) {
+					AsciiMergeNode mergeNode = parseMergeNode(point, connectionChar);
+					if (outgoing) {
+						connections.add(new Connection(source, start, mergeNode, point));
+					} else {
+						connections.add(new Connection(mergeNode, point, source, start));
+					}
+					continue;
+				} else {
+					throw new IllegalArgumentException("What happened? I got a weird " + connectionChar);
+				}
+			}
+
+			connectionChar.getNeighbours().stream().map(point::translate).forEach(workQueue::add);
+		}
+
+		return connections;
+	}
+
+	private AsciiMergeNode parseMergeNode(Point location, AsciiConnectionChar connectionChar) {
+		if (nodeMap.containsKey(location)) {
+			return nodeMap.get(location);
+		}
+
+		AsciiMergeNode mergeNode = new AsciiMergeNode(new ArrayList<>(), location);
+		nodeMap.put(location, mergeNode);
+
+		List<Point> nextNodes = connectionChar.getNeighbours().stream().map(location::translate).toList();
+		Connection outputConnection =
+			nextNodes.stream().flatMap(p -> findMergeNodeEnds(mergeNode, p, true).stream()).findFirst().orElseThrow();
+		mergeNode.setOut(outputConnection);
+
+		List<Connection> incoming =
+			nextNodes.stream().flatMap(p -> findMergeNodeEnds(mergeNode, p, false).stream()).toList();
+		mergeNode.in().addAll(incoming);
+		return mergeNode;
+	}
+
+	private List<Connection> findMergeNodeEnds(AsciiElement source, Point start, boolean outgoing) {
+		Set<Point> seen = new HashSet<>();
+		Queue<Point> workQueue = new ArrayDeque<>();
+		workQueue.add(start);
+		List<Connection> connections = new ArrayList<>();
+
+		while (!workQueue.isEmpty()) {
+			Point point = workQueue.poll();
+			if (source.contains(point)) {
+				continue;
+			}
+			if (!seen.add(point)) {
+				continue;
+			}
+			if (AsciiConnectionChar.forChar(grid.get(point)).isEmpty()) {
+				continue;
+			}
+			AsciiConnectionChar connectionChar = AsciiConnectionChar.forChar(grid.get(point)).orElseThrow();
+
+			if (connectionChar.isArrow()) {
+				if (outgoing) {
+					connections.add(new Connection(source, start, parseBox(point).orElseThrow(), point));
+					break;
+				}
+				continue;
+			}
+			if (connectionChar.isT()) {
+				Optional<AsciiBox> box = parseBox(point);
+				if (box.isPresent() && !outgoing) {
+					connections.add(new Connection(box.get(), point, source, start));
+					continue;
+				} else if (box.isPresent()) {
 					continue;
 				}
 			}
