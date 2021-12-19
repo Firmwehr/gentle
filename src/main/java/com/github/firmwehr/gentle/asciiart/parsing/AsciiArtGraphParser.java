@@ -3,12 +3,12 @@ package com.github.firmwehr.gentle.asciiart.parsing;
 import com.github.firmwehr.gentle.asciiart.elements.AsciiBox;
 import com.github.firmwehr.gentle.asciiart.elements.AsciiElement;
 import com.github.firmwehr.gentle.asciiart.elements.AsciiMergeNode;
+import com.github.firmwehr.gentle.asciiart.generating.ClassGenerator;
 import com.github.firmwehr.gentle.asciiart.util.AsciiConnectionChar;
 import com.github.firmwehr.gentle.asciiart.util.AsciiGrid;
 import com.github.firmwehr.gentle.asciiart.util.BoundingBox;
 import com.github.firmwehr.gentle.asciiart.util.Connection;
 import com.github.firmwehr.gentle.asciiart.util.Point;
-import spoon.Launcher;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -33,7 +33,7 @@ import static java.util.function.Predicate.not;
 public class AsciiArtGraphParser {
 	private static final String EXAMPLE = """
 		  ┌─────────────────┐    ┌────────┐
-		  │typeSize: Const  │    │index: *│
+		  │typeSize: Const 1│    │index: *│
 		  └───────────┬─────┘    └───┬────┘
 		              │              │
 		              └─────┐   ┌────┘
@@ -58,11 +58,15 @@ public class AsciiArtGraphParser {
 		this.nodeMap = new HashMap<>();
 	}
 
-	public AsciiElement parse() {
+	public AsciiBox parse() {
 		Point boxCorner = grid.find('┌').orElseThrow();
+		parseBox(boxCorner);
 
-		return parseBox(boxCorner).orElseThrow(
-			() -> new IllegalArgumentException("Nothing found :/ Do you have a top left corner?"));
+		return boxMap.values()
+			.stream()
+			.filter(it -> it.outs().isEmpty())
+			.findFirst()
+			.orElseThrow(() -> new IllegalArgumentException("Nothing found :/ Do you have a top left corner?"));
 	}
 
 	public Optional<AsciiBox> parseBox(Point potentialStart) {
@@ -289,14 +293,7 @@ public class AsciiArtGraphParser {
 	}
 
 	public static void main(String[] args) {
-		Launcher launcher = new Launcher();
-		launcher.getEnvironment().setShouldCompile(true);
-		launcher.getEnvironment().setAutoImports(true);
-
-		AsciiElement sample = new AsciiArtGraphParser(AsciiGrid.fromString(EXAMPLE)).parse();
-		new NodeDeclarationParser(launcher).generateForSample(sample);
-
-		launcher.setSourceOutputDirectory("/tmp/foo");
-		launcher.prettyprint();
+		AsciiArtGraphParser parser = new AsciiArtGraphParser(AsciiGrid.fromString(EXAMPLE));
+		System.out.println(new ClassGenerator(parser.parse()).generate("Foobar"));
 	}
 }

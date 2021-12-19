@@ -2,20 +2,24 @@ package com.github.firmwehr.gentle.asciiart.parsing.filter;
 
 import firm.nodes.Node;
 
-public class ClassFilter<T extends Node> implements NodeFilter<T> {
-	private final Class<T> clazz;
+import java.util.HashMap;
 
-	public ClassFilter(Class<T> clazz) {
+public class ClassFilter implements NodeFilter {
+	private final Class<?> clazz;
+	private final String key;
+
+	public ClassFilter(String key, Class<?> clazz) {
 		this.clazz = clazz;
+		this.key = key;
 	}
 
 	@Override
-	public Class<T> type() {
-		return clazz;
-	}
-
-	@Override
-	public boolean test(Node node) {
+	public boolean matches(Node node) {
 		return clazz == node.getClass();
+	}
+
+	@Override
+	public void storeMatch(HashMap<String, Node> matches, Node matchedNode) {
+		matches.put(key, matchedNode);
 	}
 }

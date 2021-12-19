@@ -2,15 +2,11 @@ package com.github.firmwehr.gentle.asciiart.parsing.filter;
 
 import firm.nodes.Node;
 
-import java.util.Map;
+import java.util.HashMap;
 
-public interface NodeFilter<T extends Node> {
+public interface NodeFilter {
 
-	Class<T> type();
+	boolean matches(Node node);
 
-	boolean test(Node node);
-
-	default void storeMatch(Map<NodeFilter<T>, Node> map, Node node) {
-		map.put(this, node);
-	}
+	void storeMatch(HashMap<String, Node> matches, Node matchedNode);
 }

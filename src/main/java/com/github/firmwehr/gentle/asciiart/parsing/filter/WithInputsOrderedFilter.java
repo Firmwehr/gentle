@@ -3,25 +3,23 @@ package com.github.firmwehr.gentle.asciiart.parsing.filter;
 import com.google.common.collect.Iterables;
 import firm.nodes.Node;
 
+import java.util.HashMap;
 import java.util.List;
 
-public class WithInputsOrderedFilter<T extends Node> implements NodeFilter<T> {
-	private final NodeFilter<T> underlying;
-	private final List<NodeFilter<T>> inputs;
+public class WithInputsOrderedFilter implements NodeFilter {
+	private final String key;
+	private final NodeFilter underlying;
+	private final List<NodeFilter> inputs;
 
-	public WithInputsOrderedFilter(NodeFilter<T> underlying, List<NodeFilter<T>> inputs) {
+	public WithInputsOrderedFilter(String key, NodeFilter underlying, List<NodeFilter> inputs) {
+		this.key = key;
 		this.underlying = underlying;
 		this.inputs = inputs;
 	}
 
 	@Override
-	public Class<T> type() {
-		return underlying.type();
-	}
-
-	@Override
-	public boolean test(Node node) {
-		if (!underlying.test(node)) {
+	public boolean matches(Node node) {
+		if (!underlying.matches(node)) {
 			return false;
 		}
 		Node[] preds = Iterables.toArray(node.getPreds(), Node.class);
@@ -30,11 +28,20 @@ public class WithInputsOrderedFilter<T extends Node> implements NodeFilter<T> {
 		}
 
 		for (int i = 0; i < preds.length; i++) {
-			if (!inputs.get(i).test(preds[i])) {
+			if (!inputs.get(i).matches(preds[i])) {
 				return false;
 			}
 		}
 		return true;
 	}
 
+	@Override
+	public void storeMatch(HashMap<String, Node> matches, Node matchedNode) {
+		Node[] preds = Iterables.toArray(matchedNode.getPreds(), Node.class);
+		for (int i = 0; i < preds.length; i++) {
+			inputs.get(i).storeMatch(matches, preds[i]);
+		}
+
+		matches.put(key, matchedNode);
+	}
 }
