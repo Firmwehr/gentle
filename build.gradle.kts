@@ -87,6 +87,9 @@ dependencies {
 	implementation("io.github.jbock-java:jbock:$jbock")
 	annotationProcessor("io.github.jbock-java:jbock-compiler:$jbock")
 
+	implementation("com.github.Firmwehr:FiAscii:953f596e50")
+	annotationProcessor("com.github.Firmwehr:FiAscii:953f596e50")
+
 	// Persistent collections
 	implementation("org.javimmutable:javimmutable-collections:3.2.1")
 	// https://mvnrepository.com/artifact/net.java.dev.jna/jna
