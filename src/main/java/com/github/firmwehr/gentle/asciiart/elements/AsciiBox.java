@@ -5,6 +5,7 @@ import com.github.firmwehr.gentle.asciiart.util.Point;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public record AsciiBox(
 	List<String> lines,
@@ -40,6 +41,23 @@ public record AsciiBox(
 		}
 
 		return points;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
+		AsciiBox asciiBox = (AsciiBox) o;
+		return Objects.equals(topLeft, asciiBox.topLeft) && Objects.equals(bottomRight, asciiBox.bottomRight);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(topLeft, bottomRight);
 	}
 
 	@Override

@@ -1,21 +1,16 @@
 package com.github.firmwehr.gentle.asciiart.parsing;
 
-import com.github.firmwehr.gentle.asciiart.parsing.filter.ClassFilter;
-import com.github.firmwehr.gentle.asciiart.parsing.filter.CmpFilter;
-import com.github.firmwehr.gentle.asciiart.parsing.filter.ConstFilter;
 import com.github.firmwehr.gentle.asciiart.parsing.filter.ModeFilter;
-import com.github.firmwehr.gentle.asciiart.parsing.filter.NodeFilter;
-import com.github.firmwehr.gentle.asciiart.parsing.filter.PhiFilter;
-import com.github.firmwehr.gentle.asciiart.parsing.filter.ProjFilter;
 import com.github.firmwehr.gentle.lexer.StringReader;
-import firm.Mode;
-import firm.Relation;
+import com.github.firmwehr.gentle.util.Pair;
 import firm.nodes.Add;
 import firm.nodes.Address;
 import firm.nodes.And;
 import firm.nodes.Block;
 import firm.nodes.Call;
+import firm.nodes.Cmp;
 import firm.nodes.Cond;
+import firm.nodes.Const;
 import firm.nodes.Conv;
 import firm.nodes.Div;
 import firm.nodes.Dummy;
@@ -33,6 +28,8 @@ import firm.nodes.Node;
 import firm.nodes.Not;
 import firm.nodes.Offset;
 import firm.nodes.Or;
+import firm.nodes.Phi;
+import firm.nodes.Proj;
 import firm.nodes.Return;
 import firm.nodes.Shl;
 import firm.nodes.Shr;
@@ -41,12 +38,13 @@ import firm.nodes.Size;
 import firm.nodes.Start;
 import firm.nodes.Store;
 import firm.nodes.Sub;
+import spoon.reflect.code.CtCodeSnippetExpression;
+import spoon.reflect.code.CtExpression;
+import spoon.reflect.factory.Factory;
+import spoon.reflect.reference.CtTypeReference;
 
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
-import java.util.OptionalInt;
-import java.util.OptionalLong;
 
 import static java.util.function.Predicate.not;
 
@@ -63,72 +61,134 @@ public class NodeFilterParser {
 			Map.entry("shr", Shr.class), Map.entry("shrs", Shrs.class), Map.entry("size", Size.class),
 			Map.entry("start", Start.class), Map.entry("store", Store.class), Map.entry("sub", Sub.class));
 
+	private final Factory factory;
 
-	private NodeFilter<?> parseNodeFilter(StringReader reader) {
+	public NodeFilterParser(Factory factory) {
+		this.factory = factory;
+	}
+
+	private Pair<CtExpression<?>, CtTypeReference<?>> parseNodeFilter(StringReader reader) {
+		reader.readWhitespace();
+
 		String name = reader.readWhile(not(Character::isWhitespace)).toLowerCase(Locale.ROOT);
 		if (NORMAL_NODES.containsKey(name)) {
-			return new ClassFilter<>(NORMAL_NODES.get(name));
+			CtCodeSnippetExpression<?> filter = factory.createCodeSnippetExpression("""
+				new com.github.firmwehr.gentle.asciiart.parsing.filter.ClassFilter(
+				    %s.class
+				)
+				""".formatted(NORMAL_NODES.get(name).getName()));
+			return new Pair<>(filter, factory.Class().get(NORMAL_NODES.get(name)).getReference());
 		}
 		String argument = reader.readWhile(c -> c != ';').strip();
 		switch (name) {
 			case "cmp" -> {
+				CtExpression<?> filter;
 				if (argument.isEmpty()) {
-					return new CmpFilter(Optional.empty());
+					filter = factory.createCodeSnippetExpression("""
+						new com.github.firmwehr.gentle.asciiart.parsing.filter.CmpFilter(
+						    java.util.Optional.empty()
+						)
+						""");
+				} else {
+					filter = factory.createCodeSnippetExpression("""
+						new com.github.firmwehr.gentle.asciiart.parsing.filter.CmpFilter(
+						    java.util.Optional.of(firm.Relation.valueOf("%s"))
+						)
+						""".formatted(argument));
 				}
-				return new CmpFilter(Optional.of(Relation.valueOf(argument)));
+				return new Pair<>(filter, factory.Class().get(Cmp.class).getReference());
 			}
 			case "const" -> {
+				CtExpression<?> filter;
 				if (argument.isEmpty()) {
-					return new ConstFilter(OptionalLong.empty());
+					filter = factory.createCodeSnippetExpression("""
+						new com.github.firmwehr.gentle.asciiart.parsing.filter.ConstFilter(
+						    java.util.OptionalLong.empty()
+						)
+						""");
+				} else {
+					filter = factory.createCodeSnippetExpression("""
+						new com.github.firmwehr.gentle.asciiart.parsing.filter.ConstFilter(
+						    java.util.OptionalLong.of(%s)
+						)
+						""".formatted(argument));
 				}
-				return new ConstFilter(OptionalLong.of(Long.parseLong(argument)));
+				return new Pair<>(filter, factory.Class().get(Const.class).getReference());
 			}
 			case "phi" -> {
+				CtExpression<?> filter;
+
 				if (argument.isEmpty()) {
-					return new PhiFilter(Optional.empty());
+					filter = factory.createCodeSnippetExpression("""
+						new com.github.firmwehr.gentle.asciiart.parsing.filter.PhiFilter(
+						    java.util.Optional.empty()
+						)
+						""");
+				} else {
+					filter = factory.createCodeSnippetExpression("""
+						new com.github.firmwehr.gentle.asciiart.parsing.filter.PhiFilter(
+						    java.util.Optional.of(%s)
+						)
+						""".formatted(argument.equals("+loop") ? "true" : "false"));
 				}
-				return new PhiFilter(Optional.of(argument.equals("+loop")));
+				return new Pair<>(filter, factory.Class().get(Phi.class).getReference());
 			}
 			case "proj" -> {
+				CtExpression<?> filter;
+
 				if (argument.isEmpty()) {
-					return new ProjFilter(OptionalInt.empty());
+					filter = factory.createCodeSnippetExpression("""
+						new com.github.firmwehr.gentle.asciiart.parsing.filter.ProjFilter(
+						    java.util.OptionalInt.empty()
+						)
+						""");
+				} else {
+					filter = factory.createCodeSnippetExpression("""
+						new com.github.firmwehr.gentle.asciiart.parsing.filter.ProjFilter(
+						    java.util.OptionalInt.of(%s)
+						)
+						""".formatted(argument));
 				}
-				return new ProjFilter(OptionalInt.of(Integer.parseInt(argument)));
+				return new Pair<>(filter, factory.Class().get(Proj.class).getReference());
 			}
 			case "*" -> {
-				return new ClassFilter<>(Node.class);
+				CtExpression<?> filter = factory.createCodeSnippetExpression("""
+					new com.github.firmwehr.gentle.asciiart.parsing.filter.ClassFilter(
+					    %s
+					)
+					""".formatted("firm.nodes.Node.class"));
+				return new Pair<>(filter, factory.Class().get(Node.class).getReference());
 			}
 		}
 
 		throw new IllegalArgumentException("Unknown node type '" + name + "'");
 	}
 
-	private <T extends Node> NodeFilter<T> parseMode(StringReader reader, NodeFilter<T> underlying) {
+	private CtExpression<?> parseMode(StringReader reader, CtExpression<?> underlying) {
+		String lambda;
 		if (reader.peekIgnoreCase("+memory")) {
-			return new ModeFilter<>(mode -> mode.equals(Mode.getM()), underlying);
-		}
-		if (reader.peekIgnoreCase("-memory")) {
-			return new ModeFilter<>(mode -> !mode.equals(Mode.getM()), underlying);
-		}
-		if (reader.peekIgnoreCase("Ls")) {
-			return new ModeFilter<>(mode -> mode.equals(Mode.getLs()), underlying);
-		}
-		if (reader.peekIgnoreCase("P")) {
-			return new ModeFilter<>(mode -> mode.equals(Mode.getP()), underlying);
-		}
-		if (reader.peekIgnoreCase("Is")) {
-			return new ModeFilter<>(mode -> mode.equals(Mode.getIs()), underlying);
-		}
-		if (reader.peekIgnoreCase("Bu")) {
-			return new ModeFilter<>(mode -> mode.equals(Mode.getBu()), underlying);
+			lambda = "mode.equals(firm.Mode.getM())";
+		} else if (reader.peekIgnoreCase("-memory")) {
+			lambda = "!mode.equals(firm.Mode.getM())";
+		} else if (reader.peekIgnoreCase("Ls")) {
+			lambda = "mode.equals(firm.Mode.getLs())";
+		} else if (reader.peekIgnoreCase("P")) {
+			lambda = "mode.equals(firm.Mode.getP())";
+		} else if (reader.peekIgnoreCase("Is")) {
+			lambda = "mode.equals(firm.Mode.getIs())";
+		} else if (reader.peekIgnoreCase("Bu")) {
+			lambda = "mode.equals(firm.Mode.getBu())";
+		} else {
+			lambda = "true";
 		}
 
-		return new ModeFilter<>(ignored -> true, underlying);
+		return factory.createConstructorCall(factory.Class().get(ModeFilter.class).getReference(),
+			factory.createCodeSnippetExpression("mode -> %s".formatted(lambda)), underlying);
 	}
 
-	public <T extends Node> NodeFilter<T> parseFilter(StringReader reader) {
-		@SuppressWarnings("unchecked") //
-		NodeFilter<T> filter = (NodeFilter<T>) parseNodeFilter(reader);
+	public Pair<CtExpression<?>, CtTypeReference<?>> parseFilter(StringReader reader) {
+		Pair<CtExpression<?>, CtTypeReference<?>> pair = parseNodeFilter(reader);
+		CtExpression<?> filter = pair.first();
 
 		if (reader.canRead()) {
 			reader.readWhitespace();
@@ -143,6 +203,6 @@ public class NodeFilterParser {
 			reader.readWhitespace();
 		}
 
-		return filter;
+		return new Pair<>(filter, pair.second());
 	}
 }

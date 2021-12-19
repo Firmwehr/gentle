@@ -32,7 +32,7 @@ import static java.util.function.Predicate.not;
 public class AsciiArtGraphParser {
 	private static final String EXAMPLE = """
 		  ┌─────────────────┐    ┌────────┐
-		  │typeSize: Const *│    │index: *│
+		  │typeSize: Const  │    │index: *│
 		  └───────────┬─────┘    └───┬────┘
 		              │              │
 		              └─────┐   ┌────┘
@@ -288,6 +288,7 @@ public class AsciiArtGraphParser {
 	}
 
 	public static void main(String[] args) {
-		System.out.println(new AsciiArtGraphParser(AsciiGrid.fromString(EXAMPLE)).parse());
+		AsciiElement sample = new AsciiArtGraphParser(AsciiGrid.fromString(EXAMPLE)).parse();
+		new NodeDeclarationParser().generateForSample(sample);
 	}
 }

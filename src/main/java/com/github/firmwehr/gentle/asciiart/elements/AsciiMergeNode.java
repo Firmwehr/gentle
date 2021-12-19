@@ -38,21 +38,20 @@ public final class AsciiMergeNode implements AsciiElement {
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (obj == this) {
+	public boolean equals(Object o) {
+		if (this == o) {
 			return true;
 		}
-		if (obj == null || obj.getClass() != this.getClass()) {
+		if (o == null || getClass() != o.getClass()) {
 			return false;
 		}
-		var that = (AsciiMergeNode) obj;
-		return Objects.equals(this.in, that.in) && Objects.equals(this.out, that.out) &&
-			Objects.equals(this.location, that.location);
+		AsciiMergeNode that = (AsciiMergeNode) o;
+		return Objects.equals(location, that.location);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(in, out, location);
+		return Objects.hash(location);
 	}
 
 	@Override
