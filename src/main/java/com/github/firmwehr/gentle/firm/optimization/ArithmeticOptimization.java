@@ -1,5 +1,8 @@
 package com.github.firmwehr.gentle.firm.optimization;
 
+import com.github.firmwehr.fiascii.FiAscii;
+import com.github.firmwehr.fiascii.generated.AddZeroPattern;
+import com.github.firmwehr.fiascii.generated.SubtractFromZeroPattern;
 import com.github.firmwehr.gentle.output.Logger;
 import firm.BackEdges;
 import firm.Graph;
@@ -13,6 +16,8 @@ import firm.nodes.Mul;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 import firm.nodes.Sub;
+
+import java.util.Optional;
 
 import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 
@@ -64,13 +69,7 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Add node) {
-		if (tarValOf(node.getRight()).isNull()) {
-			exchange(node, node.getLeft());
-			return;
-		}
-		if (tarValOf(node.getLeft()).isNull()) {
-			exchange(node, node.getRight());
-		}
+		addWithZero(node).ifPresent(match -> exchange(match.add(), match.any()));
 	}
 
 	@Override
@@ -78,14 +77,17 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		TargetValue leftVal = tarValOf(node.getLeft());
 		TargetValue rightVal = tarValOf(node.getRight());
 
+		subtractFromZero(node).ifPresent(
+			match -> exchange(match.sub(), node.getGraph().newMinus(node.getBlock(), match.rhs())));
+
 		if (rightVal.isNull()) {
 			exchange(node, node.getLeft());
 			return;
 		}
-		if (leftVal.isNull()) {
-			exchange(node, node.getGraph().newMinus(node.getBlock(), node.getRight()));
-			return;
-		}
+		//		if (leftVal.isNull()) {
+		//			exchange(node, node.getGraph().newMinus(node.getBlock(), node.getRight()));
+		//			return;
+		//		}
 		if (leftVal.isConstant() && leftVal.equals(rightVal)) {
 			exchange(node, node.getGraph().newConst(0, node.getLeft().getMode()));
 		}
@@ -183,5 +185,33 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		}
 
 		return TargetValue.getBad();
+	}
+
+	@FiAscii("""
+		┌──────────────┐      ┌──────┐
+		│zero: Const 0 │      │any: *│
+		└────────┬─────┘      └───┬──┘
+		         │                │
+		         └────┬───────────┘
+		              │
+		         ┌────▼─────┐
+		         │ add: Add │
+		         └──────────┘""")
+	public static Optional<AddZeroPattern.Match> addWithZero(Node node) {
+		return AddZeroPattern.match(node);
+	}
+
+	@FiAscii("""
+		┌──────────────┐   ┌──────┐
+		│minus: Const 0│   │rhs: *│
+		└──────────┬───┘   └──┬───┘
+		           │          │
+		           │   ┌──────┘
+		           │   │
+		         ┌─▼───▼──┐
+		         │sub: Sub│
+		         └────────┘""")
+	public static Optional<SubtractFromZeroPattern.Match> subtractFromZero(Node node) {
+		return SubtractFromZeroPattern.match(node);
 	}
 }
