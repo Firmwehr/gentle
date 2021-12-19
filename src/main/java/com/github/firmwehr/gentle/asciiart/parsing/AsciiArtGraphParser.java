@@ -8,6 +8,7 @@ import com.github.firmwehr.gentle.asciiart.util.AsciiGrid;
 import com.github.firmwehr.gentle.asciiart.util.BoundingBox;
 import com.github.firmwehr.gentle.asciiart.util.Connection;
 import com.github.firmwehr.gentle.asciiart.util.Point;
+import spoon.Launcher;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -288,7 +289,14 @@ public class AsciiArtGraphParser {
 	}
 
 	public static void main(String[] args) {
+		Launcher launcher = new Launcher();
+		launcher.getEnvironment().setShouldCompile(true);
+		launcher.getEnvironment().setAutoImports(true);
+
 		AsciiElement sample = new AsciiArtGraphParser(AsciiGrid.fromString(EXAMPLE)).parse();
-		new NodeDeclarationParser().generateForSample(sample);
+		new NodeDeclarationParser(launcher).generateForSample(sample);
+
+		launcher.setSourceOutputDirectory("/tmp/foo");
+		launcher.prettyprint();
 	}
 }

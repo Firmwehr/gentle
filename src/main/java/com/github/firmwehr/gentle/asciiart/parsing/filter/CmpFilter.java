@@ -29,9 +29,4 @@ public class CmpFilter implements NodeFilter<Cmp> {
 
 		return relation.get() == ((Cmp) node).getRelation();
 	}
-
-	@Override
-	public Cmp convert(Node node) {
-		return (Cmp) node;
-	}
 }

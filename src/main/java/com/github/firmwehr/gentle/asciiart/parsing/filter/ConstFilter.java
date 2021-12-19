@@ -28,9 +28,4 @@ public class ConstFilter implements NodeFilter<Const> {
 
 		return value.getAsLong() == ((Const) node).getTarval().asLong();
 	}
-
-	@Override
-	public Const convert(Node node) {
-		return (Const) node;
-	}
 }

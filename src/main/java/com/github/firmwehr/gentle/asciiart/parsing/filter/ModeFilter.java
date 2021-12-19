@@ -26,9 +26,4 @@ public class ModeFilter<T extends Node> implements NodeFilter<T> {
 		}
 		return modeFilter.test(node.getMode());
 	}
-
-	@Override
-	public T convert(Node node) {
-		return underlying.convert(node);
-	}
 }

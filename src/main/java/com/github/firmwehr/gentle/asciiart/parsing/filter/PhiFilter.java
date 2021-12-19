@@ -27,9 +27,4 @@ public class PhiFilter implements NodeFilter<Phi> {
 		}
 		return shouldbeLoop.get().equals(((Phi) node).getLoop() == 1);
 	}
-
-	@Override
-	public Phi convert(Node node) {
-		return (Phi) node;
-	}
 }

@@ -18,9 +18,4 @@ public class ClassFilter<T extends Node> implements NodeFilter<T> {
 	public boolean test(Node node) {
 		return clazz == node.getClass();
 	}
-
-	@Override
-	public T convert(Node node) {
-		return clazz.cast(node);
-	}
 }

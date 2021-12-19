@@ -10,6 +10,7 @@ import com.github.firmwehr.gentle.asciiart.util.Connection;
 import com.github.firmwehr.gentle.lexer.StringReader;
 import com.github.firmwehr.gentle.source.Source;
 import com.github.firmwehr.gentle.util.Pair;
+import firm.nodes.Node;
 import spoon.FluentLauncher;
 import spoon.Launcher;
 import spoon.compiler.Environment;
@@ -17,6 +18,7 @@ import spoon.reflect.code.CtConstructorCall;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtField;
+import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.factory.Factory;
@@ -24,9 +26,6 @@ import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
 import spoon.reflect.visitor.ForceImportProcessor;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -34,6 +33,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -44,14 +44,13 @@ public class NodeDeclarationParser {
 	private final CtClass<?> filterClass;
 	private final Map<AsciiBox, AsciiBoxInformation> localFilters;
 
-	public NodeDeclarationParser() {
-		Launcher launcher = new Launcher();
-		launcher.getEnvironment().setAutoImports(true);
+	public NodeDeclarationParser(Launcher launcher) {
 		this.factory = launcher.getFactory();
 		this.localFilters = new HashMap<>();
 
 		this.filterClass = factory.Class().create("com.github.firmwehr.gentle.generated.FooBar");
 		this.matchClass = factory.Class().create("com.github.firmwehr.gentle.generated.FooBar$Match");
+		this.filterClass.addNestedType(matchClass);
 
 		this.filterClass.addNestedType(this.matchClass);
 	}
@@ -90,9 +89,16 @@ public class NodeDeclarationParser {
 		localFilters.put(box, new AsciiBoxInformation(name, filter));
 
 		CtTypeReference<?> fieldType = pair.second();
-		EnumSet<ModifierKind> modifiers = EnumSet.of(ModifierKind.PUBLIC, ModifierKind.FINAL);
+		EnumSet<ModifierKind> modifiers = EnumSet.of(ModifierKind.PRIVATE);
 		CtField<?> field = factory.Field().create(matchClass, modifiers, fieldType, name);
 		matchClass.addField(field);
+
+		CtMethod<?> method =
+			factory.createMethod(matchClass, EnumSet.of(ModifierKind.PUBLIC), fieldType, name, List.of(), Set.of(),
+				factory.createBlock());
+		method.getBody().addStatement(factory.createCodeSnippetStatement("""
+			return this.%s;
+			""".formatted(name)));
 	}
 
 	private CtExpression<?> buildCompositeFilter() {
@@ -185,6 +191,38 @@ public class NodeDeclarationParser {
 		generateMatchClass(sample, new HashSet<>());
 		generateCompositeFilterField();
 
+		Set<ModifierKind> modifiers = EnumSet.of(ModifierKind.PUBLIC);
+		CtTypeReference<?> returnType = factory.Class().get(Optional.class).getReference();
+		returnType.addActualTypeArgument(matchClass.getReference());
+		CtMethod<?> method = factory.Method()
+			.create(filterClass, modifiers, returnType, "buildMatch", List.of(), Set.of(), factory.createBlock());
+
+		factory.createParameter(method, factory.Class().get(Node.class).getReference(), "node");
+
+		method.getBody().addStatement(factory.createCodeSnippetStatement("""
+			if (!this.filter.test(node)) {
+			    return java.util.Optional.empty();
+			}
+			java.util.Map<%s, %s> matches = new java.util.HashMap<>();
+			this.filter.storeMatch(matches, node);
+			//
+			// Build match object
+			//
+			""".formatted(NodeFilter.class.getName(), Node.class.getName())));
+		method.getBody().addStatement(factory.createCodeSnippetStatement("""
+			%s match = new %s();
+			""".formatted(matchClass.getQualifiedName(), matchClass.getQualifiedName())));
+
+		for (CtField<?> field : matchClass.getFields()) {
+			method.getBody().addStatement(factory.createCodeSnippetStatement("""
+				match.%s = (%s) matches.get("%s");
+				""".formatted(field.getSimpleName(), field.getType().getQualifiedName(), field.getSimpleName())));
+		}
+		method.getBody().addStatement(factory.createCodeSnippetStatement("""
+			return java.util.Optional.of(match);
+			"""));
+
+		filterClass.compileAndReplaceSnippets();
 		prettyPrint();
 	}
 
@@ -193,18 +231,12 @@ public class NodeDeclarationParser {
 		environment.setAutoImports(true);
 		DefaultJavaPrettyPrinter printer = new DefaultJavaPrettyPrinter(environment);
 		printer.setPreprocessors(List.of(new ForceImportProcessor()));
-		try {
-			Files.writeString(Path.of("/tmp/foo/Foo.java"), printer.prettyprint(filterClass));
-			for (CtType<?> ctType : new FluentLauncher().autoImports(true)
-				.inputResource("/tmp/foo/Foo.java")
-				.complianceLevel(11)
-				.buildModel()
-				.getAllTypes()) {
-				System.out.println(ctType);
-			}
-
-		} catch (IOException e) {
-			e.printStackTrace();
+		for (CtType<?> ctType : new FluentLauncher().autoImports(true)
+			.inputResource("/tmp/foo")
+			.complianceLevel(11)
+			.buildModel()
+			.getAllTypes()) {
+			System.out.println(ctType);
 		}
 	}
 

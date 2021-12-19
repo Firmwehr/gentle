@@ -37,8 +37,4 @@ public class WithInputsOrderedFilter<T extends Node> implements NodeFilter<T> {
 		return true;
 	}
 
-	@Override
-	public T convert(Node node) {
-		return underlying.convert(node);
-	}
 }

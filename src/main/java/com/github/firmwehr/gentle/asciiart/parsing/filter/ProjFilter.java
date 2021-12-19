@@ -28,8 +28,4 @@ public class ProjFilter implements NodeFilter<Proj> {
 		return ((Proj) node).getNum() == number.getAsInt();
 	}
 
-	@Override
-	public Proj convert(Node node) {
-		return (Proj) node;
-	}
 }
