@@ -5,7 +5,6 @@ import com.github.firmwehr.gentle.output.Logger;
 import firm.BackEdges;
 import firm.Graph;
 import firm.Mode;
-import firm.Program;
 import firm.Relation;
 import firm.TargetValue;
 import firm.bindings.binding_irgopt;
@@ -81,11 +80,9 @@ public class ConstantFolding extends NodeVisitor.Default {
 		this.constants = new HashMap<>();
 	}
 
-	public static void optimize() {
-		LOGGER.info("Started");
-		for (Graph graph : Program.getGraphs()) {
-			LOGGER.info("Running constant folding for %s", graph);
-
+	public static GraphOptimizationStep constantFolding() {
+		return GraphOptimizationStep.builder().withDescription("ConstantFolding").withOptimizationFunction(graph -> {
+			int runs = 0;
 			while (true) {
 				// Needs to be done in each iteration apparently?
 				BackEdges.enable(graph);
@@ -99,16 +96,18 @@ public class ConstantFolding extends NodeVisitor.Default {
 				// confused with bad preds
 				folding.optimizeBlockChains();
 
-				// testing has shown that back edges get disabled anyway for some reason, but we don't like problems
+				// testing has shown that back edges get disabled anyway for some reason, but we don't like
+				// problems
 				BackEdges.disable(graph);
 
 				if (!folding.hasChangedInCurrentIteration) {
 					break;
 				}
+				runs++;
 			}
 			dumpGraph(graph, "cf");
-		}
-		LOGGER.info("Finished");
+			return runs > 0;
+		}).build();
 	}
 
 	private void fold() {
