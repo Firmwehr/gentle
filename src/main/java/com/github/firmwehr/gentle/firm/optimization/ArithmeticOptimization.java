@@ -70,21 +70,23 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 
 	@Override
 	public void defaultVisit(Node node) {
-		// TODO (maybe): 2 * a => a << 2
-		timesOne(node).ifPresent(match -> exchange(node, match.other()));
-		timesZero(node).ifPresent(match -> exchange(node, node.getGraph().newConst(0, node.getMode())));
-		timesNegOne(node).ifPresent(match -> exchange(node, node.getGraph().newMinus(node.getBlock(), match.other())));
+		Graph graph = node.getGraph();
+		Node block = node.getBlock();
 
-		divByNegOne(node).ifPresent(match -> replace(match.div(), match.div().getMem(),
-			node.getGraph().newMinus(node.getBlock(), match.other())));
+		// TODO (maybe): 2 * a => a << 2
+		timesOne(node).ifPresent(match -> exchange(match.mul(), match.other()));
+		timesZero(node).ifPresent(match -> exchange(match.mul(), graph.newConst(0, match.mul().getMode())));
+		timesNegOne(node).ifPresent(match -> exchange(match.mul(), graph.newMinus(block, match.other())));
+
+		divByNegOne(node).ifPresent(
+			match -> replace(match.div(), match.div().getMem(), graph.newMinus(block, match.other())));
 		divByOne(node).ifPresent(match -> replace(match.div(), match.mem(), match.other()));
 
 		addWithZero(node).ifPresent(match -> exchange(match.add(), match.any()));
 
-		subtractSame(node).ifPresent(match -> exchange(node, node.getGraph().newConst(0, node.getMode())));
-		subtractFromZero(node).ifPresent(
-			match -> exchange(match.sub(), node.getGraph().newMinus(node.getBlock(), match.rhs())));
-		subtractZero(node).ifPresent(match -> exchange(node, match.lhs()));
+		subtractSame(node).ifPresent(match -> exchange(match.sub(), graph.newConst(0, match.sub().getMode())));
+		subtractFromZero(node).ifPresent(match -> exchange(match.sub(), graph.newMinus(block, match.rhs())));
+		subtractZero(node).ifPresent(match -> exchange(match.sub(), match.lhs()));
 	}
 
 	private void exchange(Node victim, Node murderer) {
