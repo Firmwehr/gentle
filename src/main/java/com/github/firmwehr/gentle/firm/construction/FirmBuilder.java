@@ -1,6 +1,8 @@
 package com.github.firmwehr.gentle.firm.construction;
 
 import com.github.firmwehr.gentle.cli.CompilerArguments;
+import com.github.firmwehr.gentle.firm.optimization.UnusedParameterOptimization;
+import com.github.firmwehr.gentle.firm.optimization.callgraph.CallGraph;
 import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.firm.optimization.Optimizer;
@@ -75,6 +77,10 @@ public class FirmBuilder {
 		}
 		Optimizer optimizer = builder.build();
 		optimizer.optimize();
+
+		CallGraph callGraph = CallGraph.create(Program.getGraphs());
+		UnusedParameterOptimization optimization = new UnusedParameterOptimization(callGraph);
+		optimization.optimize();
 
 		String assemblyFile = assemblyOutputFile.toAbsolutePath().toString();
 		Backend.createAssembler(assemblyFile, assemblyFile);
