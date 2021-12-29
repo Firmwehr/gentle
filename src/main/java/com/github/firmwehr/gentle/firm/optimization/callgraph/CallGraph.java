@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -25,11 +24,6 @@ public final class CallGraph {
 
 	private CallGraph(Network<Entity, Call> calledMethods) {
 		this.calledMethods = ImmutableNetwork.copyOf(calledMethods);
-	}
-
-
-	public boolean isRuntimeCall(Entity entity) {
-		return entity.getGraph() == null;
 	}
 
 	public static CallGraph create(Iterable<Graph> graphs) {
@@ -48,13 +42,11 @@ public final class CallGraph {
 		return new CallGraph(network);
 	}
 
-	public Set<Entity> callees(Graph graph) {
-		return Objects.requireNonNull(this.calledMethods.successors(graph.getEntity()),
-			"unexpected graph (not in call graph): " + graph);
-	}
-
 	/**
-	 * Each graph is only visited after all callees were visited.
+	 * Each graph is only visited after all callees were visited, except for graphs forming a cycle.
+	 * <p>
+	 * For a cycle with exact one caller, e.g. {@code c -> a -> b -> a}, {@code b} will be visited before {@code a}.
+	 * Order is not defined if there is not exactly one call into any graph in the cycle.
 	 */
 	public void walkPostorder(Consumer<Graph> visitor) {
 		List<Graph> out = new ArrayList<>();
@@ -70,13 +62,13 @@ public final class CallGraph {
 		}
 	}
 
-	private void visit(Entity entity, Set<Entity> temp, Deque<Entity> permanent, List<Graph> out) {
-		if (temp.contains(entity)) {
+	private void visit(Entity entity, Set<Entity> visited, Deque<Entity> permanent, List<Graph> out) {
+		if (visited.contains(entity)) {
 			return;
 		}
-		temp.add(entity);
+		visited.add(entity);
 		for (Entity successor : calledMethods.successors(entity)) {
-			visit(successor, temp, permanent, out);
+			visit(successor, visited, permanent, out);
 		}
 		permanent.remove(entity);
 		if (entity.getGraph() != null) {
