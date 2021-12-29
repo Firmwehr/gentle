@@ -27,8 +27,10 @@ public final class CallGraph {
 	}
 
 	public static CallGraph create(Iterable<Graph> graphs) {
-		MutableNetwork<Entity, Call> network =
-			NetworkBuilder.directed().allowsSelfLoops(true).allowsParallelEdges(true).build();
+		MutableNetwork<Entity, Call> network = NetworkBuilder.directed() //
+			.allowsSelfLoops(true) //
+			.allowsParallelEdges(true) //
+			.build();
 		for (Graph graph : graphs) {
 			Entity entity = graph.getEntity();
 			graph.walk(new NodeVisitor.Default() {
@@ -54,7 +56,7 @@ public final class CallGraph {
 		Set<Entity> temp = new HashSet<>();
 
 		while (!nodes.isEmpty()) {
-			visit(nodes.remove(), temp, nodes, out);
+			visit(nodes.remove(), temp, out);
 		}
 
 		for (Graph graph : out) {
@@ -62,17 +64,20 @@ public final class CallGraph {
 		}
 	}
 
-	private void visit(Entity entity, Set<Entity> visited, Deque<Entity> permanent, List<Graph> out) {
-		if (visited.contains(entity)) {
+	private void visit(Entity entity, Set<Entity> visited, List<Graph> out) {
+		if (!visited.add(entity)) {
 			return;
 		}
-		visited.add(entity);
 		for (Entity successor : calledMethods.successors(entity)) {
-			visit(successor, visited, permanent, out);
+			visit(successor, visited, out);
 		}
-		permanent.remove(entity);
 		if (entity.getGraph() != null) {
 			out.add(entity.getGraph());
 		}
+	}
+
+	@Override
+	public String toString() {
+		return "CallGraph";
 	}
 }

@@ -16,13 +16,17 @@ import java.util.Map;
 
 public class UnusedParameterOptimization {
 
-	private static final int CALL_ARGUMENT_OFFSET = 2; // [0: Proj M, 1: Address, 2...: Arguments...]
+	private static final int CALL_ARGUMENT_OFFSET = Start.pnTArgs; // [0: Proj M, 1: Address, 2...: Arguments...]
 	private final CallGraph graph;
 	private final Map<Graph, BitSet> usages;
 
 	public UnusedParameterOptimization(CallGraph graph) {
 		this.graph = graph;
 		this.usages = new HashMap<>();
+	}
+
+	public static GraphOptimizationStep<CallGraph> unusedParameterOptimization() {
+		return GraphOptimizationStep.<CallGraph>builder().withDescription("").build();
 	}
 
 	public void optimize() {

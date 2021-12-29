@@ -35,7 +35,7 @@ public class FirmBuilder {
 	private final EnumSet<GraphDumpStage> dumpStages;
 
 	public FirmBuilder(GraphDumpStage... stages) {
-		this.dumpStages = EnumSet.noneOf(GraphDumpStage.class);
+		this.dumpStages = EnumSet.allOf(GraphDumpStage.class);
 		this.dumpStages.addAll(Arrays.asList(stages));
 	}
 
@@ -70,17 +70,17 @@ public class FirmBuilder {
 		Optimizer.Builder builder = Optimizer.builder();
 
 		if (!CompilerArguments.get().noConstantFolding()) {
-			builder.addStep(ConstantFolding.constantFolding());
+			builder.addGraphStep(ConstantFolding.constantFolding());
 		}
 		if (!CompilerArguments.get().noArithmeticOptimizations()) {
-			builder.addStep(ArithmeticOptimization.arithmeticOptimization());
+			builder.addGraphStep(ArithmeticOptimization.arithmeticOptimization());
 		}
+		if (!CompilerArguments.get().keepUnusedArguments()) {
+			builder.addCallGraphStep(UnusedParameterOptimization.unusedParameterOptimization());
+		}
+
 		Optimizer optimizer = builder.build();
 		optimizer.optimize();
-
-		CallGraph callGraph = CallGraph.create(Program.getGraphs());
-		UnusedParameterOptimization optimization = new UnusedParameterOptimization(callGraph);
-		optimization.optimize();
 
 		String assemblyFile = assemblyOutputFile.toAbsolutePath().toString();
 		Backend.createAssembler(assemblyFile, assemblyFile);

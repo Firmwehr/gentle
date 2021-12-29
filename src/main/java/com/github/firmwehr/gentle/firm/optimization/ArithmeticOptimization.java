@@ -33,8 +33,8 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		this.graph = graph;
 	}
 
-	public static GraphOptimizationStep arithmeticOptimization() {
-		return GraphOptimizationStep.builder()
+	public static GraphOptimizationStep<Graph> arithmeticOptimization() {
+		return GraphOptimizationStep.<Graph>builder()
 			.withDescription("ArithmeticOptimization")
 			.withOptimizationFunction(graph -> {
 				int runs = 0;
