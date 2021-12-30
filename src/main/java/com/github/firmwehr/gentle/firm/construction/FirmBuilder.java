@@ -35,7 +35,7 @@ public class FirmBuilder {
 	private final EnumSet<GraphDumpStage> dumpStages;
 
 	public FirmBuilder(GraphDumpStage... stages) {
-		this.dumpStages = EnumSet.allOf(GraphDumpStage.class);
+		this.dumpStages = EnumSet.noneOf(GraphDumpStage.class);
 		this.dumpStages.addAll(Arrays.asList(stages));
 	}
 

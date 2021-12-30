@@ -19,6 +19,7 @@ public class UnusedParameterOptimization {
 	private static final int CALL_ARGUMENT_OFFSET = Start.pnTArgs; // [0: Proj M, 1: Address, 2...: Arguments...]
 	private final CallGraph graph;
 	private final Map<Graph, BitSet> usages;
+	private boolean changed;
 
 	public UnusedParameterOptimization(CallGraph graph) {
 		this.graph = graph;
@@ -26,10 +27,13 @@ public class UnusedParameterOptimization {
 	}
 
 	public static GraphOptimizationStep<CallGraph> unusedParameterOptimization() {
-		return GraphOptimizationStep.<CallGraph>builder().withDescription("").build();
+		return GraphOptimizationStep.<CallGraph>builder()
+			.withDescription("UnusedParameterOptimization")
+			.withOptimizationFunction(callGraph -> new UnusedParameterOptimization(callGraph).optimize())
+			.build();
 	}
 
-	public void optimize() {
+	public boolean optimize() {
 		this.graph.walkPostorder(g -> {
 			BackEdges.enable(g);
 			// replace all arguments in calls in this graph if they aren't used in their graph
@@ -50,6 +54,7 @@ public class UnusedParameterOptimization {
 
 			BackEdges.disable(g);
 		});
+		return changed;
 	}
 
 	private void replaceUnusedForCalls(Graph graph) {
@@ -68,6 +73,7 @@ public class UnusedParameterOptimization {
 				}
 				for (int i = CALL_ARGUMENT_OFFSET; i < node.getPredCount(); i++) {
 					if (!usageForCallee.get(i - CALL_ARGUMENT_OFFSET)) {
+						changed = true;
 						Graph.exchange(node.getPred(i), graph.newUnknown(node.getPred(i).getMode()));
 					}
 				}
