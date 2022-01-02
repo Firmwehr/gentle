@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.StringJoiner;
 
 public class UnusedParameterOptimization {
-	private static final Logger LOGGER = new Logger(UnusedParameterOptimization.class, Logger.LogLevel.DEBUG);
+	private static final Logger LOGGER = new Logger(UnusedParameterOptimization.class);
 
 	private static final int CALL_ARGUMENT_OFFSET = Start.pnTArgs; // [0: Proj M, 1: Address, 2...: Arguments...]
 	private static final int ADDRESS_PRED_INDEX = 1;
