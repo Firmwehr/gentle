@@ -1,19 +1,17 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
-import firm.nodes.Load;
+import firm.nodes.Phi;
 
 import java.util.List;
 
-public class IkeaMovLoad implements IkeaNode {
+public class IkeaPhi implements IkeaNode {
 	private IkeaBøx box;
-	private final IkeaNode address;
-	private final Load node;
+	private final Phi phi;
 
-	public IkeaMovLoad(IkeaBøx box, IkeaNode address, Load node) {
+	public IkeaPhi(IkeaBøx box, Phi phi) {
 		this.box = box;
-		this.address = address;
-		this.node = node;
+		this.phi = phi;
 	}
 
 	@Override
@@ -23,6 +21,6 @@ public class IkeaMovLoad implements IkeaNode {
 
 	@Override
 	public List<IkeaNode> parents() {
-		return List.of(address);
+		return List.of();
 	}
 }

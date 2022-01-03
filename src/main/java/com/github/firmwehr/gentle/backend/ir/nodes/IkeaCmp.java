@@ -1,21 +1,24 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
-import firm.nodes.Add;
+import firm.Relation;
+import firm.nodes.Cmp;
 
 import java.util.List;
 
-public class IkeaAdd implements IkeaNode {
+public class IkeaCmp implements IkeaNode {
 	private IkeaBøx box;
 	private final IkeaNode left;
 	private final IkeaNode right;
-	private final Add add;
+	private final Cmp cmp;
 
-	public IkeaAdd(IkeaBøx box, IkeaNode left, IkeaNode right, Add add) {
+	public IkeaCmp(
+		IkeaBøx box, IkeaNode left, IkeaNode right, Cmp cmp
+	) {
 		this.box = box;
 		this.left = left;
 		this.right = right;
-		this.add = add;
+		this.cmp = cmp;
 	}
 
 	@Override

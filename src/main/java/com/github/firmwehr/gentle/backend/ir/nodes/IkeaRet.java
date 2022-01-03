@@ -1,17 +1,19 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
-import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
-import firm.nodes.Jmp;
+import firm.nodes.Return;
 
 import java.util.List;
+import java.util.Optional;
 
-public class IkeaJmp implements IkeaNode {
-	private final IkeaBløck target;
+public class IkeaRet implements IkeaNode {
+	private final Optional<IkeaNode> value;
+	private final Return firmReturn;
 
-	public IkeaJmp(IkeaBløck target, Jmp node) {
-		this.target = target;
+	public IkeaRet(Optional<IkeaNode> value, Return firmReturn) {
+		this.value = value;
+		this.firmReturn = firmReturn;
 	}
 
 	@Override
@@ -21,6 +23,6 @@ public class IkeaJmp implements IkeaNode {
 
 	@Override
 	public List<IkeaNode> parents() {
-		return List.of();
+		return value.stream().toList();
 	}
 }
