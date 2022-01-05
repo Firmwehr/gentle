@@ -1,17 +1,21 @@
 package com.github.firmwehr.gentle.backend.ir.codegen;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaImmediate;
 import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaVirtualRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAdd;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaArgNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCall;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCmp;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaConst;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaConv;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaDiv;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJcc;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJmp;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMod;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoad;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStore;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
@@ -22,6 +26,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
 import firm.BackEdges;
 import firm.Graph;
+import firm.MethodType;
 import firm.Mode;
 import firm.nodes.Add;
 import firm.nodes.Address;
@@ -31,15 +36,18 @@ import firm.nodes.Cmp;
 import firm.nodes.Cond;
 import firm.nodes.Const;
 import firm.nodes.Conv;
+import firm.nodes.Div;
 import firm.nodes.Jmp;
 import firm.nodes.Load;
 import firm.nodes.Minus;
+import firm.nodes.Mod;
 import firm.nodes.Mul;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 import firm.nodes.Phi;
 import firm.nodes.Proj;
 import firm.nodes.Return;
+import firm.nodes.Start;
 import firm.nodes.Store;
 import firm.nodes.Sub;
 
@@ -62,10 +70,10 @@ public class CodeSelection extends NodeVisitor.Default {
 		this.blocks = new HashMap<>();
 		this.phiBär = new HashMap<>();
 		this.nodes = new HashMap<>();
-		this.regCount = this.graph.getEntity().getParameterNumber();
+		this.regCount = ((MethodType) this.graph.getEntity().getType()).getNParams();
 	}
 
-	public void convertBlocks() {
+	public List<IkeaBløck> convertBlocks() {
 		BackEdges.enable(graph);
 		graph.walkBlocks(block -> blocks.put(block, new IkeaBløck(new ArrayList<>(), new ArrayList<>(), block)));
 		graph.walkTopological(this);
@@ -73,7 +81,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			for (int i = 0, c = block.getPredCount(); i < c; i++) {
 				Block pred = (Block) block.getPred(i).getBlock();
 				Map<IkeaBøx, IkeaBøx> renames = new HashMap<>();
-				for (Phi phi : phiBär.get(block)) {
+				for (Phi phi : phiBär.getOrDefault(block, List.of())) {
 					IkeaNode ikeaNode = nodes.get(phi.getPred(i));
 					IkeaBøx target = nodes.get(phi).box();
 					IkeaBøx source = ikeaNode.box();
@@ -83,6 +91,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			}
 		});
 		BackEdges.disable(graph);
+		return List.copyOf(blocks.values());
 	}
 
 	private IkeaBøx nextRegister() {
@@ -151,6 +160,14 @@ public class CodeSelection extends NodeVisitor.Default {
 	}
 
 	@Override
+	public void visit(Div node) {
+		IkeaBløck block = blocks.get((Block) node.getBlock());
+		IkeaDiv ikeaDiv = new IkeaDiv(nextRegister(), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+		nodes.put(node, ikeaDiv);
+		block.nodes().add(ikeaDiv);
+	}
+
+	@Override
 	public void visit(Jmp node) {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		for (BackEdges.Edge edge : BackEdges.getOuts(node)) {
@@ -179,6 +196,14 @@ public class CodeSelection extends NodeVisitor.Default {
 	}
 
 	@Override
+	public void visit(Mod node) {
+		IkeaBløck block = blocks.get((Block) node.getBlock());
+		IkeaMod ikeaMod = new IkeaMod(nextRegister(), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+		nodes.put(node, ikeaMod);
+		block.nodes().add(ikeaMod);
+	}
+
+	@Override
 	public void visit(Mul node) {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaMul ikeaMul = new IkeaMul(nextRegister(), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
@@ -188,6 +213,9 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Phi node) {
+		if (node.getMode().equals(Mode.getM())) {
+			return;
+		}
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaPhi ikeaPhi = new IkeaPhi(nextRegister(), node);
 		nodes.put(node, ikeaPhi);
@@ -197,7 +225,30 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Proj node) {
-		super.visit(node);
+		if (node.getMode().equals(Mode.getM()) || node.getMode().equals(Mode.getX()) ||
+			node.getPred() instanceof Start || node.getPred() instanceof Call) {
+			return;
+		}
+		if (node.getPred() instanceof Div div) {
+			nodes.put(node, nodes.get(div));
+		} else if (node.getPred() instanceof Mod mod) {
+			nodes.put(node, nodes.get(mod));
+		} else if (node.getPred() instanceof Load load) {
+			nodes.put(node, nodes.get(load));
+		}  else if (node.getPred() instanceof Proj proj && proj.getPred() instanceof Start) {
+			visitArgument(node);
+		} else if (node.getPred() instanceof Proj proj && proj.getPred() instanceof Call call) {
+			nodes.put(node, nodes.get(call));
+		} else {
+			throw new InternalCompilerException("Unexpected Proj. It's time to run. " + node);
+		}
+	}
+
+	private void visitArgument(Proj proj) {
+		IkeaBløck block = blocks.get((Block) proj.getBlock());
+		IkeaArgNode ikeaArgNode = new IkeaArgNode(new IkeaVirtualRegister(proj.getNum()), proj);
+		nodes.put(proj, ikeaArgNode);
+		block.nodes().add(ikeaArgNode);
 	}
 
 	@Override

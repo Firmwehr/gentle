@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.firm.construction;
 
+import com.github.firmwehr.gentle.backend.ir.codegen.CodeSelection;
 import com.github.firmwehr.gentle.cli.CompilerArguments;
 import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
@@ -75,6 +76,11 @@ public class FirmBuilder {
 		}
 		Optimizer optimizer = builder.build();
 		optimizer.optimize();
+
+		for (Graph graph : Program.getGraphs()) {
+			CodeSelection codeSelection = new CodeSelection(graph);
+			codeSelection.convertBlocks();
+		}
 
 		String assemblyFile = assemblyOutputFile.toAbsolutePath().toString();
 		Backend.createAssembler(assemblyFile, assemblyFile);
