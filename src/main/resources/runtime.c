@@ -8,8 +8,10 @@ void* allocate(size_t nmemb, size_t memberSize) {
     return calloc(nmemb == 0 ? 1 : nmemb, memberSize == 0 ? 1 : memberSize);
 }
 
-void println(int input) {
-    printf("%d\n", input);
+void println() {
+    int64_t value;
+    __asm__ __volatile__("movq 16(%%rbp), %0\n\t" : "=r" (value));
+    printf("%d\n", value);
 }
 
 void flush() {

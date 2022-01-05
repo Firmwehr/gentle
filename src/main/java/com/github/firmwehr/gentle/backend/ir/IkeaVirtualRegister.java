@@ -4,6 +4,6 @@ public record IkeaVirtualRegister(int num) implements IkeaBøx {
 
 	@Override
 	public String assemblyName() {
-		return "%@" + num;
+		return String.valueOf(num);
 	}
 }

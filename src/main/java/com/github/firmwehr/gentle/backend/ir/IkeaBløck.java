@@ -1,6 +1,7 @@
 package com.github.firmwehr.gentle.backend.ir;
 
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
+import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Block;
 
 import java.util.List;
@@ -18,5 +19,13 @@ public record IkeaBløck(
 	@Override
 	public List<IkeaNode> nodes() {
 		return nodes;
+	}
+
+	public <T> T accept(IkeaVisitor<T> visitor) {
+		return visitor.visit(this);
+	}
+
+	public int id() {
+		return origin.getNr();
 	}
 }

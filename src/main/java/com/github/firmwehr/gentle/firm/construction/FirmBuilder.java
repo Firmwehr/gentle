@@ -1,6 +1,8 @@
 package com.github.firmwehr.gentle.firm.construction;
 
+import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.codegen.CodeSelection;
+import com.github.firmwehr.gentle.backend.ir.visit.MolkiVisitor;
 import com.github.firmwehr.gentle.cli.CompilerArguments;
 import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
@@ -14,9 +16,11 @@ import firm.Program;
 import firm.Util;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
 
 import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 import static java.util.stream.Collectors.joining;
@@ -79,11 +83,16 @@ public class FirmBuilder {
 
 		for (Graph graph : Program.getGraphs()) {
 			CodeSelection codeSelection = new CodeSelection(graph);
-			codeSelection.convertBlocks();
+			List<IkeaBløck> blocks = codeSelection.convertBlocks();
+			MolkiVisitor visitor = new MolkiVisitor();
+			String res = visitor.visit(graph, blocks);
+			System.out.println(res);
+			Files.writeString(Path.of("/tmp/out.s"), res);
 		}
 
-		String assemblyFile = assemblyOutputFile.toAbsolutePath().toString();
-		Backend.createAssembler(assemblyFile, assemblyFile);
+		System.exit(0);
+		//		String assemblyFile = assemblyOutputFile.toAbsolutePath().toString();
+		//		Backend.createAssembler(assemblyFile, assemblyFile);
 	}
 
 	public enum GraphDumpStage {

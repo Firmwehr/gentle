@@ -3,6 +3,7 @@ package com.github.firmwehr.gentle.backend.ir.nodes;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
+import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.Relation;
 import firm.nodes.Cond;
 
@@ -24,6 +25,22 @@ public class IkeaJcc implements IkeaNode {
 		this.parent = parent;
 	}
 
+	public IkeaBløck getTrueTarget() {
+		return trueTarget;
+	}
+
+	public IkeaBløck getFalseTarget() {
+		return falseTarget;
+	}
+
+	public Relation getRelation() {
+		return relation;
+	}
+
+	public IkeaNode getParent() {
+		return parent;
+	}
+
 	@Override
 	public IkeaBøx box() {
 		return new IkeaUnassignedBøx();
@@ -32,5 +49,10 @@ public class IkeaJcc implements IkeaNode {
 	@Override
 	public List<IkeaNode> parents() {
 		return List.of(this.parent);
+	}
+
+	@Override
+	public <T> T accept(IkeaVisitor<T> visitor) {
+		return visitor.visit(this);
 	}
 }

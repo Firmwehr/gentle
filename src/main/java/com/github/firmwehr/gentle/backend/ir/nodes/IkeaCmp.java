@@ -1,7 +1,7 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
-import firm.Relation;
+import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Cmp;
 
 import java.util.List;
@@ -29,5 +29,18 @@ public class IkeaCmp implements IkeaNode {
 	@Override
 	public List<IkeaNode> parents() {
 		return List.of(this.left, this.right);
+	}
+
+	public IkeaNode getLeft() {
+		return left;
+	}
+
+	public IkeaNode getRight() {
+		return right;
+	}
+
+	@Override
+	public <T> T accept(IkeaVisitor<T> visitor) {
+		return visitor.visit(this);
 	}
 }

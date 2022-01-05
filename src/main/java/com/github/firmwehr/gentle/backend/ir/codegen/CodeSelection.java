@@ -55,6 +55,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class CodeSelection extends NodeVisitor.Default {
@@ -91,7 +92,24 @@ public class CodeSelection extends NodeVisitor.Default {
 			}
 		});
 		BackEdges.disable(graph);
-		return List.copyOf(blocks.values());
+
+		// Move jmp / return to end of block
+		for (IkeaBløck block : blocks.values()) {
+			List<IkeaNode> jumps = block.nodes()
+				.stream()
+				.filter(it -> it instanceof IkeaJcc || it instanceof IkeaJmp || it instanceof IkeaRet)
+				.toList();
+			block.nodes().removeAll(jumps);
+			block.nodes().addAll(jumps);
+		}
+
+		List<IkeaBløck> orderedBlocks = blocks.values()
+			.stream()
+			.filter(it -> !it.origin().equals(graph.getEndBlock()))
+			.collect(Collectors.toCollection(ArrayList::new));
+		orderedBlocks.remove(blocks.get(graph.getStartBlock()));
+		orderedBlocks.add(0, blocks.get(graph.getStartBlock()));
+		return orderedBlocks;
 	}
 
 	private IkeaBøx nextRegister() {
@@ -109,8 +127,13 @@ public class CodeSelection extends NodeVisitor.Default {
 	@Override
 	public void visit(Call node) {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
+		List<IkeaNode> arguments = StreamSupport.stream(node.getPreds().spliterator(), false)
+			.filter(it -> !it.getMode().equals(Mode.getM()))
+			.filter(it -> !(it instanceof Address))
+			.map(nodes::get)
+			.toList();
 		IkeaCall ikeaCall =
-			new IkeaCall(nextRegister(), (Address) node.getPred(1/*not a magic value!*/), List.of()/*FIXME*/, node);
+			new IkeaCall(nextRegister(), (Address) node.getPred(1/*not a magic value!*/), arguments, node);
 		nodes.put(node, ikeaCall);
 		block.nodes().add(ikeaCall);
 	}
@@ -235,7 +258,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			nodes.put(node, nodes.get(mod));
 		} else if (node.getPred() instanceof Load load) {
 			nodes.put(node, nodes.get(load));
-		}  else if (node.getPred() instanceof Proj proj && proj.getPred() instanceof Start) {
+		} else if (node.getPred() instanceof Proj proj && proj.getPred() instanceof Start) {
 			visitArgument(node);
 		} else if (node.getPred() instanceof Proj proj && proj.getPred() instanceof Call call) {
 			nodes.put(node, nodes.get(call));
