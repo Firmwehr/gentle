@@ -1,7 +1,11 @@
 package com.github.firmwehr.gentle.firm.optimization;
 
 import com.github.firmwehr.fiascii.FiAscii;
+import com.github.firmwehr.fiascii.generated.AddMinusPattern;
 import com.github.firmwehr.fiascii.generated.AddZeroPattern;
+import com.github.firmwehr.fiascii.generated.AssociativeAddPattern;
+import com.github.firmwehr.fiascii.generated.AssociativeMulPattern;
+import com.github.firmwehr.fiascii.generated.DistributivePattern;
 import com.github.firmwehr.fiascii.generated.DivByNegOnePattern;
 import com.github.firmwehr.fiascii.generated.DivByOnePattern;
 import com.github.firmwehr.fiascii.generated.SubtractFromZeroPattern;
@@ -87,6 +91,33 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		subtractSame(node).ifPresent(match -> exchange(match.sub(), graph.newConst(0, match.sub().getMode())));
 		subtractFromZero(node).ifPresent(match -> exchange(match.sub(), graph.newMinus(block, match.rhs())));
 		subtractZero(node).ifPresent(match -> exchange(match.sub(), match.lhs()));
+
+		addMinus(node).ifPresent(match -> exchange(match.add(), graph.newSub(block, match.other(), match.value())));
+
+		associativeAdd(node).ifPresent(match -> {
+			// we don't care about left/right here, just set both again *somewhere*
+			match.inner().setLeft(match.a());
+			match.inner().setRight(match.b());
+			// same for outer >= vs =>
+			match.outer().setLeft(match.inner());
+			match.outer().setRight(match.c());
+			hasChanged = true;
+		});
+
+		associativeMul(node).ifPresent(match -> {
+			// we don't care about left/right here, just set both again *somewhere*
+			match.inner().setLeft(match.a());
+			match.inner().setRight(match.b());
+			// same for outer >= vs =>
+			match.outer().setLeft(match.inner());
+			match.outer().setRight(match.c());
+			hasChanged = true;
+		});
+
+		distributive(node).ifPresent(match -> {
+			System.out.println(match);
+			exchange(match.add(), graph.newMul(block, match.factor(), graph.newAdd(block, match.av(), match.bv())));
+		});
 	}
 
 	private void exchange(Node victim, Node murderer) {
@@ -226,5 +257,86 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		             └────────┘""")
 	public static Optional<DivByNegOnePattern.Match> divByNegOne(Node node) {
 		return DivByNegOnePattern.match(node);
+	}
+
+	@FiAscii("""
+		┌──────────┐
+		│ value: * │
+		└──────┬───┘
+		       │
+		       │
+		┌──────▼───────┐   ┌──────────┐
+		│ minus: Minus │   │ other: * │
+		└───────┬──────┘   └────┬─────┘
+		        │               │
+		        └───────┬───────┘
+		                │
+		           ┌────▼─────┐
+		           │ add: Add │
+		           └──────────┘""")
+	public static Optional<AddMinusPattern.Match> addMinus(Node node) {
+		return AddMinusPattern.match(node);
+	}
+
+	@FiAscii("""
+		             ┌──────────┐ ┌──────┐
+		             │ b: Const │ │ c: * │
+		             └─────┬────┘ └───┬──┘
+		                   │          │
+		                   └─────┬────┘
+		                         │
+		    ┌──────────┐  ┌──────▼─────┐
+		    │ a: Const │  │ inner: Add │
+		    └──────┬───┘  └───┬────────┘
+		           │          │
+		           └───┬──────┘
+		               │
+		         ┌─────▼──────┐
+		         │ outer: Add │
+		         └────────────┘
+		""")
+	public static Optional<AssociativeAddPattern.Match> associativeAdd(Node node) {
+		return AssociativeAddPattern.match(node);
+	}
+
+	@FiAscii("""
+		             ┌──────────┐ ┌──────┐
+		             │ b: Const │ │ c: * │
+		             └─────┬────┘ └───┬──┘
+		                   │          │
+		                   └─────┬────┘
+		                         │
+		    ┌──────────┐  ┌──────▼─────┐
+		    │ a: Const │  │ inner: Mul │
+		    └──────┬───┘  └───┬────────┘
+		           │          │
+		           └───┬──────┘
+		               │
+		         ┌─────▼──────┐
+		         │ outer: Mul │
+		         └────────────┘
+		""")
+	public static Optional<AssociativeMulPattern.Match> associativeMul(Node node) {
+		return AssociativeMulPattern.match(node);
+	}
+
+	@FiAscii("""
+		┌───────┐     ┌───────────────┐   ┌───────┐
+		│ av: * │     │ factor: *     │   │ bv: * │
+		└────┬──┘     └───┬───────┬───┘   └───┬───┘
+		     │            │       │           │
+		     └──────┬─────┘       └───┬───────┘
+		            │                 │
+		        ┌───▼────┐        ┌───▼────┐
+		        │ a: Mul │        │ b: Mul │
+		        └────┬───┘        └─────┬──┘
+		             │                  │
+		             └────────┬─────────┘
+		                      │
+		                 ┌────▼────┐
+		                 │ add: Add│
+		                 └─────────┘""")
+	public static Optional<DistributivePattern.Match> distributive(Node node) {
+		return DistributivePattern.match(node);
 	}
 }
