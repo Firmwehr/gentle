@@ -15,7 +15,16 @@ public record UnaryOperatorExpression(
 			p.add("(");
 		}
 
-		p.add(operator.getName()).add(expression);
+		p.add(operator.getName());
+
+		if (operator == UnaryOperator.NEGATION && expression instanceof IntegerLiteralExpression) {
+			// Positive integer literals are simple enough that they usually don't need parentheses, even in a
+			// parenthesized context (as the example in Blatt 4 demonstrates). Sadly, this goes wrong with negations
+			// and thus, we make an exception here.
+			p.add("(").add(expression, Parentheses.OMIT).add(")");
+		} else {
+			p.add(expression);
+		}
 
 		if (parens == Parentheses.INCLUDE) {
 			p.add(")");
