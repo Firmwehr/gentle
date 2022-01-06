@@ -15,6 +15,7 @@ public interface CommandArguments {
 	String PARSETEST = "--parsetest";
 	String PRINT_AST = "--print-ast";
 	String CHECK = "--check";
+	String COMPILE = "--compile";
 	String COMPILE_FIRM = "--compile-firm";
 
 	@Option(names = ECHO, description = "output the file as is")
@@ -31,6 +32,9 @@ public interface CommandArguments {
 
 	@Option(names = CHECK, description = "exit with 0 iff the file is semantically valid")
 	boolean check();
+
+	@Option(names = COMPILE, description = "generate a runnable a.out binary using our very good backend")
+	boolean compile();
 
 	@Option(names = COMPILE_FIRM, description = "generate a runnable a.out binary using the firm backend")
 	boolean compileFirm();

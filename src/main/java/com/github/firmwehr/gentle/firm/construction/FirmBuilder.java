@@ -1,13 +1,11 @@
 package com.github.firmwehr.gentle.firm.construction;
 
-import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
-import com.github.firmwehr.gentle.backend.ir.codegen.CodeSelection;
-import com.github.firmwehr.gentle.backend.ir.visit.MolkiVisitor;
 import com.github.firmwehr.gentle.cli.CompilerArguments;
 import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.firm.optimization.Optimizer;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
+import com.google.common.collect.Lists;
 import firm.Backend;
 import firm.DebugInfo;
 import firm.Firm;
@@ -16,9 +14,6 @@ import firm.Program;
 import firm.Util;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -33,7 +28,7 @@ public class FirmBuilder {
 
 	static {
 		// Must be set before Firm.init is called!
-		Firm.VERSION = Firm.FirmVersion.DEBUG;
+		Firm.VERSION = Firm.FirmVersion.RELEASE;
 	}
 
 	private final EnumSet<GraphDumpStage> dumpStages;
@@ -47,13 +42,15 @@ public class FirmBuilder {
 	 * Converts a semantic program to a firm graph.
 	 *
 	 * <p>This method does <em>not</em> call {@link Firm#finish()}.</p>
+	 * <p>
 	 *
-	 * @param assemblyOutputFile the file to write the assembly code to
 	 * @param program the program to convert
+	 *
+	 * @return The generated graphs.
 	 *
 	 * @throws IOException if writing the assembly file fails
 	 */
-	public void convert(Path assemblyOutputFile, SProgram program) throws IOException {
+	public List<Graph> convert(SProgram program) throws IOException {
 		if (!dumpStages.isEmpty()) {
 			Backend.option("dump=" + dumpStages.stream().map(GraphDumpStage::getFirmName).collect(joining(",")));
 		}
@@ -82,19 +79,7 @@ public class FirmBuilder {
 		Optimizer optimizer = builder.build();
 		optimizer.optimize();
 
-		Files.deleteIfExists(Path.of("/tmp/out.s"));
-		for (Graph graph : Program.getGraphs()) {
-			CodeSelection codeSelection = new CodeSelection(graph);
-			List<IkeaBløck> blocks = codeSelection.convertBlocks();
-			MolkiVisitor visitor = new MolkiVisitor();
-			String res = visitor.visit(graph, blocks);
-			System.out.println(res);
-			Files.writeString(Path.of("/tmp/out.s"), res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
-		}
-
-		//System.exit(0);
-		String assemblyFile = assemblyOutputFile.toAbsolutePath().toString();
-		Backend.createAssembler(assemblyFile, assemblyFile);
+		return Lists.newArrayList(firm.Program.getGraphs());
 	}
 
 	public enum GraphDumpStage {
