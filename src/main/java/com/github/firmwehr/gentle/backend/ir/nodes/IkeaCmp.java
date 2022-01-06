@@ -1,29 +1,29 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
+import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
+import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Cmp;
 
 import java.util.List;
 
 public class IkeaCmp implements IkeaNode {
-	private IkeaBøx box;
 	private final IkeaNode left;
 	private final IkeaNode right;
 	private final Cmp cmp;
+	private final boolean wasInverted;
 
-	public IkeaCmp(
-		IkeaBøx box, IkeaNode left, IkeaNode right, Cmp cmp
-	) {
-		this.box = box;
+	public IkeaCmp(IkeaNode left, IkeaNode right, Cmp cmp, boolean wasInverted) {
 		this.left = left;
 		this.right = right;
 		this.cmp = cmp;
+		this.wasInverted = wasInverted;
 	}
 
 	@Override
 	public IkeaBøx box() {
-		return this.box;
+		return new IkeaUnassignedBøx(IkeaRegisterSize.ILLEGAL);
 	}
 
 	@Override
@@ -37,6 +37,10 @@ public class IkeaCmp implements IkeaNode {
 
 	public IkeaNode getRight() {
 		return right;
+	}
+
+	public boolean wasInverted() {
+		return wasInverted;
 	}
 
 	@Override

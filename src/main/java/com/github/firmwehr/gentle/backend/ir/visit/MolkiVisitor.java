@@ -6,13 +6,22 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaImmediate;
 import com.github.firmwehr.gentle.backend.ir.IkeaVirtualRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAdd;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaArgNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCall;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCmp;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaConst;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaConv;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaDiv;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJcc;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJmp;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMod;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoad;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStore;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
 import firm.Entity;
 import firm.Graph;
 import firm.MethodType;
@@ -44,10 +53,18 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 	}
 
 	@Override
+	public String visit(IkeaSub sub) {
+		String left = reg(sub.getLeft().box());
+		String right = reg(sub.getRight().box());
+		String res = reg(sub.box());
+		return "sub [ %s | %s ] -> %s".formatted(right, left, res);
+	}
+
+	@Override
 	public String visit(IkeaRet ret) {
 		String result = "";
 		if (ret.getValue().isPresent()) {
-			result += "mov %s, %%@r0".formatted(reg(ret.getValue().get().box()));
+			result += "mov %s, %%@r0".formatted(reg(ret.getValue().get().box()).replaceAll("[a-z]", ""));
 		}
 		result += "\nreturn";
 		return result;
@@ -56,7 +73,11 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 	@Override
 	public String visit(IkeaCall call) {
 		String result = "call %s".formatted(call.address().getEntity().getLdName()) + " ";
-		result += call.arguments().stream().map(it -> reg(it.box())).collect(joining(" | ", "[ ", " " + "]"));
+		result += call.arguments()
+			.stream()
+			.map(it -> reg(it.box()))
+			.map(it -> it.replaceAll("[a-z]", ""))
+			.collect(joining(" | ", "[ ", " " + "]"));
 
 		if (!isVoid(call.address().getEntity())) {
 			result += " -> " + reg(call.box());
@@ -67,7 +88,7 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaCmp cmp) {
-		return "cmp %s, %s".formatted(reg(cmp.getLeft().box()), reg(cmp.getRight().box()));
+		return "cmp %s, %s".formatted(reg(cmp.getRight().box()), reg(cmp.getLeft().box()));
 	}
 
 	@Override
@@ -95,11 +116,58 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 	}
 
 	@Override
+	public String visit(IkeaMul mul) {
+		return "mul [ %s | %s ] -> %s".formatted(reg(mul.getLeft().box()), reg(mul.getRight().box()), reg(mul.box()));
+	}
+
+	@Override
+	public String visit(IkeaMovLoad movLoad) {
+		String suffix = movLoad.getSize().getOldRegisterSuffix();
+		return "mov%s (%s), %s".formatted(suffix, reg(movLoad.getAddress().box()), reg(movLoad.box()));
+	}
+
+	@Override
+	public String visit(IkeaMovStore movStore) {
+		String suffix = movStore.getSize().getOldRegisterSuffix();
+		return "mov%s %s, (%s)".formatted(suffix, reg(movStore.getValue().box()), reg(movStore.getAddress().box()));
+	}
+
+	@Override
+	public String visit(IkeaNeg neg) {
+		return "neg %s".formatted(reg(neg.box()));
+	}
+
+	@Override
+	public String visit(IkeaConv conv) {
+		Mode target = conv.getTargetSize();
+		Mode source = conv.getSourceSize();
+		if (source.equals(target)) {
+			return "nop";
+		}
+
+		if (target.getSizeBits() != 64 || source.getSizeBits() != 32) {
+			throw new InternalCompilerException("Can not convert from " + source + " -> " + target);
+		}
+
+		return "movsxd %s, %s".formatted(reg(conv.getParent().box()), reg(conv.box()));
+	}
+
+	@Override
+	public String visit(IkeaDiv div) {
+		return "div [ %s | %s ] -> %s".formatted(reg(div.getRight().box()), reg(div.getLeft().box()), reg(div.box()));
+	}
+
+	@Override
+	public String visit(IkeaMod mod) {
+		return "mod [ %s | %s ] -> %s".formatted(reg(mod.getRight().box()), reg(mod.getLeft().box()), reg(mod.box()));
+	}
+
+	@Override
 	public String visit(IkeaBløck block) {
 		StringJoiner result = new StringJoiner("\n");
 
 		for (IkeaNode node : block.nodes()) {
-			if (node instanceof IkeaConst) {
+			if (node instanceof IkeaConst || node instanceof IkeaArgNode) {
 				continue;
 			}
 			result.add(node.accept(this));
@@ -123,7 +191,7 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 		}
 
 		result += "\n" + statements.toString().indent(2);
-		result += "\n.endfunction";
+		result += "\n.endfunction\n";
 
 		return result;
 	}
@@ -133,12 +201,13 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 	}
 
 	private boolean isVoid(Entity entity) {
-		return ((MethodType) entity.getType()).getResType(0).getMode().equals(Mode.getANY());
+		MethodType type = (MethodType) entity.getType();
+		return type.getNRess() == 0 || type.getResType(0).getMode().equals(Mode.getANY());
 	}
 
 	private String reg(IkeaBøx box) {
 		if (box instanceof IkeaVirtualRegister register) {
-			return "%@" + register.num();
+			return "%@" + register.num() + register.size().getNewRegisterSuffix();
 		}
 		if (box instanceof IkeaImmediate immediate) {
 			return "$" + immediate.assemblyName();

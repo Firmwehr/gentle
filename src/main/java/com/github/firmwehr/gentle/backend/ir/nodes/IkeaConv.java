@@ -32,6 +32,18 @@ public class IkeaConv implements IkeaNode {
 		return List.of(parent);
 	}
 
+	public IkeaNode getParent() {
+		return parent;
+	}
+
+	public Mode getSourceSize() {
+		return sourceSize;
+	}
+
+	public Mode getTargetSize() {
+		return targetSize;
+	}
+
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
 		return visitor.visit(this);

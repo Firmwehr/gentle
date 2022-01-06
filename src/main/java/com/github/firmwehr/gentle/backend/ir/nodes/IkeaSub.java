@@ -5,6 +5,7 @@ import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Sub;
 
 import java.util.List;
+import java.util.Objects;
 
 public class IkeaSub implements IkeaNode {
 	private IkeaBøx box;
@@ -14,8 +15,8 @@ public class IkeaSub implements IkeaNode {
 
 	public IkeaSub(IkeaBøx box, IkeaNode left, IkeaNode right, Sub sub) {
 		this.box = box;
-		this.left = left;
-		this.right = right;
+		this.left = Objects.requireNonNull(left, "left can not be null!");
+		this.right = Objects.requireNonNull(right, "right can not be null!");
 		this.sub = sub;
 	}
 
@@ -27,6 +28,14 @@ public class IkeaSub implements IkeaNode {
 	@Override
 	public List<IkeaNode> parents() {
 		return List.of(this.left, this.right);
+	}
+
+	public IkeaNode getLeft() {
+		return left;
+	}
+
+	public IkeaNode getRight() {
+		return right;
 	}
 
 	@Override

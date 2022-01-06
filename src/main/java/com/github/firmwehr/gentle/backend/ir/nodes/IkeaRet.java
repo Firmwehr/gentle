@@ -1,6 +1,7 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
+import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Return;
@@ -19,7 +20,7 @@ public class IkeaRet implements IkeaNode {
 
 	@Override
 	public IkeaBøx box() {
-		return new IkeaUnassignedBøx();
+		return new IkeaUnassignedBøx(IkeaRegisterSize.ILLEGAL);
 	}
 
 	@Override

@@ -29,6 +29,14 @@ public class IkeaDiv implements IkeaNode {
 		return List.of(this.left, this.right);
 	}
 
+	public IkeaNode getLeft() {
+		return left;
+	}
+
+	public IkeaNode getRight() {
+		return right;
+	}
+
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
 		return visitor.visit(this);

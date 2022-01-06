@@ -18,6 +18,7 @@ import firm.Util;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -81,18 +82,19 @@ public class FirmBuilder {
 		Optimizer optimizer = builder.build();
 		optimizer.optimize();
 
+		Files.deleteIfExists(Path.of("/tmp/out.s"));
 		for (Graph graph : Program.getGraphs()) {
 			CodeSelection codeSelection = new CodeSelection(graph);
 			List<IkeaBløck> blocks = codeSelection.convertBlocks();
 			MolkiVisitor visitor = new MolkiVisitor();
 			String res = visitor.visit(graph, blocks);
 			System.out.println(res);
-			Files.writeString(Path.of("/tmp/out.s"), res);
+			Files.writeString(Path.of("/tmp/out.s"), res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
 		}
 
-		System.exit(0);
-		//		String assemblyFile = assemblyOutputFile.toAbsolutePath().toString();
-		//		Backend.createAssembler(assemblyFile, assemblyFile);
+		//System.exit(0);
+		String assemblyFile = assemblyOutputFile.toAbsolutePath().toString();
+		Backend.createAssembler(assemblyFile, assemblyFile);
 	}
 
 	public enum GraphDumpStage {
