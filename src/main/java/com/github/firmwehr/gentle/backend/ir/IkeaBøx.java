@@ -12,6 +12,7 @@ public sealed interface IkeaBøx permits IkeaVirtualRegister, IkeaPhysicalRegist
 	enum IkeaRegisterSize {
 		BITS_64("", "q"),
 		BITS_32("d", "l"),
+		BITS_8("b", "b"),
 		ILLEGAL("ILLEGAL", "ILLEGAL");
 
 		private final String newRegisterSuffix;
@@ -29,6 +30,7 @@ public sealed interface IkeaBøx permits IkeaVirtualRegister, IkeaPhysicalRegist
 			return switch (mode.getSizeBits()) {
 				case 64 -> BITS_64;
 				case 32 -> BITS_32;
+				case 8 -> BITS_8;
 				default -> throw new InternalCompilerException("Unsupported register size " + mode);
 			};
 		}

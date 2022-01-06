@@ -2,26 +2,30 @@ package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
-import firm.nodes.Div;
+import firm.nodes.Node;
 
 import java.util.List;
 
 public class IkeaDiv implements IkeaNode {
-	private IkeaBøx box;
+	private IkeaBøx boxQuotient;
+	private IkeaBøx boxMod;
 	private final IkeaNode left;
 	private final IkeaNode right;
-	private final Div div;
+	private final Node node;
+	private final Result result;
 
-	public IkeaDiv(IkeaBøx box, IkeaNode left, IkeaNode right, Div div) {
-		this.box = box;
+	public IkeaDiv(IkeaBøx boxQuotient, IkeaBøx boxMod, IkeaNode left, IkeaNode right, Node node, Result result) {
+		this.boxQuotient = boxQuotient;
+		this.boxMod = boxMod;
 		this.left = left;
 		this.right = right;
-		this.div = div;
+		this.node = node;
+		this.result = result;
 	}
 
 	@Override
 	public IkeaBøx box() {
-		return this.box;
+		return result == Result.MOD ? boxMod : boxQuotient;
 	}
 
 	@Override
@@ -37,8 +41,29 @@ public class IkeaDiv implements IkeaNode {
 		return right;
 	}
 
+	public Node getNode() {
+		return node;
+	}
+
+	public Result getResult() {
+		return result;
+	}
+
+	public IkeaBøx getBoxQuotient() {
+		return boxQuotient;
+	}
+
+	public IkeaBøx getBoxMod() {
+		return boxMod;
+	}
+
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
 		return visitor.visit(this);
+	}
+
+	public enum Result {
+		QUOTIENT,
+		MOD
 	}
 }

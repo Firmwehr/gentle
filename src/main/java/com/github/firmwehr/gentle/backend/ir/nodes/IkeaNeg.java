@@ -27,6 +27,10 @@ public class IkeaNeg implements IkeaNode {
 		return List.of(this.parent);
 	}
 
+	public IkeaNode getParent() {
+		return parent;
+	}
+
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
 		return visitor.visit(this);

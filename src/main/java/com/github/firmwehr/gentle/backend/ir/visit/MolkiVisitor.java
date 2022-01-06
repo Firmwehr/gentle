@@ -15,8 +15,8 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaConv;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaDiv;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJcc;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJmp;
-import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMod;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoad;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStore;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
@@ -145,6 +145,12 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 	}
 
 	@Override
+	public String visit(IkeaMovRegister movRegister) {
+		String suffix = movRegister.getSize().getOldRegisterSuffix();
+		return "mov%s %s, %s".formatted(suffix, reg(movRegister.getSource()), reg(movRegister.box()));
+	}
+
+	@Override
 	public String visit(IkeaMovStore movStore) {
 		String suffix = movStore.getSize().getOldRegisterSuffix();
 		return "mov%s %s, (%s)".formatted(suffix, reg(movStore.getValue().box()), reg(movStore.getAddress().box()));
@@ -152,7 +158,7 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaNeg neg) {
-		return "neg %s".formatted(reg(neg.box()));
+		return "sub [ %s | $0 ] -> %s".formatted(reg(neg.getParent().box()), reg(neg.box()));
 	}
 
 	@Override
@@ -180,12 +186,16 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaDiv div) {
-		return "div [ %s | %s ] -> %s".formatted(reg(div.getRight().box()), reg(div.getLeft().box()), reg(div.box()));
-	}
 
-	@Override
-	public String visit(IkeaMod mod) {
-		return "mod [ %s | %s ] -> %s".formatted(reg(mod.getRight().box()), reg(mod.getLeft().box()), reg(mod.box()));
+		String prefix = "/* " + div.getNode().toString() + " */\n";
+		// @formatter:off
+		return prefix + "idiv [ %s | %s ] -> [ %s | %s]".formatted(
+			reg(div.getLeft().box()),
+			reg(div.getRight().box()),
+			reg(div.getBoxQuotient()),
+			reg(div.getBoxMod())
+		);
+		// @formatter:on
 	}
 
 	@Override

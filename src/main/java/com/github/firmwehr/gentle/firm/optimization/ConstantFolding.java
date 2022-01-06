@@ -1,6 +1,7 @@
 package com.github.firmwehr.gentle.firm.optimization;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
+import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
 import firm.BackEdges;
 import firm.Graph;
@@ -59,7 +60,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.function.BinaryOperator;
-import java.util.stream.StreamSupport;
 
 import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 
@@ -172,8 +172,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 	private void replaceCondition(boolean constantValue, Cond node) {
 		hasChangedInCurrentIteration = true;
 
-		List<Node> nodes =
-			StreamSupport.stream(BackEdges.getOuts(node).spliterator(), false).map(edge -> edge.node).toList();
+		List<Node> nodes = Util.outsStream(node).toList();
 
 		if (nodes.size() != 2) {
 			throw new InternalCompilerException("Expected two nodes for Cond " + node + ", got " + nodes);
@@ -408,10 +407,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 	@Override
 	public void visit(Phi node) {
 		// https://cdn.discordapp.com/attachments/900838391560671323/916067791973519440/unknown.png
-		TargetValue targetValue = StreamSupport.stream(node.getPreds().spliterator(), false)
-			.map(this::tarValOf)
-			.reduce(this::φΚοµβαιν)
-			.orElseThrow();
+		TargetValue targetValue = Util.predsStream(node).map(this::tarValOf).reduce(this::φΚοµβαιν).orElseThrow();
 
 		updateTarVal(node, targetValue);
 	}
