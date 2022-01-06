@@ -96,22 +96,14 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 
 		associativeAdd(node).ifPresent(match -> {
 			// we don't care about left/right here, just set both again *somewhere*
-			match.inner().setLeft(match.a());
-			match.inner().setRight(match.b());
-			// same for outer >= vs =>
-			match.outer().setLeft(match.inner());
-			match.outer().setRight(match.c());
-			hasChanged = true;
+			Node innerMurderer = graph.newAdd(block, match.a(), match.b());
+			exchange(match.outer(), graph.newAdd(block, innerMurderer, match.c()));
 		});
 
 		associativeMul(node).ifPresent(match -> {
 			// we don't care about left/right here, just set both again *somewhere*
-			match.inner().setLeft(match.a());
-			match.inner().setRight(match.b());
-			// same for outer >= vs =>
-			match.outer().setLeft(match.inner());
-			match.outer().setRight(match.c());
-			hasChanged = true;
+			Node innerMurderer = graph.newMul(block, match.a(), match.b());
+			exchange(match.outer(), graph.newMul(block, innerMurderer, match.c()));
 		});
 
 		distributive(node).ifPresent(match -> exchange(match.add(),
