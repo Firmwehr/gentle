@@ -119,7 +119,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		for (IkeaBløck block : blocks.values()) {
 			List<IkeaNode> jumps = block.nodes()
 				.stream()
-				.filter(it -> it instanceof IkeaJcc || it instanceof IkeaJmp || it instanceof IkeaRet)
+				.filter(it -> it instanceof IkeaJcc || it instanceof IkeaJmp || it instanceof IkeaRet ||
+					it instanceof IkeaCmp)
 				.toList();
 			block.nodes().removeAll(jumps);
 			block.nodes().addAll(jumps);
