@@ -114,10 +114,8 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 			hasChanged = true;
 		});
 
-		distributive(node).ifPresent(match -> {
-			System.out.println(match);
-			exchange(match.add(), graph.newMul(block, match.factor(), graph.newAdd(block, match.av(), match.bv())));
-		});
+		distributive(node).ifPresent(match -> exchange(match.add(),
+			graph.newMul(block, match.factor(), graph.newAdd(block, match.av(), match.bv()))));
 	}
 
 	private void exchange(Node victim, Node murderer) {
@@ -321,12 +319,12 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 	}
 
 	@FiAscii("""
-		┌───────┐     ┌───────────────┐   ┌───────┐
-		│ av: * │     │ factor: *     │   │ bv: * │
-		└────┬──┘     └───┬───────┬───┘   └───┬───┘
-		     │            │       │           │
-		     └──────┬─────┘       └───┬───────┘
-		            │                 │
+		┌───────┐     ┌───────────────┐   ┌───────┐ Memory side effects from av and/or bv are kept
+		│ av: * │     │ factor: *     │   │ bv: * │ in order by memory projections, so we don't
+		└────┬──┘     └───┬───────┬───┘   └───┬───┘ need to care about that.
+		     │            │       │           │     Memory side effects from factor can be either
+		     └──────┬─────┘       └───┬───────┘     ignored (e.g. if av and bv are constants), or
+		            │                 │             the memory projections keep it in the right order.
 		        ┌───▼────┐        ┌───▼────┐
 		        │ a: Mul │        │ b: Mul │
 		        └────┬───┘        └─────┬──┘
