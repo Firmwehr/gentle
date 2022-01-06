@@ -180,6 +180,8 @@ public class GentleCompiler {
 			Path assemblyFile = path.resolveSibling(assemblyFilename);
 			handler.handleGraphs(assemblyFile, graphs);
 
+			System.exit(0);
+
 		} catch (MalformedInputException e) {
 			UserOutput.userError("File contains invalid characters '%s': %s", path, e.getMessage());
 			LOGGER.error("Compiling using firm failed", e);
@@ -205,10 +207,8 @@ public class GentleCompiler {
 			MolkiVisitor visitor = new MolkiVisitor();
 			String res = visitor.visit(graph, blocks);
 			System.out.println(res); // TODO do properly
-			Files.writeString(Path.of("out.s"), res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
 		}
-
-		System.exit(0);
 	}
 
 	private static void generateWithFirmBackend(Path assemblyFile, List<Graph> graphs) throws IOException {
@@ -216,9 +216,8 @@ public class GentleCompiler {
 
 		String file = assemblyFile.toString();
 		Backend.createAssembler(file, assemblyFile.getFileName().toString());
-		new ExternalLinker().link(assemblyFile);
-
-		System.exit(0);
+		new ExternalLinker().link(
+			assemblyFile); // TODO: move to compileCommand, once gentle backend can generate working assembler files
 	}
 
 	/**
