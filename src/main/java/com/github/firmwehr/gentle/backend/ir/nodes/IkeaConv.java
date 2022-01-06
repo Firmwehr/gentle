@@ -1,8 +1,8 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
+import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
-import firm.Mode;
 import firm.nodes.Conv;
 
 import java.util.List;
@@ -10,11 +10,13 @@ import java.util.List;
 public class IkeaConv implements IkeaNode {
 	private IkeaBøx box;
 	private final IkeaNode parent;
-	private final Mode sourceSize;
-	private final Mode targetSize;
+	private final IkeaRegisterSize sourceSize;
+	private final IkeaRegisterSize targetSize;
 	private final Conv conv;
 
-	public IkeaConv(IkeaBøx box, IkeaNode parent, Mode sourceSize, Mode targetSize, Conv conv) {
+	public IkeaConv(
+		IkeaBøx box, IkeaNode parent, IkeaRegisterSize sourceSize, IkeaRegisterSize targetSize, Conv conv
+	) {
 		this.box = box;
 		this.parent = parent;
 		this.sourceSize = sourceSize;
@@ -36,11 +38,11 @@ public class IkeaConv implements IkeaNode {
 		return parent;
 	}
 
-	public Mode getSourceSize() {
+	public IkeaRegisterSize getSourceSize() {
 		return sourceSize;
 	}
 
-	public Mode getTargetSize() {
+	public IkeaRegisterSize getTargetSize() {
 		return targetSize;
 	}
 

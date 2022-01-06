@@ -215,8 +215,9 @@ public class CodeSelection extends NodeVisitor.Default {
 	@Override
 	public void visit(Conv node) {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaConv ikeaConv =
-			new IkeaConv(nextRegister(node), nodes.get(node.getOp()), node.getOp().getMode(), node.getMode(), node);
+		IkeaRegisterSize sourceSize = IkeaRegisterSize.forMode(node.getOp().getMode());
+		IkeaRegisterSize targetSize = IkeaRegisterSize.forMode(node.getMode());
+		IkeaConv ikeaConv = new IkeaConv(nextRegister(node), nodes.get(node.getOp()), sourceSize, targetSize, node);
 		nodes.put(node, ikeaConv);
 		block.nodes().add(ikeaConv);
 	}
@@ -224,7 +225,8 @@ public class CodeSelection extends NodeVisitor.Default {
 	@Override
 	public void visit(Div node) {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaDiv ikeaDiv = new IkeaDiv(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+		IkeaDiv ikeaDiv =
+			new IkeaDiv(nextRegister(node.getResmode()), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
 		nodes.put(node, ikeaDiv);
 		block.nodes().add(ikeaDiv);
 	}
@@ -262,7 +264,8 @@ public class CodeSelection extends NodeVisitor.Default {
 	@Override
 	public void visit(Mod node) {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaMod ikeaMod = new IkeaMod(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+		IkeaMod ikeaMod =
+			new IkeaMod(nextRegister(node.getResmode()), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
 		nodes.put(node, ikeaMod);
 		block.nodes().add(ikeaMod);
 	}

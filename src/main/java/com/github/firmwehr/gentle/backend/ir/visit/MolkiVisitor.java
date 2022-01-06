@@ -3,6 +3,7 @@ package com.github.firmwehr.gentle.backend.ir.visit;
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
+import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.IkeaImmediate;
 import com.github.firmwehr.gentle.backend.ir.IkeaVirtualRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAdd;
@@ -20,6 +21,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStore;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
 import firm.Entity;
@@ -53,6 +55,11 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 	}
 
 	@Override
+	public String visit(IkeaPhi phi) {
+		return "mov";
+	}
+
+	@Override
 	public String visit(IkeaSub sub) {
 		String left = reg(sub.getLeft().box());
 		String right = reg(sub.getRight().box());
@@ -82,6 +89,17 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 		if (!isVoid(call.address().getEntity())) {
 			result += " -> " + reg(call.box());
 		}
+
+		//		result = """
+		//			/* Setup arguments... */
+		//			/* Save old stack pointer */
+		//			pushq %rsp
+		//			pushq (%rsp)
+		//			/* Align stack to 16 bytes */
+		//			andq $-0x10, %rsp
+		//			CALL
+		//			/* Restore old stack pointer */
+		//			movq 8(%rsp), %rsp""".replace("CALL", result);
 
 		return result;
 	}
@@ -139,17 +157,25 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaConv conv) {
-		Mode target = conv.getTargetSize();
-		Mode source = conv.getSourceSize();
+		IkeaRegisterSize target = conv.getTargetSize();
+		IkeaRegisterSize source = conv.getSourceSize();
+		String fromReg = reg(conv.getParent().box());
+		String toReg = reg(conv.box());
+
 		if (source.equals(target)) {
-			return "nop";
+			return "mov%s %s, %s".formatted(target.getOldRegisterSuffix(), fromReg, toReg);
 		}
 
-		if (target.getSizeBits() != 64 || source.getSizeBits() != 32) {
+		if (target == IkeaRegisterSize.BITS_32 && source == IkeaRegisterSize.BITS_64) {
+			String adjustedFrom = fromReg + target.getNewRegisterSuffix();
+			return "/* Cast */\nmov%s %s, %s".formatted(target.getOldRegisterSuffix(), adjustedFrom, toReg);
+		}
+
+		if (target != IkeaRegisterSize.BITS_64 || source != IkeaRegisterSize.BITS_32) {
 			throw new InternalCompilerException("Can not convert from " + source + " -> " + target);
 		}
 
-		return "movsxd %s, %s".formatted(reg(conv.getParent().box()), reg(conv.box()));
+		return "movsxd %s, %s".formatted(fromReg, toReg);
 	}
 
 	@Override
