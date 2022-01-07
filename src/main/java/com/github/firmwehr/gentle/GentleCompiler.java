@@ -235,7 +235,7 @@ public class GentleCompiler {
 		String file = assemblyFile.toString();
 		Backend.createAssembler(file, assemblyFile.getFileName().toString());
 		// TODO: move to compileCommand, once gentle backend can generate working assembler files
-		new ExternalLinker().link(assemblyFile, RuntimeAbi.CDECL);
+		new ExternalLinker().link(assemblyFile, RuntimeAbi.AMD64_SYSTEMV_ABI);
 	}
 
 	/**

@@ -12,6 +12,10 @@ void println(int input) {
     printf("%d\n", input);
 }
 
+void write(int input) {
+    putchar(input);
+}
+
 void flush() {
     fflush(stdout);
 }

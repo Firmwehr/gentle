@@ -2,8 +2,11 @@ package com.github.firmwehr.gentle.linking;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
 import firm.Firm;
+import org.buildobjects.process.ExternalProcessFailureException;
+import org.buildobjects.process.ProcBuilder;
+import org.buildobjects.process.StartupException;
+import org.buildobjects.process.TimeoutException;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -47,23 +50,13 @@ public class ExternalLinker {
 	}
 
 	private void executeGcc(String assemblyFile, String runtimePath, String outputPath) {
-		ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-		String[] command = {"gcc", assemblyFile, "-g", runtimePath, "-o", outputPath};
-
-		ProcessBuilder processBuilder = new ProcessBuilder(command).redirectOutput(ProcessBuilder.Redirect.DISCARD);
-
 		try {
-			Process gccProcess = processBuilder.start();
-			gccProcess.getErrorStream().transferTo(byteArrayOutputStream);
-
-			int gccResult = gccProcess.waitFor();
-			if (gccResult != 0) {
-				throw new InternalCompilerException(
-					"gcc execution failed with the following stderr output\n" + byteArrayOutputStream);
-			}
-		} catch (InterruptedException | IOException e) {
-			throw new InternalCompilerException("error while executing gcc. Captured stderr:\n" + byteArrayOutputStream,
-				e);
+			new ProcBuilder("gcc", assemblyFile, "-g", runtimePath, "-o", outputPath).withNoTimeout().run();
+		} catch (StartupException | TimeoutException e) {
+			throw new InternalCompilerException("Unknown error executing gcc", e);
+		} catch (ExternalProcessFailureException e) {
+			String message = "Gcc execution failed with exit code " + e.getExitValue() + ", stderr: " + e.getStderr();
+			throw new InternalCompilerException(message);
 		}
 	}
 
