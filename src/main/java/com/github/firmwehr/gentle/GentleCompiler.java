@@ -9,6 +9,8 @@ import com.github.firmwehr.gentle.firm.construction.FirmBuilder;
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.linking.ExternalLinker;
+import com.github.firmwehr.gentle.linking.ExternalLinker.RuntimeAbi;
+import com.github.firmwehr.gentle.linking.MolkiProcessor;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.output.UserOutput;
 import com.github.firmwehr.gentle.parser.ParseException;
@@ -48,10 +50,12 @@ public class GentleCompiler {
 				.command(CommandArguments.PARSETEST, CommandArguments::parsetest, GentleCompiler::parseTestCommand)
 				.command(CommandArguments.PRINT_AST, CommandArguments::printAst, GentleCompiler::printAstCommand)
 				.command(CommandArguments.CHECK, CommandArguments::check, GentleCompiler::checkCommand)
-				.defaultCommand(CommandArguments.COMPILE, CommandArguments::compile,
-					p -> compileCommand(p, GentleCompiler::generateWithGentleBackend))
 				.command(CommandArguments.COMPILE_FIRM, CommandArguments::compileFirm,
 					p -> compileCommand(p, GentleCompiler::generateWithFirmBackend))
+				.command(CommandArguments.COMPILE_MOLKI, CommandArguments::compileMolki,
+					p -> compileCommand(p, GentleCompiler::generateWithMolkiBackend))
+				.defaultCommand(CommandArguments.COMPILE, CommandArguments::compile,
+					p -> compileCommand(p, GentleCompiler::generateWithGentleBackend))
 				.dispatch(args);
 		} catch (Exception e) {
 			UserOutput.userMessage("something went wrong, pls annoy me mjtest");
@@ -197,18 +201,32 @@ public class GentleCompiler {
 		}
 	}
 
-	private static void generateWithGentleBackend(Path assemblyFile, List<Graph> graphs) throws IOException {
+	private static void generateWithGentleBackend(Path assemblyFile, List<Graph> graphs) {
 		LOGGER.info("handing over to gentle backend...");
 
-		Files.deleteIfExists(Path.of("out.s"));
 		for (Graph graph : firm.Program.getGraphs()) {
 			CodeSelection codeSelection = new CodeSelection(graph);
 			List<IkeaBløck> blocks = codeSelection.convertBlocks();
 			MolkiVisitor visitor = new MolkiVisitor();
 			String res = visitor.visit(graph, blocks);
 			System.out.println(res); // TODO do properly
+		}
+	}
+
+	private static void generateWithMolkiBackend(Path assemblyFile, List<Graph> graphs) throws IOException {
+		LOGGER.info("handing over to gentle/molki backend...");
+
+		Files.deleteIfExists(assemblyFile);
+		for (Graph graph : firm.Program.getGraphs()) {
+			CodeSelection codeSelection = new CodeSelection(graph);
+			List<IkeaBløck> blocks = codeSelection.convertBlocks();
+			MolkiVisitor visitor = new MolkiVisitor();
+			String res = visitor.visit(graph, blocks);
 			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
 		}
+
+		Path finalAssemblyFile = new MolkiProcessor().molkiAssemble(assemblyFile);
+		new ExternalLinker().link(finalAssemblyFile, RuntimeAbi.CDECL);
 	}
 
 	private static void generateWithFirmBackend(Path assemblyFile, List<Graph> graphs) throws IOException {
@@ -216,8 +234,8 @@ public class GentleCompiler {
 
 		String file = assemblyFile.toString();
 		Backend.createAssembler(file, assemblyFile.getFileName().toString());
-		new ExternalLinker().link(
-			assemblyFile); // TODO: move to compileCommand, once gentle backend can generate working assembler files
+		// TODO: move to compileCommand, once gentle backend can generate working assembler files
+		new ExternalLinker().link(assemblyFile, RuntimeAbi.CDECL);
 	}
 
 	/**
