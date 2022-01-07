@@ -7,14 +7,16 @@ import firm.Program;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
 
 public class Optimizer {
-	private final List<GraphOptimizationStep<Graph>> graphOptimizationSteps;
-	private final List<GraphOptimizationStep<CallGraph>> callGraphOptimizationSteps;
+	private final List<GraphOptimizationStep<Graph, Boolean>> graphOptimizationSteps;
+	private final List<GraphOptimizationStep<CallGraph, Set<Graph>>> callGraphOptimizationSteps;
 
 	private Optimizer(
-		List<GraphOptimizationStep<Graph>> graphOptimizationSteps,
-		List<GraphOptimizationStep<CallGraph>> callGraphOptimizationSteps
+		List<GraphOptimizationStep<Graph, Boolean>> graphOptimizationSteps,
+		List<GraphOptimizationStep<CallGraph, Set<Graph>>> callGraphOptimizationSteps
 	) {
 		this.graphOptimizationSteps = List.copyOf(graphOptimizationSteps);
 		this.callGraphOptimizationSteps = List.copyOf(callGraphOptimizationSteps);
@@ -29,29 +31,30 @@ public class Optimizer {
 			boolean changed;
 			do {
 				changed = false;
-				for (GraphOptimizationStep<Graph> step : this.graphOptimizationSteps) {
+				for (GraphOptimizationStep<Graph, Boolean> step : this.graphOptimizationSteps) {
 					changed |= step.optimize(graph);
 				}
 			} while (changed);
 		}
 		// TODO this should probably be repeated too, and also repeated in combination with the other steps
 		CallGraph callGraph = CallGraph.create(Program.getGraphs());
-		for (GraphOptimizationStep<CallGraph> step : this.callGraphOptimizationSteps) {
-			step.optimize(callGraph);
+		for (GraphOptimizationStep<CallGraph, Set<Graph>> step : this.callGraphOptimizationSteps) {
+			callGraph = callGraph.updated(step.optimize(callGraph));
 		}
 	}
 
 
 	public static class Builder {
-		private final List<GraphOptimizationStep<Graph>> graphOptimizationSteps = new ArrayList<>();
-		private final List<GraphOptimizationStep<CallGraph>> callGraphOptimizationSteps = new ArrayList<>();
+		private final List<GraphOptimizationStep<Graph, Boolean>> graphOptimizationSteps = new ArrayList<>();
+		private final List<GraphOptimizationStep<CallGraph, Set<Graph>>> callGraphOptimizationSteps =
+			new ArrayList<>();
 
-		public Builder addGraphStep(GraphOptimizationStep<Graph> step) {
+		public Builder addGraphStep(GraphOptimizationStep<Graph, Boolean> step) {
 			this.graphOptimizationSteps.add(step);
 			return this;
 		}
 
-		public Builder addCallGraphStep(GraphOptimizationStep<CallGraph> step) {
+		public Builder addCallGraphStep(GraphOptimizationStep<CallGraph, Set<Graph>> step) {
 			this.callGraphOptimizationSteps.add(step);
 			return this;
 		}

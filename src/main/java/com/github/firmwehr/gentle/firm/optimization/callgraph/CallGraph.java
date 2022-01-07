@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("UnstableApiUsage") // that should be ENCOURAGED instead of warning us...
 public final class CallGraph {
@@ -32,16 +33,52 @@ public final class CallGraph {
 			.allowsParallelEdges(true) //
 			.build();
 		for (Graph graph : graphs) {
-			Entity entity = graph.getEntity();
-			graph.walk(new NodeVisitor.Default() {
-				@Override
-				public void visit(Call node) {
-					Address address = (Address) node.getPtr();
-					network.addEdge(entity, address.getEntity(), node);
-				}
-			});
+			buildNode(network, graph);
 		}
 		return new CallGraph(network);
+	}
+
+	private static void buildNode(MutableNetwork<Entity, Call> network, Graph graph) {
+		Entity entity = graph.getEntity();
+		graph.walk(new NodeVisitor.Default() {
+			@Override
+			public void visit(Call node) {
+				Address address = (Address) node.getPtr();
+				network.addEdge(entity, address.getEntity(), node);
+			}
+		});
+	}
+
+	/**
+	 * Updates the outgoing edges of the given graphs and returns the call graph representing the new state.
+	 *
+	 * @param toUpdate the graphs to update outgoing edges for.
+	 *
+	 * @return the new call graph state
+	 */
+	public CallGraph updated(Set<Graph> toUpdate) {
+		if (toUpdate.isEmpty()) {
+			return this;
+		}
+		Set<Entity> entitiesToUpdate = toUpdate.stream().map(Graph::getEntity).collect(Collectors.toSet());
+		// WHY on earth can't we create a mutable network instance from an immutable one?
+		MutableNetwork<Entity, Call> updated = NetworkBuilder.directed()
+			.allowsSelfLoops(true)
+			.allowsParallelEdges(true)
+			.expectedNodeCount(calledMethods.nodes().size()) // maybe,
+			.expectedEdgeCount(calledMethods.nodes().size()) // maybe this helps a bit...
+			.build();
+		for (Entity node : calledMethods.nodes()) {
+			if (entitiesToUpdate.contains(node)) {
+				buildNode(updated, node.getGraph());
+			} else {
+				// re-insert outgoing edges of this node, as we don't want to update it
+				for (Call call : calledMethods.outEdges(node)) {
+					updated.addEdge(node, ((Address) call.getPtr()).getEntity(), call);
+				}
+			}
+		}
+		return new CallGraph(updated);
 	}
 
 	/**

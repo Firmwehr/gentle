@@ -41,14 +41,14 @@ public class UnusedParameterOptimization {
 		this.callRewrites = new HashMap<>();
 	}
 
-	public static GraphOptimizationStep<CallGraph> unusedParameterOptimization() {
-		return GraphOptimizationStep.<CallGraph>builder()
+	public static GraphOptimizationStep<CallGraph, Set<Graph>> unusedParameterOptimization() {
+		return GraphOptimizationStep.<CallGraph, Set<Graph>>builder()
 			.withDescription("UnusedParameterOptimization")
 			.withOptimizationFunction(callGraph -> new UnusedParameterOptimization(callGraph).optimize())
 			.build();
 	}
 
-	public boolean optimize() {
+	public Set<Graph> optimize() {
 		this.graph.walkPostorder(g -> {
 			LOGGER.debug("Scanning %s", g.getEntity().getLdName());
 			boolean localChange = false;
@@ -103,8 +103,7 @@ public class UnusedParameterOptimization {
 		for (Graph g : this.modified) {
 			GraphDumper.dumpGraph(g, "replace-unused");
 		}
-		System.out.println(this.modified);
-		return !this.modified.isEmpty();
+		return this.modified;
 	}
 
 	private void postProcessDelayedTasks() {

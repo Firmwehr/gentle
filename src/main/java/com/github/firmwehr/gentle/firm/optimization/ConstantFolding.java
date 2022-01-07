@@ -80,8 +80,8 @@ public class ConstantFolding extends NodeVisitor.Default {
 		this.constants = new HashMap<>();
 	}
 
-	public static GraphOptimizationStep<Graph> constantFolding() {
-		return GraphOptimizationStep.<Graph>builder()
+	public static GraphOptimizationStep<Graph, Boolean> constantFolding() {
+		return GraphOptimizationStep.<Graph, Boolean>builder()
 			.withDescription("ConstantFolding")
 			.withOptimizationFunction(graph -> {
 				int runs = 0;

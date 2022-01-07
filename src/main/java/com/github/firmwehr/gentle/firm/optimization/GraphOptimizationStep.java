@@ -2,43 +2,42 @@ package com.github.firmwehr.gentle.firm.optimization;
 
 import com.github.firmwehr.gentle.output.Logger;
 import com.google.common.base.Preconditions;
-import firm.Graph;
 
-public final class GraphOptimizationStep<T> {
+public final class GraphOptimizationStep<T, R> {
 	private static final Logger LOGGER = new Logger(GraphOptimizationStep.class);
 	private final String description;
-	private final OptimizationFunction<T> optimizationFunction;
+	private final OptimizationFunction<T, R> optimizationFunction;
 
-	private GraphOptimizationStep(String description, OptimizationFunction<T> optimizationFunction) {
+	private GraphOptimizationStep(String description, OptimizationFunction<T, R> optimizationFunction) {
 		this.description = description;
 		this.optimizationFunction = optimizationFunction;
 	}
 
 
-	public boolean optimize(T t) {
+	public R optimize(T t) {
 		LOGGER.info("Running %s for %s", this.description, t);
 		return this.optimizationFunction.optimize(t);
 	}
 
-	public static <T> Builder<T> builder() {
+	public static <T, C> Builder<T, C> builder() {
 		return new Builder<>();
 	}
 
-	public static class Builder<T> {
+	public static class Builder<T, R> {
 		private String description;
-		private OptimizationFunction<T> optimizationFunction;
+		private OptimizationFunction<T, R> optimizationFunction;
 
-		public Builder<T> withDescription(String description) {
+		public Builder<T, R> withDescription(String description) {
 			this.description = description;
 			return this;
 		}
 
-		public Builder<T> withOptimizationFunction(OptimizationFunction<T> optimizationFunction) {
+		public Builder<T, R> withOptimizationFunction(OptimizationFunction<T, R> optimizationFunction) {
 			this.optimizationFunction = optimizationFunction;
 			return this;
 		}
 
-		public GraphOptimizationStep<T> build() {
+		public GraphOptimizationStep<T, R> build() {
 			Preconditions.checkState(this.description != null, "Description must be set");
 			Preconditions.checkState(this.optimizationFunction != null, "Optimization Function must be set");
 			return new GraphOptimizationStep<>(this.description, this.optimizationFunction);
@@ -46,8 +45,8 @@ public final class GraphOptimizationStep<T> {
 	}
 
 	@FunctionalInterface
-	public interface OptimizationFunction<T> {
+	public interface OptimizationFunction<T, R> {
 
-		boolean optimize(T t);
+		R optimize(T t);
 	}
 }
