@@ -71,6 +71,7 @@ public class EntityHelper {
 
 		if (method.isStatic()) {
 			returnType = new Type[]{typeHelper.getType(new SIntType())};
+			types = new Type[0];
 		}
 
 		MethodType methodType = new MethodType(types, returnType);

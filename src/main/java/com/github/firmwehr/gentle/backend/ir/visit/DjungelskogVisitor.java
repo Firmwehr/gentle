@@ -23,11 +23,11 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
+import com.google.common.collect.Lists;
 import firm.Entity;
 import firm.Graph;
 import firm.MethodType;
 import firm.Mode;
-import firm.TargetValue;
 
 import java.util.List;
 import java.util.OptionalInt;
@@ -35,6 +35,8 @@ import java.util.StringJoiner;
 
 // just like the panda, this code is reeeeeeeally stupid
 public class DjungelskogVisitor implements IkeaVisitor<String> {
+
+	private String currentReturnLabel;
 
 	@Override
 	public String defaultReturnValue() {
@@ -73,7 +75,7 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 			"// " + asmInstruction,
 			readFromStackToTarget(left, "%r8"),
 			readFromStackToTarget(right, "%r9"),
-			asmInstruction + " %r8, %r9",
+			asmInstruction + " %%r8%s, %%r9%s".formatted(getRegisterSuffix(left), getRegisterSuffix(right)),
 			storeFromTargetToStack(result, "%r9"),
 			"" // this line left intentionally blank, do not print this!
 		);
@@ -82,12 +84,12 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaAdd add) {
-		return boiler("add", add.getLeft().box(), add.getRight().box(), add.box());
+		return boiler("add", add.getRight().box(), add.getLeft().box(), add.box());
 	}
 
 	@Override
 	public String visit(IkeaSub sub) {
-		return boiler("sub", sub.getLeft().box(), sub.getRight().box(), sub.box());
+		return boiler("sub", sub.getRight().box(), sub.getLeft().box(), sub.box());
 	}
 
 	@Override
@@ -97,20 +99,25 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 			IkeaNode value = ret.getValue().get();
 			result += readFromStackToTarget(value.box(), "%rax") + "\n";
 		}
-		result += "\nret";
+		result += "jmp %s".formatted(currentReturnLabel);
 		return result;
 	}
 
 	@Override
 	public String visit(IkeaCall call) {
 		StringBuilder result = new StringBuilder();
+		result.append("// ").append(call.address().getEntity().getLdName()).append("\n");
 
-		for (IkeaNode argument : call.arguments()) {
+		// cdecl requires arguments to be pushed in reverse, so they are correctly ordered when reading them again
+		for (IkeaNode argument : Lists.reverse(call.arguments())) {
 			result.append(readFromStackToTarget(argument.box(), "%r8")).append("\n");
 			result.append("pushq %r8").append("\n");
 		}
 
 		result.append("callq ").append(call.address().getEntity().getLdName()).append("\n");
+
+		// undo parameter pushs
+		result.append("add $%s, %%rsp".formatted(call.arguments().size() * 8)).append("\n");
 
 		if (!isVoid(call.address().getEntity())) {
 			result.append(storeFromTargetToStack(call.box(), "%rax")).append("\n");
@@ -135,7 +142,8 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		String result = "";
 		result += readFromStackToTarget(cmp.getLeft().box(), "%r8") + "\n";
 		result += readFromStackToTarget(cmp.getRight().box(), "%r9") + "\n";
-		result += "cmp %r9, %r8";
+		result += "cmp %%r9%s, %%r8%s".formatted(getRegisterSuffix(cmp.getLeft().box()),
+			getRegisterSuffix(cmp.getRight().box()));
 		return result;
 	}
 
@@ -166,9 +174,9 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 	@Override
 	public String visit(IkeaMul mul) {
 		String result = "";
-		result += readFromStackToTarget(mul.getLeft().box(), "%rdx") + "\n";
-		result += readFromStackToTarget(mul.getRight().box(), "%r8") + "\n";
-		result += "imul %r8d\n";
+		result += readFromStackToTarget(mul.getRight().box(), "%rax") + "\n";
+		result += readFromStackToTarget(mul.getLeft().box(), "%r8") + "\n";
+		result += "imul %%r8%s\n".formatted(getRegisterSuffix(mul.box()));
 		result += storeFromTargetToStack(mul.box(), "%rax");
 
 		return result;
@@ -213,8 +221,11 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaNeg neg) {
-		IkeaImmediate zero = new IkeaImmediate(new TargetValue(0, Mode.getIs()), IkeaRegisterSize.BITS_64);
-		return boiler("sub", neg.getParent().box(), zero, neg.box());
+		String result = "";
+		result += readFromStackToTarget(neg.getParent().box(), "%r8") + "\n";
+		result += "neg %%r8%s\n".formatted(getRegisterSuffix(neg.box()));
+		result += storeFromTargetToStack(neg.box(), "%r8") + "\n";
+		return result;
 	}
 
 	@Override
@@ -227,7 +238,7 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		result += readFromStackToTarget(conv.box(), "%r9") + "\n";
 
 		if (source.equals(target)) {
-			result += "mov%s %%r8, %%r9".formatted(target.getOldRegisterSuffix());
+			result += storeFromTargetToStack(conv.box(), "%r8");
 			return result;
 		}
 
@@ -240,7 +251,8 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 			throw new InternalCompilerException("Can not convert from " + source + " -> " + target);
 		}
 
-		result += "movsxd %r8d, %r9";
+		result += "movsxd %r8d, %r9\n";
+		result += storeFromTargetToStack(conv.box(), "%r9");
 
 		return result;
 	}
@@ -274,10 +286,40 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 	}
 
 	public String visit(Graph graph, List<IkeaBløck> blocks) {
+		String functionName = graph.getEntity().getLdName();
+		currentReturnLabel = "%s____________return_block_of_this_function".formatted(functionName);
+
 		int paramCount = ((MethodType) graph.getEntity().getType()).getNParams();
-		String result = ".function " + graph.getEntity().getLdName();
-		result += " " + paramCount;
-		result += " " + (isVoid(graph.getEntity()) ? "0" : "1");
+
+		int stackFrameSize = blocks.stream()
+			.flatMap(it -> it.nodes().stream())
+			.map(IkeaNode::box)
+			.filter(it -> it instanceof IkeaVirtualRegister)
+			.mapToInt(it -> stackIndex(it).orElseThrow())
+			.max()
+			.orElse(0);
+
+		String debugInfo = "// " + functionName + " with " + paramCount + " params";
+		// store caller base pointer and move stack pointer to base pointer
+		String result = """
+			%s
+			.globl	%s
+			.type	%s, @function
+
+			%s:
+			// Function prologue, call address is above us pushed by "callq"
+			push %%rbp
+			movq %%rsp, %%rbp
+			sub $%s, %%rsp
+			""".formatted(debugInfo, functionName, functionName, functionName, stackFrameSize);
+
+		// load arguments from caller stack into our stack (for each argument)
+		for (int i = 0; i < paramCount; i++) {
+			int loadOffset = 16 + i * 8;
+			int storeOffset = 8 * (i + 1);
+			result += "movq " + loadOffset + "(%rbp), %r8\n";
+			result += "movq %r8, -" + storeOffset + "(%rbp)\n";
+		}
 
 		StringJoiner statements = new StringJoiner("\n");
 		for (IkeaBløck block : blocks) {
@@ -288,7 +330,12 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		}
 
 		result += "\n" + statements.toString().indent(2);
-		result += "\n.endfunction\n";
+		result += """
+			%s:
+			mov	%%rbp, %%rsp
+			pop	%%rbp
+			ret
+			""".formatted(currentReturnLabel);
 
 		return result;
 	}
@@ -304,10 +351,20 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 
 	private OptionalInt stackIndex(IkeaBøx box) {
 		if (box instanceof IkeaVirtualRegister register) {
-			return OptionalInt.of(register.num() * 8);
+			return OptionalInt.of((register.num() + 1) * 8);
 		}
 		if (box instanceof IkeaImmediate) {
 			return OptionalInt.empty();
+		}
+		throw new InternalCompilerException("Git: " + box);
+	}
+
+	private String getRegisterSuffix(IkeaBøx box) {
+		if (box instanceof IkeaVirtualRegister register) {
+			return register.size().getNewRegisterSuffix();
+		}
+		if (box instanceof IkeaImmediate immediate) {
+			return immediate.size().getNewRegisterSuffix();
 		}
 		throw new InternalCompilerException("Git: " + box);
 	}

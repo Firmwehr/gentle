@@ -202,16 +202,19 @@ public class GentleCompiler {
 		}
 	}
 
-	private static void generateWithGentleBackend(Path assemblyFile, List<Graph> graphs) {
+	private static void generateWithGentleBackend(Path assemblyFile, List<Graph> graphs) throws IOException {
 		LOGGER.info("handing over to gentle backend...");
 
+		Files.deleteIfExists(assemblyFile);
 		for (Graph graph : firm.Program.getGraphs()) {
 			CodeSelection codeSelection = new CodeSelection(graph);
 			List<IkeaBløck> blocks = codeSelection.convertBlocks();
 			DjungelskogVisitor visitor = new DjungelskogVisitor();
 			String res = visitor.visit(graph, blocks);
-			System.out.println(res); // TODO do properly
+			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
 		}
+
+		new ExternalLinker().link(assemblyFile, RuntimeAbi.CDECL);
 	}
 
 	private static void generateWithMolkiBackend(Path assemblyFile, List<Graph> graphs) throws IOException {
