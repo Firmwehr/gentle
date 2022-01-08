@@ -107,8 +107,11 @@ public class ConstantFolding extends NodeVisitor.Default {
 					}
 					runs++;
 				}
-				dumpGraph(graph, "cf");
-				return runs > 0;
+				boolean changed = runs > 0;
+				if (changed) {
+					dumpGraph(graph, "cf");
+				}
+				return changed;
 			})
 			.build();
 	}

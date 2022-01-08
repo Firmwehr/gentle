@@ -58,8 +58,11 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 					}
 					runs++;
 				}
-				dumpGraph(graph, "arithmetic");
-				return runs > 0;
+				boolean changed = runs > 0;
+				if (changed) {
+					dumpGraph(graph, "arithmetic");
+				}
+				return changed;
 			})
 			.build();
 	}
