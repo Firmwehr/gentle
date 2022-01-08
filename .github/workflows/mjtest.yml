@@ -39,6 +39,21 @@ jobs:
       - run: "git -C mjtest/tests reset --hard origin/master"
       - run: "./mjtest/mjt.py compile-firm ./run"
 
+  mjtest-djungelskog:
+    name: "Run Djungelskog compile"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: actions/checkout@v2
+      - name: Build using build script
+        run: ./build
+      - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
+      - run: "git -C mjtest/tests reset --hard origin/master"
+      - run: "./mjtest/mjt.py compile ./run"
+
   mjtest-molki:
     name: "Run molki compile"
     runs-on: ubuntu-latest
