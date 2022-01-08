@@ -8,6 +8,7 @@ public record IkeaImmediate(
 	IkeaRegisterSize size
 ) implements IkeaBøx {
 
+	@SuppressWarnings("AssignmentToMethodParameter")
 	public IkeaImmediate {
 		if (immediate.getMode().equals(Mode.getP())) {
 			immediate = immediate.convertTo(Mode.getLu());

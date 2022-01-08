@@ -89,18 +89,7 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 		if (!isVoid(call.address().getEntity())) {
 			result += " -> " + reg(call.box());
 		}
-
-		//		result = """
-		//			/* Setup arguments... */
-		//			/* Save old stack pointer */
-		//			pushq %rsp
-		//			pushq (%rsp)
-		//			/* Align stack to 16 bytes */
-		//			andq $-0x10, %rsp
-		//			CALL
-		//			/* Restore old stack pointer */
-		//			movq 8(%rsp), %rsp""".replace("CALL", result);
-
+		
 		return result;
 	}
 
