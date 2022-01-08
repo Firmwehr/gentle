@@ -7,6 +7,7 @@ import net.jbock.util.StringConverter;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 @Command(name = "gentle", description = "A small MiniJava compiler.", publicParser = true)
 public interface CommandArguments {
@@ -15,7 +16,10 @@ public interface CommandArguments {
 	String PARSETEST = "--parsetest";
 	String PRINT_AST = "--print-ast";
 	String CHECK = "--check";
+	String COMPILE = "--compile";
 	String COMPILE_FIRM = "--compile-firm";
+	String COMPILE_MOLKI = "--compile-molki";
+	String MOLKI_BINARY = "--molki-binary";
 
 	@Option(names = ECHO, description = "output the file as is")
 	boolean echo();
@@ -32,8 +36,17 @@ public interface CommandArguments {
 	@Option(names = CHECK, description = "exit with 0 iff the file is semantically valid")
 	boolean check();
 
+	@Option(names = COMPILE, description = "generate a runnable a.out binary using our very good backend")
+	boolean compile();
+
 	@Option(names = COMPILE_FIRM, description = "generate a runnable a.out binary using the firm backend")
 	boolean compileFirm();
+
+	@Option(names = COMPILE_MOLKI, description = "generate a runnable a.out binary using our backend and molki")
+	boolean compileMolki();
+
+	@Option(names = MOLKI_BINARY, description = "path to molki binary", converter = ExistingFileConverter.class)
+	Optional<Path> molkiBinary();
 
 	@Option(names = "--dump-graphs", description = "generate graph dump files")
 	boolean dumpGraphs();

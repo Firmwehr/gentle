@@ -7,6 +7,9 @@ import firm.Mode;
 import firm.nodes.Const;
 import firm.nodes.Node;
 
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
 public final class Util {
 
 	private static final Logger LOGGER = new Logger(Util.class);
@@ -57,5 +60,13 @@ public final class Util {
 				exchange(out.node, replacement);
 			}
 		}
+	}
+
+	public static Stream<Node> predsStream(Node node) {
+		return StreamSupport.stream(node.getPreds().spliterator(), false);
+	}
+
+	public static Stream<Node> outsStream(Node node) {
+		return StreamSupport.stream(BackEdges.getOuts(node).spliterator(), false).map(edge -> edge.node);
 	}
 }

@@ -21,7 +21,7 @@ public enum StdLibEntity {
 	/**
 	 * @see java.io.PrintStream#write(int) System.out.write(int)
 	 */
-	PUTCHAR(() -> create("putchar", Mode.getIs(), Mode.getIs())),
+	PUTCHAR(() -> create("write", Mode.getIs(), Mode.getIs())),
 	/**
 	 * @see java.io.PrintStream#println(int) System.out.println
 	 */

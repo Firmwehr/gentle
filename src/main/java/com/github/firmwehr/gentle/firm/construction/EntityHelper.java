@@ -71,6 +71,7 @@ public class EntityHelper {
 
 		if (method.isStatic()) {
 			returnType = new Type[]{typeHelper.getType(new SIntType())};
+			types = new Type[0];
 		}
 
 		MethodType methodType = new MethodType(types, returnType);
@@ -84,6 +85,6 @@ public class EntityHelper {
 	private String getLinkerName(SMethod method) {
 		String className = method.classDecl().name().ident();
 		String methodName = method.name().ident();
-		return className + "." + methodName;
+		return className + "_" + methodName;
 	}
 }

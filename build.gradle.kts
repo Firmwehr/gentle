@@ -95,8 +95,9 @@ dependencies {
 	// https://mvnrepository.com/artifact/net.java.dev.jna/jna
 	implementation("net.java.dev.jna:jna:4.5.2")
 
-
 	implementation("com.github.Firmwehr:jFirm:62c1a55f72")
+
+	implementation("org.buildobjects:jproc:2.6.2")
 
 	// junit
 	val junitVersion = "5.8.1"
@@ -104,7 +105,6 @@ dependencies {
 	testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
 	testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
 	testImplementation("org.assertj:assertj-core:3.21.0")
-	testImplementation("org.buildobjects:jproc:2.6.2")
 }
 
 // set encoding for all compilation passes
