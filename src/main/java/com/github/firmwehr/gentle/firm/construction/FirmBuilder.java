@@ -74,7 +74,7 @@ public class FirmBuilder {
 		if (!CompilerArguments.get().noArithmeticOptimizations()) {
 			builder.addGraphStep(ArithmeticOptimization.arithmeticOptimization());
 		}
-		if (!CompilerArguments.get().keepUnusedArguments()) {
+		if (!CompilerArguments.get().noRemoveUnused()) {
 			builder.addCallGraphStep(UnusedParameterOptimization.unusedParameterOptimization());
 		}
 
