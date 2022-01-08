@@ -29,7 +29,6 @@ public class UnusedParameterOptimization {
 	private static final Logger LOGGER = new Logger(UnusedParameterOptimization.class);
 
 	private static final int CALL_ARGUMENT_OFFSET = Start.pnTArgs; // [0: Proj M, 1: Address, 2...: Arguments...]
-	private static final int ADDRESS_PRED_INDEX = 1;
 	private static final Proj UNUSED_PROJ = null;
 	private final CallGraph graph;
 	private final Map<Entity, CallRewrite> callRewrites;
@@ -112,7 +111,6 @@ public class UnusedParameterOptimization {
 			if (rewrite == null) {
 				throw new IllegalStateException(delayedTask.entity() + " was not visited");
 			}
-			System.out.println("delayed rewrite for " + delayedTask.entity() + " in " + delayedTask.call().getGraph());
 			Call newCall = rewrite.rewrite(delayedTask.call());
 			if (newCall != delayedTask.call()) {
 				Graph.exchange(delayedTask.call(), newCall);
@@ -201,7 +199,7 @@ public class UnusedParameterOptimization {
 				}
 			}
 			Node[] rewrittenArguments = Arrays.copyOfRange(arguments, 0, usedCount);
-			Type newType = ((Address) call.getPred(ADDRESS_PRED_INDEX)).getEntity().getType();
+			Type newType = ((Address) call.getPtr()).getEntity().getType();
 			return (Call) call.getGraph()
 				.newCall(call.getBlock(), call.getMem(), call.getPtr(), rewrittenArguments, newType);
 		}
