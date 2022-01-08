@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.firm.optimization.callgraph;
 
+import com.github.firmwehr.gentle.firm.construction.StdLibEntity;
 import com.google.common.graph.ImmutableNetwork;
 import com.google.common.graph.MutableNetwork;
 import com.google.common.graph.Network;
@@ -8,13 +9,19 @@ import firm.Entity;
 import firm.Graph;
 import firm.nodes.Address;
 import firm.nodes.Call;
+import firm.nodes.Load;
 import firm.nodes.NodeVisitor;
+import firm.nodes.Store;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -22,9 +29,11 @@ import java.util.stream.Collectors;
 @SuppressWarnings("UnstableApiUsage") // that should be ENCOURAGED instead of warning us...
 public final class CallGraph {
 	private final Network<Entity, Call> calledMethods;
+	private final Map<Entity, Set<Effect>> effectCache;
 
 	private CallGraph(Network<Entity, Call> calledMethods) {
 		this.calledMethods = ImmutableNetwork.copyOf(calledMethods);
+		this.effectCache = new HashMap<>();
 	}
 
 	public static CallGraph create(Iterable<Graph> graphs) {
@@ -82,6 +91,55 @@ public final class CallGraph {
 	}
 
 	/**
+	 * Returns the effects caused by this entity. This includes effects of calls to other entities.
+	 *
+	 * @param entity the entity to get the effects for
+	 *
+	 * @return an unmodifiable view of the entity's effects
+	 */
+	public Set<Effect> effects(Entity entity) {
+		Set<Effect> cached = effectCache.get(entity);
+		if (cached == null) { // not cached yet
+			cached = EnumSet.noneOf(Effect.class);
+			// put before collect, avoiding infinite recursion
+			effectCache.put(entity, cached);
+			collectEffects(entity, cached);
+		}
+		return Collections.unmodifiableSet(cached);
+	}
+
+	private void collectEffects(Entity entity, Set<Effect> cached) {
+		if (entity.equals(StdLibEntity.ALLOCATE.getEntity())) {
+			cached.add(Effect.ALLOCATE);
+		} else if (entity.equals(StdLibEntity.PRINTLN.getEntity()) || entity.equals(StdLibEntity.PUTCHAR.getEntity()) ||
+			entity.equals(StdLibEntity.FLUSH.getEntity())) {
+			cached.add(Effect.OUTPUT);
+		} else if (entity.equals(StdLibEntity.GETCHAR.getEntity())) {
+			cached.add(Effect.INPUT);
+		} else if (entity.getGraph() != null) {
+			entity.getGraph().walk(new NodeVisitor.Default() {
+				@Override
+				public void visit(Load node) {
+					cached.add(Effect.LOAD);
+				}
+
+				@Override
+				public void visit(Store node) {
+					cached.add(Effect.STORE);
+				}
+			});
+			Set<Call> calls = calledMethods.outEdges(entity);
+			if (!calls.isEmpty()) {
+				cached.add(Effect.CALL);
+				calls.stream()
+					.map(call -> ((Address) call.getPtr()).getEntity())
+					.map(this::effects)
+					.forEach(cached::addAll);
+			}
+		}
+	}
+
+	/**
 	 * Each graph is only visited after all callees were visited, except for graphs forming a cycle.
 	 * <p>
 	 * For a cycle with exact one caller, e.g. {@code c -> a -> b -> a}, {@code b} will be visited before {@code a}.
@@ -116,5 +174,14 @@ public final class CallGraph {
 	@Override
 	public String toString() {
 		return "CallGraph";
+	}
+
+	public enum Effect {
+		LOAD, // loads from memory
+		STORE, // stores into memory
+		ALLOCATE, // allocates memory
+		INPUT, // the 'I' in IO
+		OUTPUT, // the 'O' in IO
+		CALL // calls other functions
 	}
 }
