@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.codegen.CodeSelection;
+import com.github.firmwehr.gentle.backend.ir.visit.DjungelskogVisitor;
 import com.github.firmwehr.gentle.backend.ir.visit.MolkiVisitor;
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandDispatcher;
@@ -207,7 +208,7 @@ public class GentleCompiler {
 		for (Graph graph : firm.Program.getGraphs()) {
 			CodeSelection codeSelection = new CodeSelection(graph);
 			List<IkeaBløck> blocks = codeSelection.convertBlocks();
-			MolkiVisitor visitor = new MolkiVisitor();
+			DjungelskogVisitor visitor = new DjungelskogVisitor();
 			String res = visitor.visit(graph, blocks);
 			System.out.println(res); // TODO do properly
 		}
