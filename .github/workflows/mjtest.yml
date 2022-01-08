@@ -52,6 +52,7 @@ jobs:
         run: ./build
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git -C mjtest/tests reset --hard origin/master"
+      - run: "rm mjtest/tests/exec/ReallyEfficientFactorization.java"
       - run: "./mjtest/mjt.py compile ./run"
 
   mjtest-molki:
@@ -71,5 +72,6 @@ jobs:
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git clone --recursive https://github.com/Firmwehr/molki /tmp/molki"
       - run: "git -C mjtest/tests reset --hard origin/master"
+      - run: "rm mjtest/tests/exec/ReallyEfficientFactorization.java"
       - run: sed -i 's/"$@"/--molki-binary \/tmp\/molki\/molki.py --compile-molki "${@:2}"/' run
       - run: "./mjtest/mjt.py compile-firm ./run"
