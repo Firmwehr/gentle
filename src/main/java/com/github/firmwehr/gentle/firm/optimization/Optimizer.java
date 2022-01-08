@@ -8,7 +8,6 @@ import firm.Program;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 public class Optimizer {
 	private final List<GraphOptimizationStep<Graph, Boolean>> graphOptimizationSteps;

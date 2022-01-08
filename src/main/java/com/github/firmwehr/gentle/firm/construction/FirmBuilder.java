@@ -1,11 +1,10 @@
 package com.github.firmwehr.gentle.firm.construction;
 
 import com.github.firmwehr.gentle.cli.CompilerArguments;
-import com.github.firmwehr.gentle.firm.optimization.UnusedParameterOptimization;
-import com.github.firmwehr.gentle.firm.optimization.callgraph.CallGraph;
 import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.firm.optimization.Optimizer;
+import com.github.firmwehr.gentle.firm.optimization.UnusedParameterOptimization;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import firm.Backend;
 import firm.DebugInfo;

@@ -49,7 +49,6 @@ import firm.nodes.Div;
 import firm.nodes.Load;
 import firm.nodes.Mod;
 import firm.nodes.Node;
-import firm.nodes.Start;
 import firm.nodes.Store;
 
 import java.util.HashSet;
