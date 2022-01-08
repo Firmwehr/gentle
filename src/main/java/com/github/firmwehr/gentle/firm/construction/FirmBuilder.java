@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.cli.CompilerArguments;
 import com.github.firmwehr.gentle.debug.DebugStore;
 import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
+import com.github.firmwehr.gentle.firm.optimization.EscapeAnalysisOptimization;
 import com.github.firmwehr.gentle.firm.optimization.FirmGraphCleanup;
 import com.github.firmwehr.gentle.firm.optimization.Optimizer;
 import com.github.firmwehr.gentle.firm.optimization.UnusedParameterOptimization;
@@ -100,6 +101,10 @@ public class FirmBuilder {
 
 		Optimizer optimizer = builder.build();
 		optimizer.optimize();
+
+		for (Graph graph : Program.getGraphs()) {
+			new EscapeAnalysisOptimization(graph).optimize();
+		}
 
 		return Lists.newArrayList(firm.Program.getGraphs());
 	}
