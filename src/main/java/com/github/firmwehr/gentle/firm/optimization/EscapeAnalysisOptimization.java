@@ -42,8 +42,26 @@ public class EscapeAnalysisOptimization {
 				}
 			}
 		});
+		rewriteAll(allocationCalls);
 		BackEdges.disable(graph);
 		return true; // TODO
+	}
+
+	private void rewriteAll(Set<Call> allocationCalls) {
+		for (Call call : allocationCalls) {
+			rewrite(call);
+		}
+	}
+
+	private void rewrite(Call call) {
+		// TODO
+		for (BackEdges.Edge edge : BackEdges.getOuts(call)) {
+			if (edge.node instanceof Proj proj && proj.getMode().equals(Mode.getT())) {
+				for (BackEdges.Edge argEdge : BackEdges.getOuts(edge.node)) {
+
+				}
+			}
+		}
 	}
 
 	private Optional<Call> filterNonEscapingAllocations(Call allocationCall) {
