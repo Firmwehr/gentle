@@ -75,7 +75,7 @@ public final class CallGraph {
 			.allowsSelfLoops(true)
 			.allowsParallelEdges(true)
 			.expectedNodeCount(calledMethods.nodes().size()) // maybe,
-			.expectedEdgeCount(calledMethods.nodes().size()) // maybe this helps a bit...
+			.expectedEdgeCount(calledMethods.edges().size()) // maybe this helps a bit...
 			.build();
 		for (Entity node : calledMethods.nodes()) {
 			if (entitiesToUpdate.contains(node)) {
