@@ -28,7 +28,7 @@ public class FirmBuilder {
 
 	static {
 		// Must be set before Firm.init is called!
-		Firm.VERSION = Firm.FirmVersion.RELEASE;
+		Firm.VERSION = Firm.FirmVersion.DEBUG;
 	}
 
 	private final EnumSet<GraphDumpStage> dumpStages;
