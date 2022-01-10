@@ -108,6 +108,13 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		StringBuilder result = new StringBuilder();
 		result.append("// ").append(call.address().getEntity().getLdName()).append("\n");
 
+		// uneven number of argument requires additional push for 16 byte alignment
+		int padding = 0;
+		if (call.arguments().size() % 2 != 0) {
+			result.append("sub $8, %rsp # padding").append("\n");
+			padding = 8;
+		}
+
 		// cdecl requires arguments to be pushed in reverse, so they are correctly ordered when reading them again
 		for (IkeaNode argument : Lists.reverse(call.arguments())) {
 			result.append(readFromStackToTarget(argument.box(), "%r8")).append("\n");
@@ -117,7 +124,7 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		result.append("callq ").append(call.address().getEntity().getLdName()).append("\n");
 
 		// undo parameter pushs
-		result.append("add $%s, %%rsp".formatted(call.arguments().size() * 8)).append("\n");
+		result.append("add $%s, %%rsp".formatted(call.arguments().size() * 8 + padding)).append("\n");
 
 		if (!isVoid(call.address().getEntity())) {
 			result.append(storeFromTargetToStack(call.box(), "%rax")).append("\n");
@@ -287,6 +294,12 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 			.mapToInt(it -> stackIndex(it).orElseThrow())
 			.max()
 			.orElse(0);
+
+		// pad stack frame to next 16 bytes for alignment
+		if (stackFrameSize % 16 != 0) {
+			// misaligned
+			stackFrameSize = (stackFrameSize / 16) * 16 + 16;
+		}
 
 		String debugInfo = "// " + functionName + " with " + paramCount + " params";
 		// store caller base pointer and move stack pointer to base pointer
