@@ -22,6 +22,7 @@ import firm.bindings.binding_irgopt;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 
+import java.util.ArrayDeque;
 import java.util.Optional;
 
 import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
@@ -69,7 +70,27 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 	}
 
 	private void applyArithmeticOptimization() {
-		graph.walkTopological(this);
+		graph.incVisited();
+
+		var list = new ArrayDeque<Node>();
+		list.add(graph.getEnd());
+		while (!list.isEmpty()) {
+			var element = list.poll();
+			if (element.visited()) {
+				continue;
+			}
+
+			//element.accept(this);
+			defaultVisit(element);
+			element.markVisited();
+
+			for (var pred : element.getPreds()) {
+				list.add(pred);
+			}
+		}
+
+
+		//graph.walkTopological(this);
 	}
 
 	@Override
