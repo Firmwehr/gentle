@@ -4,11 +4,9 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.firm.construction.StdLibEntity;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.GraphDumper;
-import com.google.common.base.Preconditions;
 import firm.BackEdges;
 import firm.Graph;
 import firm.Mode;
-import firm.TargetValue;
 import firm.nodes.Add;
 import firm.nodes.Address;
 import firm.nodes.Call;
@@ -21,8 +19,8 @@ import firm.nodes.Phi;
 import firm.nodes.Proj;
 import firm.nodes.Return;
 import firm.nodes.Store;
-import firm.nodes.Unknown;
-import org.jetbrains.annotations.NotNull;
+import org.javimmutable.collections.JImmutableMap;
+import org.javimmutable.collections.util.JImmutables;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -31,11 +29,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.toMap;
 
 public class EscapeAnalysisOptimization {
 	private static final Logger LOGGER = new Logger(EscapeAnalysisOptimization.class, Logger.LogLevel.DEBUG);
@@ -82,7 +79,7 @@ public class EscapeAnalysisOptimization {
 
 	private void rewrite(Call call) {
 		LOGGER.debug("rewriting loads and stores for %s", call);
-		Map<LocalAddress, List<Node>> accesses = new HashMap<>(); // read/write access to the memory allocated by call
+		Set<Node> accessNodes = new HashSet<>();
 		Map<LocalAddress, Mode> modes = new HashMap<>();
 		graph.incVisited(); // increment for walkDown
 		walkDown(call, new NodeVisitor.Default() {
@@ -99,130 +96,16 @@ public class EscapeAnalysisOptimization {
 			private void remember(Node node, Node ptr, Node modeHolder) {
 				LocalAddress localAddress = fromPred(ptr);
 				LOGGER.debug("remember %s with ptr %s (mode %s) for %s", node, ptr, modeHolder, localAddress);
-				accesses.computeIfAbsent(localAddress, ignored -> new ArrayList<>()).add(node);
+				accessNodes.add(node);
 				modes.putIfAbsent(localAddress, modeHolder.getMode());
 			}
 		});
-		graph.incVisited(); // increment for walkMemory
-		Map<LocalAddress, Node> predecessors = new HashMap<>();
-		Set<Node> accessNodes = accesses.values().stream().flatMap(List::stream).collect(Collectors.toSet());
-		Map<Phi, Map<LocalAddress, Node>> phis = new HashMap<>();
-		walkMemory(call, new NodeVisitor.Default() {
-
-			@Override
-			public void visit(Phi node) {
-				Node block = node.getBlock();
-				for (Map.Entry<LocalAddress, List<Node>> entry : accesses.entrySet()) {
-					LocalAddress address = entry.getKey();
-					Mode mode = modes.get(address);
-					Node placeholder = graph.newUnknown(mode);
-					Node pred = calculatePred(address, mode, predecessors);
-					Node phi = graph.newPhi(block, new Node[]{placeholder, pred}, mode);
-					phis.computeIfAbsent(node, ignored -> new HashMap<>()).put(address, phi);
-					updatePredecessor(predecessors, address, phi);
-				}
-			}
-
-			@Override
-			public void visit(Load node) {
-				// make sure this Load is interesting for us
-				if (!accessNodes.contains(node)) {
-					return;
-				}
-				LOGGER.debug("%s needs to be replaced", node);
-				LocalAddress localAddress = fromPred(node.getPtr());
-				Node dataProj = successor(node, false);
-				Node pred = calculatePred(localAddress, dataProj.getMode(), predecessors);
-				rewireMemory(node);
-				Node user = successor(dataProj, false);
-				for (int i = 0; i < user.getPredCount(); i++) {
-					if (user.getPred(i).equals(dataProj)) {
-						LOGGER.debug("set pred of %s to %s (%s)", user, pred, node);
-						user.setPred(i, pred);
-					}
-				}
-			}
-
-			@Override
-			public void visit(Store node) {
-				// make sure this Load is interesting for us
-				if (!accessNodes.contains(node)) {
-					LOGGER.debug("ignoring %s, not accessed", node);
-					return;
-				}
-				LOGGER.debug("%s needs to be replaced", node);
-				// assuming this is a store *into* our object we want to inline
-				LocalAddress localAddress = fromPred(node.getPtr());
-				updatePredecessor(predecessors, localAddress, node.getValue());
-				rewireMemory(node) // collect outgoing memory phis
-					.map(phis::get) // map them to our created data phis
-					.filter(Objects::nonNull) // not all memory phis have corresponding data phis
-					.map(map -> map.get(localAddress)) //
-					.forEach(n -> {
-						for (int i = 0; i < n.getPredCount(); i++) {
-							if (n.getPred(i) instanceof Unknown) {
-								n.setPred(i, node.getValue());
-							}
-						}
-					});
-			}
-		});
+		new CallRewriter(call, accessNodes, modes).rewrite();
 		// actually remove the call
 		dropAllocation(call);
 	}
 
-	private void walkMemoryRecursive(Call call) {
-
-	}
-
-	@NotNull
-	private Node calculatePred(LocalAddress localAddress, Mode mode, Map<LocalAddress, Node> predecessors) {
-		Node pred = predecessors.get(localAddress);
-		if (pred == null) {
-			// no store before, fallback to default value
-			pred = graph.newConst(new TargetValue(0, mode));
-			pred.markVisited(); // skip in walkMemory
-			updatePredecessor(predecessors, localAddress, pred);
-		}
-		return pred;
-	}
-
-	private static void updatePredecessor(Map<LocalAddress, Node> predecessors, LocalAddress localAddress,
-	                                      Node value) {
-		LOGGER.debug("update predecessor to %s (was %s)", value, predecessors.get(localAddress));
-		predecessors.put(localAddress, value);
-	}
-
-	private static void walkMemory(Node node, NodeVisitor visitor) {
-		// first: collect nodes, they might be rewritten when visiting
-		// second: visit and rewrite
-		Deque<Node> queue = new ArrayDeque<>();
-		List<Node> result = new ArrayList<>();
-		queue.add(node);
-		while (!queue.isEmpty()) {
-			Node top = queue.remove();
-			top.markVisited();
-			result.add(top);
-			if (top.getMode().equals(Mode.getM())) {
-				for (BackEdges.Edge edge : BackEdges.getOuts(top)) {
-					if (!edge.node.getMode().equals(Mode.getX()) && !edge.node.visited()) {
-						queue.add(edge.node);
-					}
-				}
-			} else if (top.getMode().equals(Mode.getT())) {
-				for (BackEdges.Edge edge : BackEdges.getOuts(top)) {
-					if (edge.node.getMode().equals(Mode.getM()) && !edge.node.visited()) {
-						queue.add(edge.node);
-					}
-				}
-			}
-		}
-		for (Node memNode : result) {
-			memNode.accept(visitor);
-		}
-	}
-
-	private Node successor(Node node, boolean memory) {
+	private static Node successor(Node node, boolean memory) {
 		if (node instanceof Proj) {
 			for (BackEdges.Edge edge : BackEdges.getOuts(node)) {
 				return edge.node;
@@ -234,32 +117,8 @@ public class EscapeAnalysisOptimization {
 			}
 		}
 		LOGGER.debug("%s has %s outs without memory", node, BackEdges.getNOuts(node));
-		GraphDumper.dumpGraph(graph, "bug");
+		// GraphDumper.dumpGraph(graph, "bug");
 		throw new InternalCompilerException("No successor found for " + node);
-	}
-
-	private Stream<Phi> rewireMemory(Node node) {
-		Preconditions.checkArgument(node.getMode().equals(Mode.getT()), "expected Mode T for %s", node);
-		// TODO all outs of Proj
-		Node pred = node.getPred(Load.pnM); // Phi or Proj M
-		Node proj = successor(node, true);
-		List<Phi> outPhis = new ArrayList<>();
-		for (BackEdges.Edge edge : BackEdges.getOuts(proj)) {
-			Node memNode = edge.node;
-			LOGGER.debug("replace memory with path from %s to %s", pred, memNode);
-			if (memNode instanceof Phi phi) {
-				// find the correct pred of this phi that should be rewired
-				for (int i = 0; i < phi.getPredCount(); i++) {
-					if (phi.getPred(i).equals(proj)) {
-						phi.setPred(i, pred);
-					}
-				}
-				outPhis.add(phi);
-			} else {
-				memNode.setPred(Load.pnM, pred); // Load.pnM == Store.pnM == Proj.pnMax
-			}
-		}
-		return outPhis.stream();
 	}
 
 	private Node skipProj(Node mem) {
@@ -297,21 +156,31 @@ public class EscapeAnalysisOptimization {
 		}
 	}
 
+	// return calls that do not escape
 	private Optional<Call> filterNonEscapingAllocations(Call allocationCall) {
-		if (!escapes(allocationCall)) {
+		if (BackEdges.getNOuts(allocationCall) < 2) {
+			return Optional.of(allocationCall);
+		}
+		Node projResT = successor(allocationCall, false);
+		Proj resultProj = (Proj) successor(projResT, false);
+		if (!escapes(resultProj)) {
 			return Optional.of(allocationCall);
 		}
 		return Optional.empty();
 	}
 
-	private boolean escapes(Call call) {
+	private boolean escapes(Proj callResProj) {
 		Deque<Node> deepOuts = new ArrayDeque<>();
-		deepOuts.add(call);
+		deepOuts.add(callResProj);
 		while (!deepOuts.isEmpty()) {
 			Node next = deepOuts.removeLast();
 			for (BackEdges.Edge edge : BackEdges.getOuts(next)) {
+				if (edge.node.getMode().equals(Mode.getM())) {
+					LOGGER.debug("stop at %s (memory)", edge.node);
+					continue;
+				}
 				if (edge.node instanceof Call || edge.node instanceof Return) {
-					LOGGER.debug("%s escapes on %s", call, edge.node);
+					LOGGER.debug("%s escapes on %s", callResProj, edge.node);
 					return true;
 				}
 				if (edge.node instanceof Load) {
@@ -321,14 +190,14 @@ public class EscapeAnalysisOptimization {
 				}
 				if (edge.node instanceof Store store) {
 					// TODO what happens with self ref?
-					if (storeInMemoryProvidedByCall(store.getPtr(), call)) {
+					if (!callResProjIsReachableFromStoreValue(store.getValue(), callResProj)) {
 						// Store *in* allocated object would be replaced
 						LOGGER.debug("stop at %s", edge.node);
 						continue;
 					}
 					// store in other object, mark this as escape. If other object does not escape, this
 					// can be optimized when running escape analysis again
-					LOGGER.debug("%s escapes on %s", call, edge.node);
+					LOGGER.debug("%s escapes on %s", callResProj, edge.node);
 					return true;
 				}
 				if (edge.node instanceof Cmp) {
@@ -346,16 +215,22 @@ public class EscapeAnalysisOptimization {
 				deepOuts.add(edge.node);
 			}
 		}
-		LOGGER.debug("%s does not escape, can be optimized", call);
+		LOGGER.debug("%s does not escape, can be optimized", callResProj);
 		return false;
 	}
 
-	private boolean storeInMemoryProvidedByCall(Node storePred, Call call) {
-		if (storePred.equals(call)) {
+	private boolean callResProjIsReachableFromStoreValue(Node storePred, Proj callResProj) {
+		if (storePred.equals(callResProj)) {
 			return true;
 		}
 		for (Node pred : storePred.getPreds()) {
-			if (storeInMemoryProvidedByCall(pred, call)) {
+			// load does not escape
+			// store would have been checked separately already
+			if (pred instanceof Load || pred instanceof Store) {
+				continue;
+			}
+			// memory nodes don't lead to callResProj (as it is a value)
+			if (!pred.getMode().equals(Mode.getM()) && callResProjIsReachableFromStoreValue(pred, callResProj)) {
 				return true;
 			}
 		}
@@ -368,11 +243,110 @@ public class EscapeAnalysisOptimization {
 	) {
 	}
 
-	interface StateNodeVisitor<S> {
-		S visit(Load load, S state);
+	static class CallRewriter {
+		private final Call call;
+		private final Graph graph;
+		private final Map<LocalAddress, Mode> modes;
+		private final Map<Phi, Map<LocalAddress, Phi>> phis = new HashMap<>();
+		private final Set<Node> interestingNodes;
+		private final List<Runnable> replacements;
 
-		S visit(Phi phi, S state);
+		CallRewriter(Call call, Set<Node> interestingNodes, Map<LocalAddress, Mode> modes) {
+			this.call = call;
+			this.graph = call.getGraph();
+			this.modes = modes;
+			this.interestingNodes = interestingNodes;
+			this.replacements = new ArrayList<>();
+		}
 
-		S visit(Store store, S state);
+		public void rewrite() {
+			graph.incVisited(); // increment for walkRecursive
+			Map<LocalAddress, Node> predecessors = modes.entrySet()
+				.stream()
+				.collect(toMap(Map.Entry::getKey, entry -> graph.newConst(entry.getValue().getNull())));
+			walkRecursive(call, -1, JImmutables.map(predecessors));
+			for (Runnable runnable : replacements) {
+				runnable.run();
+			}
+		}
+
+		private void walkRecursive(Node node, int inIndex, JImmutableMap<LocalAddress, Node> predecessors) {
+			if (node.visited()) {
+				LOGGER.debug("skip %s", node);
+				return;
+			}
+			LOGGER.debug("visit %s", node);
+			JImmutableMap<LocalAddress, Node> follow = predecessors;
+			if (node instanceof Phi memoryPhi) {
+				Node block = node.getBlock();
+				for (LocalAddress address : modes.keySet()) {
+					Node pred = predecessors.get(address);
+					Phi dataPhi;
+					if (phis.containsKey(memoryPhi)) {
+						dataPhi = phis.get(memoryPhi).get(address);
+					} else {
+						Mode mode = modes.get(address);
+						Node[] ins = createUnknowns(memoryPhi.getPredCount(), mode);
+						dataPhi = (Phi) graph.newPhi(block, ins, mode);
+						phis.computeIfAbsent(memoryPhi, ignored -> new HashMap<>()).putIfAbsent(address, dataPhi);
+					}
+					dataPhi.setPred(inIndex, pred);
+					follow = follow.assign(address, dataPhi);
+				}
+			} else if (node instanceof Load load && interestingNodes.contains(load)) {
+				LocalAddress address = fromPred(load.getPtr());
+				Node value = follow.get(address);
+				replacements.add(() -> replaceLoad(load, value));
+			} else if (node instanceof Store store && interestingNodes.contains(store)) {
+				follow = follow.assign(fromPred(store.getPtr()), store.getValue());
+				replacements.add(() -> replaceStore(store));
+			}
+			if (!(node instanceof Phi)) {
+				node.markVisited();
+			}
+			if (node.getMode().equals(Mode.getM())) {
+				for (BackEdges.Edge edge : BackEdges.getOuts(node)) {
+					LOGGER.debug("(M) edge with node %s", edge.node);
+					if (!edge.node.getMode().equals(Mode.getX())) {
+						walkRecursive(edge.node, edge.pos, follow);
+					}
+				}
+			} else if (node.getMode().equals(Mode.getT())) {
+				for (BackEdges.Edge edge : BackEdges.getOuts(node)) {
+					LOGGER.debug("(T) edge with node %s", edge.node);
+					if (edge.node.getMode().equals(Mode.getM())) {
+						walkRecursive(edge.node, edge.pos, follow);
+					}
+				}
+			} else {
+				throw new InternalCompilerException("Illegal node visited %s".formatted(node));
+			}
+		}
+
+		private void replaceStore(Store store) {
+			Node memoryProj = successor(store, true);
+			for (BackEdges.Edge edge : BackEdges.getOuts(memoryProj)) {
+				edge.node.setPred(edge.pos, store.getMem());
+			}
+		}
+
+		private Node[] createUnknowns(int predCount, Mode mode) {
+			Node[] nodes = new Node[predCount];
+			for (int i = 0; i < predCount; i++) {
+				nodes[i] = graph.newUnknown(mode);
+			}
+			return nodes;
+		}
+
+		private void replaceLoad(Load load, Node value) {
+			Node dataProj = successor(load, false);
+			for (BackEdges.Edge edge : BackEdges.getOuts(dataProj)) {
+				edge.node.setPred(edge.pos, value);
+			}
+			Node memoryProj = successor(load, true);
+			for (BackEdges.Edge edge : BackEdges.getOuts(memoryProj)) {
+				edge.node.setPred(edge.pos, load.getMem());
+			}
+		}
 	}
 }
