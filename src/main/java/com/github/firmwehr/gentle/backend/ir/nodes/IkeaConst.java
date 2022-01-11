@@ -2,13 +2,13 @@ package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaImmediate;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
-import firm.nodes.Const;
+import firm.nodes.Node;
 
 import java.util.List;
 
 public record IkeaConst(
 	IkeaImmediate box,
-	Const node
+	Node node
 ) implements IkeaNode {
 
 	@Override
