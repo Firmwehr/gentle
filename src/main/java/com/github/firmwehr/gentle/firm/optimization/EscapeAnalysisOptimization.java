@@ -54,11 +54,11 @@ public class EscapeAnalysisOptimization {
 					return;
 				}
 
-				filterNonEscapingAllocations(node).ifPresent(allocationCalls::add);
 				// TODO arrays might be 1 element or 0 element?
 				if (!(node.getPred(2) instanceof Const) || ((Const) node.getPred(2)).getTarval().asLong() > 1L) {
 					return; // array, would be somewhat more difficult to deal with correctly
 				}
+				filterNonEscapingAllocations(node).ifPresent(allocationCalls::add);
 			}
 		});
 		rewriteAll(allocationCalls);
@@ -192,7 +192,7 @@ public class EscapeAnalysisOptimization {
 				}
 				if (edge.node instanceof Store store) {
 					// TODO what happens with self ref?
-					if (!callResProjIsReachableFromStoreValue(store.getValue(), callResProj)) {
+					if (!callResProjIsReachableFromStoreValue(store.getValue(), callResProj, new HashSet<>())) {
 						// Store *in* allocated object would be replaced
 						LOGGER.debug("stop at %s", edge.node);
 						continue;
@@ -221,7 +221,10 @@ public class EscapeAnalysisOptimization {
 		return false;
 	}
 
-	private boolean callResProjIsReachableFromStoreValue(Node storePred, Proj callResProj) {
+	private boolean callResProjIsReachableFromStoreValue(Node storePred, Proj callResProj, Set<Node> seen) {
+		if (!seen.add(storePred)) {
+			return false;
+		}
 		if (storePred.equals(callResProj)) {
 			return true;
 		}
@@ -232,7 +235,7 @@ public class EscapeAnalysisOptimization {
 				continue;
 			}
 			// memory nodes don't lead to callResProj (as it is a value)
-			if (!pred.getMode().equals(Mode.getM()) && callResProjIsReachableFromStoreValue(pred, callResProj)) {
+			if (!pred.getMode().equals(Mode.getM()) && callResProjIsReachableFromStoreValue(pred, callResProj, seen)) {
 				return true;
 			}
 		}
