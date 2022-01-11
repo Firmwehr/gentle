@@ -40,7 +40,7 @@ public class FirmBuilder {
 			Firm.VERSION = maybeVersion.orElse(version);
 		} else {
 			LOGGER.info("using current firm library default of: %s", Firm.FirmVersion.DEBUG);
-			Firm.VERSION = maybeVersion.orElse(Firm.FirmVersion.DEBUG);
+			Firm.VERSION = Firm.FirmVersion.DEBUG;
 		}
 	}
 
