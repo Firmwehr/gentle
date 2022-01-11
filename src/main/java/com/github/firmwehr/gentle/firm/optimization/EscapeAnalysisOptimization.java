@@ -151,16 +151,21 @@ public class EscapeAnalysisOptimization {
 	}
 
 	private static LocalAddress fromPred(Node pred) {
+		return fromPredIfMatches(pred).orElseThrow(
+			() -> new InternalCompilerException("Don't know how to transform " + pred + " into local address"));
+	}
+
+	private static Optional<LocalAddress> fromPredIfMatches(Node pred) {
 		if (pred instanceof Proj proj) {
-			return new LocalAddress(proj, 0); // 0th field in class
+			return Optional.of(new LocalAddress(proj, 0)); // 0th field in class
 		} else if (pred instanceof Add add) {
 			if (add.getLeft() instanceof Proj proj && add.getRight() instanceof Const val) {
-				return new LocalAddress(proj, val.getTarval().asLong());
+				return Optional.of(new LocalAddress(proj, val.getTarval().asLong()));
 			} else if (add.getRight() instanceof Proj proj && add.getLeft() instanceof Const val) {
-				return new LocalAddress(proj, val.getTarval().asLong());
+				return Optional.of(new LocalAddress(proj, val.getTarval().asLong()));
 			}
 		}
-		throw new InternalCompilerException("Don't know how to transform " + pred + " into local address");
+		return Optional.empty();
 	}
 
 	private static void walkDown(Node node, NodeVisitor visitor) {
@@ -205,20 +210,28 @@ public class EscapeAnalysisOptimization {
 					LOGGER.debug("%s escapes on %s", callResProj, edge.node);
 					return true;
 				}
-				if (edge.node instanceof Load) {
-					// Load from this call => ignore (would be replaced)
-					LOGGER.debug("stop at %s", edge.node);
-					continue;
+				if (edge.node instanceof Load load) {
+					if (fromPredIfMatches(load.getPtr()).isPresent()) {
+						// Load from this call => ignore (would be replaced)
+						LOGGER.debug("stop at %s", edge.node);
+						continue;
+					}
+					LOGGER.debug("%s escapes on %s (invalid address)", callResProj, edge.node);
+					return true;
 				}
 				if (edge.node instanceof Store store) {
 					// TODO what happens with self ref?
 					if (!callResProjIsReachableFromStoreValue(store.getValue(), callResProj, new HashSet<>())) {
-						// Store *in* allocated object would be replaced
-						LOGGER.debug("stop at %s", edge.node);
-						continue;
+						if (fromPredIfMatches(store.getPtr()).isPresent()) {
+							// Store *in* allocated object would be replaced
+							LOGGER.debug("stop at %s", edge.node);
+							continue;
+						}
 					}
-					// store in other object, mark this as escape. If other object does not escape, this
-					// can be optimized when running escape analysis again
+					// a) store in other object, mark this as escape. If other object does not escape, this
+					//    can be optimized when running escape analysis again
+					// b) the store address is in an unknown format, we can't rewrite it.
+					//    In that case, we mark it as escaped
 					LOGGER.debug("%s escapes on %s", callResProj, edge.node);
 					return true;
 				}
