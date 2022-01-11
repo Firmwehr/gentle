@@ -6,6 +6,7 @@ import com.github.firmwehr.gentle.backend.ir.visit.DjungelskogVisitor;
 import com.github.firmwehr.gentle.backend.ir.visit.MolkiVisitor;
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandDispatcher;
+import com.github.firmwehr.gentle.debug.Panopticon;
 import com.github.firmwehr.gentle.firm.construction.FirmBuilder;
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
@@ -178,7 +179,7 @@ public class GentleCompiler {
 			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer(source, parser.parse());
 			SProgram program = semanticAnalyzer.analyze();
 
-			List<Graph> graphs = new FirmBuilder().convert(program);
+			List<Graph> graphs = new FirmBuilder().convert(program, new Panopticon(source));
 
 			// generate matching filename for input and call backend handler
 			String assemblyFilename = FilenameUtils.removeExtension(path.getFileName().toString()) + ".s";

@@ -1,6 +1,9 @@
 package com.github.firmwehr.gentle.debug;
 
 import com.github.firmwehr.gentle.semantic.ast.expression.SFieldAccessExpression;
+import com.github.firmwehr.gentle.source.SourceSpan;
+
+import java.util.Optional;
 
 public record DebugInfoFieldAccess(
 	SFieldAccessExpression source,
@@ -8,8 +11,13 @@ public record DebugInfoFieldAccess(
 ) implements HasDebugInformation {
 
 	@Override
-	public String toDebugString() {
-		return "field access " + type + ": " + source.toDebugString();
+	public Optional<SourceSpan> debugSpan() {
+		return source().debugSpan();
+	}
+
+	@Override
+	public String additionalInfo() {
+		return type().name();
 	}
 
 	public enum FieldAccessElementType {

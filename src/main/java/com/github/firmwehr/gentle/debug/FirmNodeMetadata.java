@@ -17,9 +17,16 @@ import com.github.firmwehr.gentle.semantic.ast.expression.SFieldAccessExpression
 import com.github.firmwehr.gentle.semantic.ast.expression.SMethodInvocationExpression;
 import com.github.firmwehr.gentle.semantic.ast.statement.SIfStatement;
 import com.github.firmwehr.gentle.semantic.ast.statement.SWhileStatement;
+import com.github.firmwehr.gentle.source.Source;
+import com.github.firmwehr.gentle.source.SourcePosition;
+import com.github.firmwehr.gentle.source.SourceSpan;
+import com.sun.jna.Pointer;
+import firm.DebugInfo;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 public record FirmNodeMetadata(
@@ -73,8 +80,24 @@ public record FirmNodeMetadata(
 		return forElement(new DebugInfoAllocate(source, type));
 	}
 
-	@Override
-	public String toString() {
+	public Pointer toDebugInfo(Source source) {
+		String message = toDebugString(source);
+		int line = findSourcePos(source).map(SourcePosition::line).orElse(-1);
+		int col = findSourcePos(source).map(SourcePosition::column).orElse(-1);
+
+		return DebugInfo.createInfo(message, line, col);
+	}
+
+	private Optional<SourcePosition> findSourcePos(Source source) {
+		return semanticElements.stream()
+			.flatMap(it -> it.debugSpan().stream())
+			.findFirst()
+			.stream()
+			.map(it -> source.positionFromOffset(it.startOffset()))
+			.findFirst();
+	}
+
+	private String toDebugString(Source source) {
 		String result = "";
 
 		if (!associatedBackendNodes.isEmpty()) {
@@ -83,10 +106,29 @@ public record FirmNodeMetadata(
 		}
 
 		if (!semanticElements.isEmpty()) {
-			result +=
-				semanticElements.stream().map(HasDebugInformation::toDebugString).collect(Collectors.joining(", "));
+			StringJoiner parts = new StringJoiner("\n");
+			for (HasDebugInformation element : semanticElements) {
+				if (element.debugSpan().isPresent()) {
+					SourceSpan span = element.debugSpan().get();
+					parts.add(getMessageForSpan(source, span));
+				} else if (!element.additionalInfo().isBlank()) {
+					parts.add(element.additionalInfo());
+				} else {
+					parts.add("<none>");
+				}
+			}
+			result += parts;
 		}
 
 		return result;
+	}
+
+
+	private static String getMessageForSpan(Source source, SourceSpan span) {
+		return escapeComments(source.content().substring(span.startOffset(), span.endOffset())) + "\n";
+	}
+
+	private static String escapeComments(String input) {
+		return input.replace("/*", "[").replace("*/", "]");
 	}
 }

@@ -1,6 +1,9 @@
 package com.github.firmwehr.gentle.debug;
 
 import com.github.firmwehr.gentle.semantic.ast.expression.SExpression;
+import com.github.firmwehr.gentle.source.SourceSpan;
+
+import java.util.Optional;
 
 public record DebugInfoAllocate(
 	SExpression source,
@@ -8,8 +11,13 @@ public record DebugInfoAllocate(
 ) implements HasDebugInformation {
 
 	@Override
-	public String toDebugString() {
-		return "allocate " + type + ": " + source.toDebugString();
+	public Optional<SourceSpan> debugSpan() {
+		return source().debugSpan();
+	}
+
+	@Override
+	public String additionalInfo() {
+		return type.name();
 	}
 
 	public enum AllocateElementType {

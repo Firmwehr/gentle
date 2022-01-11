@@ -6,6 +6,8 @@ import com.github.firmwehr.gentle.semantic.Visitor;
 import com.github.firmwehr.gentle.semantic.ast.type.SExprType;
 import com.github.firmwehr.gentle.source.SourceSpan;
 
+import java.util.Optional;
+
 public sealed interface SExpression extends HasDebugInformation
 	permits SArrayAccessExpression, SBinaryOperatorExpression, SBooleanValueExpression, SFieldAccessExpression,
 	        SIntegerValueExpression, SLocalVariableExpression, SMethodInvocationExpression, SNewArrayExpression,
@@ -19,7 +21,12 @@ public sealed interface SExpression extends HasDebugInformation
 	<T> T accept(Visitor<T> visitor) throws SemanticException;
 
 	@Override
-	default String toDebugString() {
-		return type().format() + " at " + sourceSpan();
+	default Optional<SourceSpan> debugSpan() {
+		return Optional.ofNullable(sourceSpan());
+	}
+
+	@Override
+	default String additionalInfo() {
+		return "Type: " + type().format();
 	}
 }

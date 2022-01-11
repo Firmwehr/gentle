@@ -17,7 +17,7 @@ public record SReturnStatement(
 	}
 
 	@Override
-	public String toDebugString() {
-		return "return @" + sourceSpan;
+	public Optional<SourceSpan> debugSpan() {
+		return Optional.of(SourceSpan.from(sourceSpan, returnValue.stream().map(SExpression::sourceSpan).toList()));
 	}
 }

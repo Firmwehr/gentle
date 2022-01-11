@@ -1,6 +1,9 @@
 package com.github.firmwehr.gentle.debug;
 
 import com.github.firmwehr.gentle.semantic.ast.expression.SArrayAccessExpression;
+import com.github.firmwehr.gentle.source.SourceSpan;
+
+import java.util.Optional;
 
 public record DebugInfoArrayAccessTarget(
 	SArrayAccessExpression source,
@@ -8,8 +11,13 @@ public record DebugInfoArrayAccessTarget(
 ) implements HasDebugInformation {
 
 	@Override
-	public String toDebugString() {
-		return "array access " + targetType + ": " + source.toDebugString();
+	public Optional<SourceSpan> debugSpan() {
+		return source().debugSpan();
+	}
+
+	@Override
+	public String additionalInfo() {
+		return targetType.toString();
 	}
 
 	public enum ArrayAccessTargetType {

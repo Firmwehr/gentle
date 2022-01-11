@@ -1,9 +1,22 @@
 package com.github.firmwehr.gentle.debug;
 
+import com.github.firmwehr.gentle.source.SourceSpan;
+
+import java.util.Optional;
+
 public interface HasDebugInformation {
 
 	/**
-	 * Returns debug information about this element
+	 * @return some extra debug information about this element
+	 *
+	 * @implNote the default implementation returns an empty string
 	 */
-	String toDebugString();
+	default String additionalInfo() {
+		return "";
+	}
+
+	/**
+	 * @return the span in the source code
+	 */
+	Optional<SourceSpan> debugSpan();
 }
