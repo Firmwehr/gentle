@@ -103,6 +103,7 @@ public class RegisterTransferGraph {
 
 	private void generateEasyMoves(List<Pair<IkeaBøx, IkeaBøx>> generatedMoves) {
 		Optional<EndpointPair<IkeaBøx>> edgeOpt;
+		//noinspection NestedAssignment
 		while ((edgeOpt = findFreeTarget()).isPresent()) {
 			EndpointPair<IkeaBøx> edge = edgeOpt.get();
 			LOGGER.debug("Found victim %s -> %s", edge.source(), edge.target());
