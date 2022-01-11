@@ -5,6 +5,7 @@ import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.firm.optimization.Optimizer;
 import com.github.firmwehr.gentle.firm.optimization.UnusedParameterOptimization;
+import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import com.google.common.collect.Lists;
 import firm.Backend;
@@ -27,9 +28,20 @@ import static java.util.stream.Collectors.joining;
  */
 public class FirmBuilder {
 
+	private static final Logger LOGGER = new Logger(FirmBuilder.class);
+
 	static {
 		// Must be set before Firm.init is called!
-		Firm.VERSION = Firm.FirmVersion.DEBUG;
+		var maybeVersion = CompilerArguments.get().firmVersion();
+
+		if (maybeVersion.isPresent()) {
+			var version = maybeVersion.get();
+			LOGGER.info("picked up firm version override to: %s", version);
+			Firm.VERSION = maybeVersion.orElse(version);
+		} else {
+			LOGGER.info("using current firm library default of: %s", Firm.FirmVersion.DEBUG);
+			Firm.VERSION = maybeVersion.orElse(Firm.FirmVersion.DEBUG);
+		}
 	}
 
 	private final EnumSet<GraphDumpStage> dumpStages;
