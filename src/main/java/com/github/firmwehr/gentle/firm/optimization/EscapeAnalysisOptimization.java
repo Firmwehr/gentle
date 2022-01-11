@@ -72,7 +72,7 @@ public class EscapeAnalysisOptimization {
 				}
 
 				// TODO arrays might be 1 element or 0 element?
-				if (!(node.getPred(2) instanceof Const) || ((Const) node.getPred(2)).getTarval().asLong() > 1L) {
+				if (!(node.getPred(2) instanceof Const)) {
 					return; // array, would be somewhat more difficult to deal with correctly
 				}
 				filterNonEscapingAllocations(node).ifPresent(allocationCalls::add);
@@ -142,13 +142,6 @@ public class EscapeAnalysisOptimization {
 		}
 		LOGGER.debug("%s has %s outs without memory", node, BackEdges.getNOuts(node));
 		throw new InternalCompilerException("No successor found for " + node);
-	}
-
-	private Node skipProj(Node mem) {
-		if (mem instanceof Proj proj) {
-			return skipProj(proj.getPred());
-		}
-		return mem;
 	}
 
 	private static LocalAddress fromPred(Node pred) {
