@@ -80,34 +80,40 @@ public class ConstantFolding extends NodeVisitor.Default {
 		this.constants = new HashMap<>();
 	}
 
-	public static GraphOptimizationStep constantFolding() {
-		return GraphOptimizationStep.builder().withDescription("ConstantFolding").withOptimizationFunction(graph -> {
-			int runs = 0;
-			while (true) {
-				// Needs to be done in each iteration apparently?
-				BackEdges.enable(graph);
+	public static GraphOptimizationStep<Graph, Boolean> constantFolding() {
+		return GraphOptimizationStep.<Graph, Boolean>builder()
+			.withDescription("ConstantFolding")
+			.withOptimizationFunction(graph -> {
+				int runs = 0;
+				while (true) {
+					// Needs to be done in each iteration apparently?
+					BackEdges.enable(graph);
 
-				ConstantFolding folding = new ConstantFolding(graph);
-				folding.fold();
-				binding_irgopt.remove_bads(graph.ptr);
-				binding_irgopt.remove_unreachable_code(graph.ptr);
+					ConstantFolding folding = new ConstantFolding(graph);
+					folding.fold();
+					binding_irgopt.remove_bads(graph.ptr);
+					binding_irgopt.remove_unreachable_code(graph.ptr);
 
-				// This should be done *after* we have removed unreachable code and bads to ensure it doesn't get
-				// confused with bad preds
-				folding.optimizeBlockChains();
+					// This should be done *after* we have removed unreachable code and bads to ensure it doesn't get
+					// confused with bad preds
+					folding.optimizeBlockChains();
 
-				// testing has shown that back edges get disabled anyway for some reason, but we don't like
-				// problems
-				BackEdges.disable(graph);
+					// testing has shown that back edges get disabled anyway for some reason, but we don't like
+					// problems
+					BackEdges.disable(graph);
 
-				if (!folding.hasChangedInCurrentIteration) {
-					break;
+					if (!folding.hasChangedInCurrentIteration) {
+						break;
+					}
+					runs++;
 				}
-				runs++;
-			}
-			dumpGraph(graph, "cf");
-			return runs > 0;
-		}).build();
+				boolean changed = runs > 0;
+				if (changed) {
+					dumpGraph(graph, "cf");
+				}
+				return changed;
+			})
+			.build();
 	}
 
 	private void fold() {

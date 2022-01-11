@@ -49,7 +49,6 @@ import firm.nodes.Div;
 import firm.nodes.Load;
 import firm.nodes.Mod;
 import firm.nodes.Node;
-import firm.nodes.Start;
 import firm.nodes.Store;
 
 import java.util.HashSet;
@@ -90,8 +89,7 @@ public class FirmGraphBuilder {
 		Construction construction = new Construction(currentGraph);
 
 		if (!method.isStatic()) {
-			Node startNode = currentGraph.getStart();
-			Node argsTuple = construction.newProj(startNode, Mode.getT(), Start.pnTArgs);
+			Node argsTuple = currentGraph.getArgs();
 
 			// the implicit receiver parameter is at pos 0 and needs to be handled separately
 			Node thisProj = construction.newProj(argsTuple, typeHelper.getMode(method.classDecl().type()), 0);

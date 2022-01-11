@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.cli.CompilerArguments;
 import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.firm.optimization.Optimizer;
+import com.github.firmwehr.gentle.firm.optimization.UnusedParameterOptimization;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import com.google.common.collect.Lists;
 import firm.Backend;
@@ -71,11 +72,15 @@ public class FirmBuilder {
 		Optimizer.Builder builder = Optimizer.builder();
 
 		if (!CompilerArguments.get().noConstantFolding()) {
-			builder.addStep(ConstantFolding.constantFolding());
+			builder.addGraphStep(ConstantFolding.constantFolding());
 		}
 		if (!CompilerArguments.get().noArithmeticOptimizations()) {
-			builder.addStep(ArithmeticOptimization.arithmeticOptimization());
+			builder.addGraphStep(ArithmeticOptimization.arithmeticOptimization());
 		}
+		if (!CompilerArguments.get().noRemoveUnused()) {
+			builder.addCallGraphStep(UnusedParameterOptimization.unusedParameterOptimization());
+		}
+
 		Optimizer optimizer = builder.build();
 		optimizer.optimize();
 
