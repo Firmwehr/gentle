@@ -23,7 +23,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
-import com.github.firmwehr.gentle.debug.Panopticon;
+import com.github.firmwehr.gentle.debug.DebugStore;
 import com.google.common.collect.Lists;
 import firm.Entity;
 import firm.Graph;
@@ -38,12 +38,12 @@ import java.util.StringJoiner;
 // just like the panda, this code is reeeeeeeally stupid
 public class DjungelskogVisitor implements IkeaVisitor<String> {
 
-	private final Panopticon panopticon;
+	private final DebugStore debugStore;
 
 	private String currentReturnLabel;
 
-	public DjungelskogVisitor(Panopticon panopticon) {
-		this.panopticon = panopticon;
+	public DjungelskogVisitor(DebugStore debugStore) {
+		this.debugStore = debugStore;
 	}
 
 	@Override
@@ -278,14 +278,14 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 	@Override
 	public String visit(IkeaBløck block) {
 		StringJoiner result = new StringJoiner("\n");
-		panopticon.getMetadataString(block.origin()).ifPresent(it -> result.add("/* " + it + " */"));
+		debugStore.getMetadataString(block.origin()).ifPresent(it -> result.add("/* " + it + " */"));
 
 		for (IkeaNode node : block.nodes()) {
 			if (node instanceof IkeaConst || node instanceof IkeaArgNode) {
 				continue;
 			}
 			for (Node underlyingFirmNode : node.getUnderlyingFirmNodes()) {
-				panopticon.getMetadataString(underlyingFirmNode)
+				debugStore.getMetadataString(underlyingFirmNode)
 					.ifPresent(string -> result.add("/* " + string + " */"));
 			}
 			result.add(node.accept(this));

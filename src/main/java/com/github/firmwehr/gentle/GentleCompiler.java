@@ -6,7 +6,7 @@ import com.github.firmwehr.gentle.backend.ir.visit.DjungelskogVisitor;
 import com.github.firmwehr.gentle.backend.ir.visit.MolkiVisitor;
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandDispatcher;
-import com.github.firmwehr.gentle.debug.Panopticon;
+import com.github.firmwehr.gentle.debug.DebugStore;
 import com.github.firmwehr.gentle.firm.construction.FirmBuilder;
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
@@ -179,13 +179,13 @@ public class GentleCompiler {
 			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer(source, parser.parse());
 			SProgram program = semanticAnalyzer.analyze();
 
-			Panopticon panopticon = new Panopticon(source);
-			List<Graph> graphs = new FirmBuilder().convert(program, panopticon);
+			DebugStore debugStore = new DebugStore(source);
+			List<Graph> graphs = new FirmBuilder().convert(program, debugStore);
 
 			// generate matching filename for input and call backend handler
 			String assemblyFilename = FilenameUtils.removeExtension(path.getFileName().toString()) + ".s";
 			Path assemblyFile = path.resolveSibling(assemblyFilename);
-			handler.handleGraphs(assemblyFile, graphs, panopticon);
+			handler.handleGraphs(assemblyFile, graphs, debugStore);
 
 			System.exit(0);
 
@@ -204,7 +204,7 @@ public class GentleCompiler {
 		}
 	}
 
-	private static void generateWithGentleBackend(Path assemblyFile, List<Graph> graphs, Panopticon panopticon)
+	private static void generateWithGentleBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
 		throws IOException {
 		LOGGER.info("handing over to gentle backend...");
 
@@ -212,7 +212,7 @@ public class GentleCompiler {
 		for (Graph graph : firm.Program.getGraphs()) {
 			CodeSelection codeSelection = new CodeSelection(graph);
 			List<IkeaBløck> blocks = codeSelection.convertBlocks();
-			DjungelskogVisitor visitor = new DjungelskogVisitor(panopticon);
+			DjungelskogVisitor visitor = new DjungelskogVisitor(debugStore);
 			String res = visitor.visit(graph, blocks);
 			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
 		}
@@ -220,7 +220,7 @@ public class GentleCompiler {
 		new ExternalLinker().link(assemblyFile, RuntimeAbi.CDECL);
 	}
 
-	private static void generateWithMolkiBackend(Path assemblyFile, List<Graph> graphs, Panopticon panopticon)
+	private static void generateWithMolkiBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
 		throws IOException {
 		LOGGER.info("handing over to gentle/molki backend...");
 
@@ -237,7 +237,7 @@ public class GentleCompiler {
 		new ExternalLinker().link(finalAssemblyFile, RuntimeAbi.CDECL);
 	}
 
-	private static void generateWithFirmBackend(Path assemblyFile, List<Graph> graphs, Panopticon panopticon)
+	private static void generateWithFirmBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
 		throws IOException {
 		LOGGER.info("handing over to firm backend...");
 
@@ -257,10 +257,10 @@ public class GentleCompiler {
 		 *
 		 * @param assemblyFile Target name of assembly file.
 		 * @param graphs The generated graph.
-		 * @param panopticon the generated debug store
+		 * @param debugStore the generated debug store
 		 *
 		 * @throws IOException If the handler encountered an error during an IO error during code generation.
 		 */
-		void handleGraphs(Path assemblyFile, List<Graph> graphs, Panopticon panopticon) throws IOException;
+		void handleGraphs(Path assemblyFile, List<Graph> graphs, DebugStore debugStore) throws IOException;
 	}
 }

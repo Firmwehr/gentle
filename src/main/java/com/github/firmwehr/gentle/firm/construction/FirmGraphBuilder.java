@@ -11,8 +11,8 @@ import com.github.firmwehr.gentle.debug.DebugInfoImplicitMainReturn;
 import com.github.firmwehr.gentle.debug.DebugInfoMethodInvocation.MethodInvocationElementType;
 import com.github.firmwehr.gentle.debug.DebugInfoShortCircuitBlock.ShortCircuitBlockType;
 import com.github.firmwehr.gentle.debug.DebugInfoWhileBlock.WhileBlockType;
+import com.github.firmwehr.gentle.debug.DebugStore;
 import com.github.firmwehr.gentle.debug.HasDebugInformation;
-import com.github.firmwehr.gentle.debug.Panopticon;
 import com.github.firmwehr.gentle.semantic.Namespace;
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
@@ -85,10 +85,10 @@ public class FirmGraphBuilder {
 
 	private final TypeHelper typeHelper;
 	private final EntityHelper entityHelper;
-	private final Panopticon panopticon;
+	private final DebugStore debugStore;
 
-	public FirmGraphBuilder(Panopticon panopticon) {
-		this.panopticon = panopticon;
+	public FirmGraphBuilder(DebugStore debugStore) {
+		this.debugStore = debugStore;
 		this.typeHelper = new TypeHelper();
 		this.entityHelper = new EntityHelper(typeHelper);
 	}
@@ -127,7 +127,7 @@ public class FirmGraphBuilder {
 
 				Node proj = construction.newProj(argsTuple, typeHelper.getMode(parameter.type()), index);
 				construction.setVariable(index, proj);
-				panopticon.putMetadata(proj, forElement(parameter));
+				debugStore.putMetadata(proj, forElement(parameter));
 			}
 		}
 
@@ -195,9 +195,9 @@ public class FirmGraphBuilder {
 
 		construction.setCurrentBlock(after);
 
-		panopticon.putMetadata(header, forWhileBlock(whileStatement, WhileBlockType.HEADER));
-		panopticon.putMetadata(body, forWhileBlock(whileStatement, WhileBlockType.BODY));
-		panopticon.putMetadata(after, forWhileBlock(whileStatement, WhileBlockType.AFTER));
+		debugStore.putMetadata(header, forWhileBlock(whileStatement, WhileBlockType.HEADER));
+		debugStore.putMetadata(body, forWhileBlock(whileStatement, WhileBlockType.BODY));
+		debugStore.putMetadata(after, forWhileBlock(whileStatement, WhileBlockType.AFTER));
 	}
 
 	private void jumpIfNotReturning(Context context, Block target) {
@@ -230,9 +230,9 @@ public class FirmGraphBuilder {
 		construction.setCurrentBlock(afterBlock);
 		afterBlock.mature();
 
-		panopticon.putMetadata(afterBlock, forIfBlock(ifStatement, IfBlockType.AFTER));
-		panopticon.putMetadata(trueBlock, forIfBlock(ifStatement, IfBlockType.TRUE));
-		panopticon.putMetadata(falseBlock, forIfBlock(ifStatement, IfBlockType.FALSE));
+		debugStore.putMetadata(afterBlock, forIfBlock(ifStatement, IfBlockType.AFTER));
+		debugStore.putMetadata(trueBlock, forIfBlock(ifStatement, IfBlockType.TRUE));
+		debugStore.putMetadata(falseBlock, forIfBlock(ifStatement, IfBlockType.FALSE));
 	}
 
 	private void processReturn(Context context, SReturnStatement returnStatement) {
@@ -242,7 +242,7 @@ public class FirmGraphBuilder {
 		}
 		if (context.currentMethod().isStatic()) {
 			Node zeroReturn = processValueExpression(context, new SIntegerValueExpression(0, SourceSpan.dummy()));
-			panopticon.putMetadata(zeroReturn, forElement(new DebugInfoImplicitMainReturn()));
+			debugStore.putMetadata(zeroReturn, forElement(new DebugInfoImplicitMainReturn()));
 			returnValues = new Node[]{zeroReturn};
 		}
 		Construction construction = context.construction();
@@ -250,7 +250,7 @@ public class FirmGraphBuilder {
 		construction.getGraph().getEndBlock().addPred(returnNode);
 		context.setReturns(construction.getCurrentBlock());
 
-		panopticon.putMetadata(returnNode, forElement(returnStatement));
+		debugStore.putMetadata(returnNode, forElement(returnStatement));
 	}
 
 	private void processLogicalExpression(Context context, SExpression expression, JumpTarget jumpTarget) {
@@ -299,8 +299,8 @@ public class FirmGraphBuilder {
 		construction.setCurrentMem(construction.newProj(loadNode, Mode.getM(), Load.pnM));
 		Node resultProj = construction.newProj(loadNode, innerMode, Load.pnRes);
 
-		panopticon.putMetadata(target, forElement(expr));
-		panopticon.putMetadata(resultProj, forElement(expr));
+		debugStore.putMetadata(target, forElement(expr));
+		debugStore.putMetadata(resultProj, forElement(expr));
 
 		return resultProj;
 	}
@@ -393,10 +393,10 @@ public class FirmGraphBuilder {
 		Node phi = construction.newPhi(
 			new Node[]{construction.newConst(0, Mode.getBu()), construction.newConst(1, Mode.getBu())}, Mode.getBu());
 
-		panopticon.putMetadata(afterBlock, forCondToBoolBlock(source, CondToBoolBlockType.AFTER));
-		panopticon.putMetadata(trueBlock, forCondToBoolBlock(source, CondToBoolBlockType.TRUE));
-		panopticon.putMetadata(falseBlock, forCondToBoolBlock(source, CondToBoolBlockType.FALSE));
-		panopticon.putMetadata(phi, forCondToBoolPhi(source));
+		debugStore.putMetadata(afterBlock, forCondToBoolBlock(source, CondToBoolBlockType.AFTER));
+		debugStore.putMetadata(trueBlock, forCondToBoolBlock(source, CondToBoolBlockType.TRUE));
+		debugStore.putMetadata(falseBlock, forCondToBoolBlock(source, CondToBoolBlockType.FALSE));
+		debugStore.putMetadata(phi, forCondToBoolPhi(source));
 
 		return phi;
 	}
@@ -456,10 +456,10 @@ public class FirmGraphBuilder {
 		Node addressAdd = construction.newAdd(arrayNode, offsetNode);
 		Node addressConv = construction.newConv(addressAdd, Mode.getP());
 
-		panopticon.putMetadata(typeSizeNode, forArrayAccessTarget(expr, ArrayAccessTargetType.TYPE_SIZE));
-		panopticon.putMetadata(offsetNode, forArrayAccessTarget(expr, ArrayAccessTargetType.OFFSET));
-		panopticon.putMetadata(addressAdd, forArrayAccessTarget(expr, ArrayAccessTargetType.RESULT_COMPUTATION));
-		panopticon.putMetadata(addressConv, forArrayAccessTarget(expr, ArrayAccessTargetType.RESULT_CONVERSION));
+		debugStore.putMetadata(typeSizeNode, forArrayAccessTarget(expr, ArrayAccessTargetType.TYPE_SIZE));
+		debugStore.putMetadata(offsetNode, forArrayAccessTarget(expr, ArrayAccessTargetType.OFFSET));
+		debugStore.putMetadata(addressAdd, forArrayAccessTarget(expr, ArrayAccessTargetType.RESULT_COMPUTATION));
+		debugStore.putMetadata(addressConv, forArrayAccessTarget(expr, ArrayAccessTargetType.RESULT_CONVERSION));
 
 		return addressConv;
 	}
@@ -472,7 +472,7 @@ public class FirmGraphBuilder {
 		context.construction().setCurrentBlock(falseBlock);
 		processLogicalExpression(context, expr.rhs(), jumpTarget);
 
-		panopticon.putMetadata(falseBlock, forShortCircuitBlock(expr, ShortCircuitBlockType.OR));
+		debugStore.putMetadata(falseBlock, forShortCircuitBlock(expr, ShortCircuitBlockType.OR));
 	}
 
 	private void processLogicalAnd(Context context, SBinaryOperatorExpression expr, JumpTarget jumpTarget) {
@@ -483,7 +483,7 @@ public class FirmGraphBuilder {
 		context.construction().setCurrentBlock(trueBlock);
 		processLogicalExpression(context, expr.rhs(), jumpTarget);
 
-		panopticon.putMetadata(trueBlock, forShortCircuitBlock(expr, ShortCircuitBlockType.AND));
+		debugStore.putMetadata(trueBlock, forShortCircuitBlock(expr, ShortCircuitBlockType.AND));
 	}
 
 	private void processRelation(
@@ -505,16 +505,16 @@ public class FirmGraphBuilder {
 		jumpTarget.trueBlock().addPred(trueProj);
 		jumpTarget.falseBlock().addPred(falseProj);
 
-		panopticon.putMetadata(cmp, forCompare(source, CompareElementType.COMPARE));
-		panopticon.putMetadata(cond, forCompare(source, CompareElementType.COND));
-		panopticon.putMetadata(trueProj, forCompare(source, CompareElementType.TRUE_PROJ));
-		panopticon.putMetadata(falseProj, forCompare(source, CompareElementType.FALSE_PROJ));
+		debugStore.putMetadata(cmp, forCompare(source, CompareElementType.COMPARE));
+		debugStore.putMetadata(cond, forCompare(source, CompareElementType.COND));
+		debugStore.putMetadata(trueProj, forCompare(source, CompareElementType.TRUE_PROJ));
+		debugStore.putMetadata(falseProj, forCompare(source, CompareElementType.FALSE_PROJ));
 	}
 
 	private Node processBooleanValue(Context context, SBooleanValueExpression expr) {
 		Node resultConst = context.construction().newConst(expr.value() ? 1 : 0, Mode.getBu());
 
-		panopticon.putMetadata(resultConst, forElement(expr));
+		debugStore.putMetadata(resultConst, forElement(expr));
 
 		return resultConst;
 	}
@@ -529,9 +529,9 @@ public class FirmGraphBuilder {
 
 		Node loadResProj = construction.newProj(load, mode, Load.pnRes);
 
-		panopticon.putMetadata(member, forFieldLoad(expr, FieldAccessElementType.MEMBER));
-		panopticon.putMetadata(load, forFieldLoad(expr, FieldAccessElementType.LOAD));
-		panopticon.putMetadata(loadResProj, forFieldLoad(expr, FieldAccessElementType.LOAD_RESULT));
+		debugStore.putMetadata(member, forFieldLoad(expr, FieldAccessElementType.MEMBER));
+		debugStore.putMetadata(load, forFieldLoad(expr, FieldAccessElementType.LOAD));
+		debugStore.putMetadata(loadResProj, forFieldLoad(expr, FieldAccessElementType.LOAD_RESULT));
 
 		return loadResProj;
 	}
@@ -539,7 +539,7 @@ public class FirmGraphBuilder {
 	private Node processIntegerValue(Context context, SIntegerValueExpression expr) {
 		Node result = context.construction().newConst(expr.value(), Mode.getIs());
 
-		panopticon.putMetadata(result, forElement(expr));
+		debugStore.putMetadata(result, forElement(expr));
 
 		return result;
 	}
@@ -551,7 +551,7 @@ public class FirmGraphBuilder {
 		Mode mode = typeHelper.getMode(expr.localVariable().type());
 		Node variableLoad = context.construction().getVariable(index, mode);
 
-		panopticon.putMetadata(variableLoad, forElement(expr));
+		debugStore.putMetadata(variableLoad, forElement(expr));
 
 		return variableLoad;
 	}
@@ -574,9 +574,9 @@ public class FirmGraphBuilder {
 		Node resultsProj = construction.newProj(call, Mode.getT(), Call.pnTResult);
 		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
 
-		panopticon.putMetadata(address, forMethodInvocation(expr, MethodInvocationElementType.ADDRESS));
-		panopticon.putMetadata(call, forMethodInvocation(expr, MethodInvocationElementType.CALL));
-		panopticon.putMetadata(resultsProj, forMethodInvocation(expr, MethodInvocationElementType.RESULT_PROJ));
+		debugStore.putMetadata(address, forMethodInvocation(expr, MethodInvocationElementType.ADDRESS));
+		debugStore.putMetadata(call, forMethodInvocation(expr, MethodInvocationElementType.CALL));
+		debugStore.putMetadata(resultsProj, forMethodInvocation(expr, MethodInvocationElementType.RESULT_PROJ));
 
 		if (method.returnType() instanceof SVoidType) {
 			return construction.newBad(Mode.getANY());
@@ -584,7 +584,7 @@ public class FirmGraphBuilder {
 		// 0 as we only have one return element
 		Node resultProj = construction.newProj(resultsProj, typeHelper.getMode(method.returnType().asExprType()), 0);
 
-		panopticon.putMetadata(resultProj, forMethodInvocation(expr, MethodInvocationElementType.RESULT_PROJ));
+		debugStore.putMetadata(resultProj, forMethodInvocation(expr, MethodInvocationElementType.RESULT_PROJ));
 
 		return resultProj;
 	}
@@ -623,11 +623,11 @@ public class FirmGraphBuilder {
 		Node resultsProj = construction.newProj(call, Mode.getT(), Call.pnTResult);
 		Node resultProj = construction.newProj(resultsProj, Mode.getP(), 0);
 
-		panopticon.putMetadata(allocateAddress, forAllocate(source, AllocateElementType.ALLOCATE_ADDRESS));
-		panopticon.putMetadata(typeSizeConst, forAllocate(source, AllocateElementType.TYPE_SIZE));
-		panopticon.putMetadata(call, forAllocate(source, AllocateElementType.CALL));
-		panopticon.putMetadata(resultsProj, forAllocate(source, AllocateElementType.RESULTS_PROJ));
-		panopticon.putMetadata(resultProj, forAllocate(source, AllocateElementType.RESULT_PROJ));
+		debugStore.putMetadata(allocateAddress, forAllocate(source, AllocateElementType.ALLOCATE_ADDRESS));
+		debugStore.putMetadata(typeSizeConst, forAllocate(source, AllocateElementType.TYPE_SIZE));
+		debugStore.putMetadata(call, forAllocate(source, AllocateElementType.CALL));
+		debugStore.putMetadata(resultsProj, forAllocate(source, AllocateElementType.RESULTS_PROJ));
+		debugStore.putMetadata(resultProj, forAllocate(source, AllocateElementType.RESULT_PROJ));
 
 		return resultProj;
 	}
@@ -635,7 +635,7 @@ public class FirmGraphBuilder {
 	private Node processNull(Context context, SNullExpression nullExpression) {
 		Node result = context.construction().newConst(0, Mode.getP());
 
-		panopticon.putMetadata(result, forElement(nullExpression));
+		debugStore.putMetadata(result, forElement(nullExpression));
 
 		return result;
 	}
@@ -691,7 +691,7 @@ public class FirmGraphBuilder {
 	private Node processThis(Context context, SThisExpression thisExpression) {
 		Node result = context.construction().getVariable(0, Mode.getP());
 
-		panopticon.putMetadata(result, forElement(thisExpression));
+		debugStore.putMetadata(result, forElement(thisExpression));
 
 		return result;
 	}
@@ -702,7 +702,7 @@ public class FirmGraphBuilder {
 			case NEGATION -> {
 				Node minus = construction.newMinus(processValueExpression(context, expr.expression()));
 
-				panopticon.putMetadata(minus, forElement(expr));
+				debugStore.putMetadata(minus, forElement(expr));
 			}
 			case LOGICAL_NOT -> {
 				JumpTarget invertedJumpTarget = new JumpTarget(jumpTarget.falseBlock(), jumpTarget.trueBlock());
@@ -717,7 +717,7 @@ public class FirmGraphBuilder {
 			case NEGATION -> {
 				Node node = construction.newMinus(processValueExpression(context, expr.expression()));
 
-				panopticon.putMetadata(node, forElement(expr));
+				debugStore.putMetadata(node, forElement(expr));
 
 				yield node;
 			}

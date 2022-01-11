@@ -1,7 +1,7 @@
 package com.github.firmwehr.gentle.firm.construction;
 
 import com.github.firmwehr.gentle.cli.CompilerArguments;
-import com.github.firmwehr.gentle.debug.Panopticon;
+import com.github.firmwehr.gentle.debug.DebugStore;
 import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.firm.optimization.Optimizer;
@@ -59,13 +59,13 @@ public class FirmBuilder {
 	 * <p>
 	 *
 	 * @param program the program to convert
-	 * @param panopticon debug and metadata tracker
+	 * @param debugStore debug and metadata tracker
 	 *
 	 * @return The generated graphs.
 	 *
 	 * @throws IOException if writing the assembly file fails
 	 */
-	public List<Graph> convert(SProgram program, Panopticon panopticon) throws IOException {
+	public List<Graph> convert(SProgram program, DebugStore debugStore) throws IOException {
 		if (!dumpStages.isEmpty()) {
 			Backend.option("dump=" + dumpStages.stream().map(GraphDumpStage::getFirmName).collect(joining(",")));
 		}
@@ -74,7 +74,7 @@ public class FirmBuilder {
 			DebugInfo.init();
 		}
 
-		FirmGraphBuilder graphBuilder = new FirmGraphBuilder(panopticon);
+		FirmGraphBuilder graphBuilder = new FirmGraphBuilder(debugStore);
 		graphBuilder.buildGraph(program);
 
 		// Lower "Member"
