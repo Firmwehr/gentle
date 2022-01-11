@@ -52,9 +52,9 @@ public class RegisterTransferGraph {
 
 		// Moves:
 		// temp <- r1
-		// r2   <- r1
-		// r3   <- r2
-		// r4   <- r3
+		// r1   <- r2
+		// r2   <- r3
+		// r3   <- r4
 		// ...
 		// rn   <- temp
 		if (!freeRegisters.isEmpty()) {
@@ -74,24 +74,25 @@ public class RegisterTransferGraph {
 				// temp <- r1
 				generatedMoves.add(new Pair<>(startEdge.source(), tempRegister));
 				LOGGER.debug("Adding move %s -> %s", startEdge.source(), tempRegister);
+				IkeaBøx lastNode = startEdge.target();
 
-				// r2   <- r1
-				// r3   <- r2
-				// r4   <- r3
-				IkeaBøx source = startEdge.source();
-				while (!graph.predecessors(source).isEmpty()) {
-					LOGGER.debug("Entered with source %s and preds %s", source, graph.predecessors(source));
-					IkeaBøx target = graph.predecessors(source).iterator().next();
-					generatedMoves.add(new Pair<>(target, source));
-					LOGGER.debug("Adding move %s -> %s", target, source);
-					graph.removeEdge(target, source);
-					source = target;
+				// r1   <- r2
+				// r2   <- r3
+				// r3   <- r4
+				IkeaBøx current = startEdge.source();
+				while (!graph.predecessors(current).isEmpty()) {
+					LOGGER.debug("Entered with current %s and preds %s", current, graph.predecessors(current));
+					IkeaBøx source = graph.predecessors(current).iterator().next();
+					generatedMoves.add(new Pair<>(source, current));
+					LOGGER.debug("Adding move %s -> %s", source, current);
+					graph.removeEdge(source, current);
+					current = source;
 				}
 
 				// rn   <- temp
-				generatedMoves.add(new Pair<>(tempRegister, source));
-				LOGGER.debug("Adding move %s -> %s", tempRegister, source);
-				graph.removeEdge(source, startEdge.source());
+				generatedMoves.add(new Pair<>(tempRegister, lastNode));
+				LOGGER.debug("Adding move %s -> %s", tempRegister, lastNode);
+				graph.removeEdge(startEdge.source(), lastNode);
 			}
 		} else {
 			throw new InternalCompilerException("Here be transpositions, only relevant if registers are limited");
