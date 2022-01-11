@@ -50,12 +50,14 @@ public class EscapeAnalysisOptimization {
 		graph.walk(new NodeVisitor.Default() {
 			@Override
 			public void visit(Call node) {
+				if (!((Address) node.getPtr()).getEntity().equals(StdLibEntity.ALLOCATE.getEntity())) {
+					return;
+				}
+
+				filterNonEscapingAllocations(node).ifPresent(allocationCalls::add);
 				// TODO arrays might be 1 element or 0 element?
 				if (!(node.getPred(2) instanceof Const) || ((Const) node.getPred(2)).getTarval().asLong() > 1L) {
 					return; // array, would be somewhat more difficult to deal with correctly
-				}
-				if (((Address) node.getPtr()).getEntity().equals(StdLibEntity.ALLOCATE.getEntity())) {
-					filterNonEscapingAllocations(node).ifPresent(allocationCalls::add);
 				}
 			}
 		});
