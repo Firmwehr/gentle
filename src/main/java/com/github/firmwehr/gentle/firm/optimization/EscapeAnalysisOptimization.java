@@ -101,7 +101,7 @@ public class EscapeAnalysisOptimization {
 	}
 
 	private void rewrite(Call call) {
-		LOGGER.debug("rewriting loads and stores for %s", call);
+		LOGGER.info("rewriting loads and stores for %s", call);
 		Set<Node> accessNodes = new HashSet<>();
 		Map<LocalAddress, Mode> modes = new HashMap<>();
 		graph.incVisited(); // increment for walkDown
@@ -140,7 +140,6 @@ public class EscapeAnalysisOptimization {
 			}
 		}
 		LOGGER.debug("%s has %s outs without memory", node, BackEdges.getNOuts(node));
-		// GraphDumper.dumpGraph(graph, "bug");
 		throw new InternalCompilerException("No successor found for " + node);
 	}
 
@@ -238,7 +237,7 @@ public class EscapeAnalysisOptimization {
 				deepOuts.add(edge.node);
 			}
 		}
-		LOGGER.debug("%s does not escape, can be optimized", callResProj);
+		LOGGER.info("%s does not escape, can be optimized", callResProj);
 		return false;
 	}
 
@@ -308,12 +307,14 @@ public class EscapeAnalysisOptimization {
 				for (LocalAddress address : modes.keySet()) {
 					Node pred = predecessors.get(address);
 					Phi dataPhi;
-					if (phis.containsKey(memoryPhi)) {
+					if (phis.containsKey(memoryPhi) && phis.get(memoryPhi).containsKey(address)) {
+						LOGGER.debug("load data phi for memory phi %s and address %s", memoryPhi, address);
 						dataPhi = phis.get(memoryPhi).get(address);
 					} else {
 						Mode mode = modes.get(address);
 						Node[] ins = createUnknowns(memoryPhi.getPredCount(), mode);
 						dataPhi = (Phi) graph.newPhi(block, ins, mode);
+						LOGGER.debug("insert new data phi %s for %s", dataPhi, address);
 						phis.computeIfAbsent(memoryPhi, ignored -> new HashMap<>()).putIfAbsent(address, dataPhi);
 					}
 					dataPhi.setPred(inIndex, pred);
