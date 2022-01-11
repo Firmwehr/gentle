@@ -63,8 +63,12 @@ public class EscapeAnalysisOptimization {
 		});
 		rewriteAll(allocationCalls);
 		BackEdges.disable(graph);
-		GraphDumper.dumpGraph(graph, "escape-analysis"); // TODO only dump on change
-		return !allocationCalls.isEmpty(); // TODO ?
+		// if the set is not empty, we definitely changed something
+		if (!allocationCalls.isEmpty()) {
+			GraphDumper.dumpGraph(graph, "escape-analysis");
+			return true;
+		}
+		return false;
 	}
 
 	private void rewriteAll(Set<Call> allocationCalls) {
