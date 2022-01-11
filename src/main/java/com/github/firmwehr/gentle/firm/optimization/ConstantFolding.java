@@ -94,6 +94,11 @@ public class ConstantFolding extends NodeVisitor.Default {
 					binding_irgopt.remove_bads(graph.ptr);
 					binding_irgopt.remove_unreachable_code(graph.ptr);
 
+					// remove_bads likes to disable back edges if it modifies the graph
+					// but we still need them!
+					if (!BackEdges.enabled(graph)) {
+						BackEdges.enable(graph);
+					}
 					// This should be done *after* we have removed unreachable code and bads to ensure it doesn't get
 					// confused with bad preds
 					folding.optimizeBlockChains();
@@ -230,6 +235,26 @@ public class ConstantFolding extends NodeVisitor.Default {
 
 			// This might exchange the block, so we need to collect the preds before it
 			tryMergeBlock(block);
+			deleteIfEmpty(block);
+		}
+	}
+
+	private void deleteIfEmpty(Block block) {
+		for (int i = 0; i < block.getPredCount(); i++) {
+			Node pred = block.getPred(i);
+			// Only exit from pred block must be a jump
+			if (pred.getOpCode() != binding_irnode.ir_opcode.iro_Jmp) {
+				continue;
+			}
+			Block predBlock = (Block) pred.getBlock();
+			if (BackEdges.getNOuts(predBlock) != 1) {
+				continue;
+			}
+			if (predBlock.getPredCount() != 1) {
+				continue;
+			}
+			block.setPred(i, predBlock.getPred(0));
+			LOGGER.debug("deleted %s in the middle of %s and %s", predBlock, block, predBlock.getPred(0));
 		}
 	}
 
