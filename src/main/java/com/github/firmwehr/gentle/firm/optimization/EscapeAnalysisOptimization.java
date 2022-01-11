@@ -35,11 +35,11 @@ import java.util.Set;
 import static java.util.stream.Collectors.toMap;
 
 public class EscapeAnalysisOptimization {
-	private static final Logger LOGGER = new Logger(EscapeAnalysisOptimization.class, Logger.LogLevel.DEBUG);
+	private static final Logger LOGGER = new Logger(EscapeAnalysisOptimization.class);
 
 	private final Graph graph;
 
-	private EscapeAnalysisOptimization(Graph graph) { // TODO private
+	private EscapeAnalysisOptimization(Graph graph) {
 		this.graph = graph;
 	}
 
@@ -71,9 +71,8 @@ public class EscapeAnalysisOptimization {
 					return;
 				}
 
-				// TODO arrays might be 1 element or 0 element?
 				if (!(node.getPred(2) instanceof Const)) {
-					return; // array, would be somewhat more difficult to deal with correctly
+					return; // dynamically sized array, would be somewhat more difficult to deal with correctly
 				}
 				filterNonEscapingAllocations(node).ifPresent(allocationCalls::add);
 			}
@@ -165,7 +164,11 @@ public class EscapeAnalysisOptimization {
 	private static void walkDown(Node node, NodeVisitor visitor) {
 		node.accept(visitor);
 		node.markVisited();
-		// TODO stop on Load/Store
+		if (node instanceof Load || node instanceof Store) {
+			// we don't need to follow Loads and Stores as their successors
+			// don't use the call result (and if they do, they are visited separately)
+			return;
+		}
 		for (BackEdges.Edge out : BackEdges.getOuts(node)) {
 			if ((out.node.getMode().equals(Mode.getT()) || out.node.getMode().equals(Mode.getP())) &&
 				!out.node.visited()) {
@@ -214,7 +217,6 @@ public class EscapeAnalysisOptimization {
 					return true;
 				}
 				if (edge.node instanceof Store store) {
-					// TODO what happens with self ref?
 					if (!callResProjIsReachableFromStoreValue(store.getValue(), callResProj, new HashSet<>())) {
 						if (fromPredIfMatches(store.getPtr()).isPresent()) {
 							// Store *in* allocated object would be replaced
@@ -269,13 +271,8 @@ public class EscapeAnalysisOptimization {
 		return false;
 	}
 
-	record LocalAddress(
-		Proj pointer,
-		long offset
-	) {
-	}
-
 	static class CallRewriter {
+
 		private final Call call;
 		private final Graph graph;
 		private final Map<LocalAddress, Mode> modes;
@@ -382,5 +379,14 @@ public class EscapeAnalysisOptimization {
 				edge.node.setPred(edge.pos, load.getMem());
 			}
 		}
+	}
+
+	/**
+	 * A field of an object, identified by a base pointer and the offset within the object.
+	 */
+	record LocalAddress(
+		Proj pointer,
+		long offset
+	) {
 	}
 }
