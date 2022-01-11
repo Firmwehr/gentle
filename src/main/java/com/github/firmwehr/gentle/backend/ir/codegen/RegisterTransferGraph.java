@@ -112,16 +112,15 @@ public class RegisterTransferGraph {
 			// Remove handled edge
 			graph.removeEdge(edge);
 
-			//			// Free as early as possible: Rewire to read from target
-			//			for (IkeaBøx successor : graph.successors(edge.source())) {
-			//				// TODO: Why can we leave self loops in peace and not redirect them, if we mark source as
-			//				 free?
-			//				// We might want to do that here!
-			//				graph.removeEdge(edge.source(), successor);
-			//				graph.putEdge(edge.target(), successor);
-			//			}
-			//
-			//			freeRegisters.add(edge.source());
+			// Free as early as possible: Rewire to read from target
+			for (IkeaBøx successor : graph.successors(edge.source())) {
+				// TODO: Why can we leave self loops in peace and not redirect them, if we mark source as free ?
+				// We might want to do that here!
+				graph.removeEdge(edge.source(), successor);
+				graph.putEdge(edge.target(), successor);
+			}
+
+			freeRegisters.add(edge.source());
 		}
 	}
 
