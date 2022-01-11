@@ -27,6 +27,8 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
 import com.github.firmwehr.gentle.firm.Util;
+import com.github.firmwehr.gentle.output.Logger;
+import com.github.firmwehr.gentle.util.Pair;
 import firm.BackEdges;
 import firm.Graph;
 import firm.MethodType;
@@ -61,9 +63,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class CodeSelection extends NodeVisitor.Default {
+
+	private static final Logger LOGGER = new Logger(CodeSelection.class, Logger.LogLevel.DEBUG);
 
 	private final Map<Block, IkeaBløck> blocks;
 	private final Map<Block, List<Phi>> phiBär;
@@ -80,6 +85,7 @@ public class CodeSelection extends NodeVisitor.Default {
 	}
 
 	public List<IkeaBløck> convertBlocks() {
+		LOGGER.info("Converting blocks for %s", graph.getEntity().getLdName());
 		CriticalEdges.breakCriticalEdges(graph);
 
 		BackEdges.enable(graph);
@@ -99,20 +105,22 @@ public class CodeSelection extends NodeVisitor.Default {
 		graph.walkBlocks(block -> {
 			for (int i = 0, c = block.getPredCount(); i < c; i++) {
 				Block pred = (Block) block.getPred(i).getBlock();
-				Map<IkeaBøx, IkeaBøx> renames = new HashMap<>();
+				LOGGER.debugHeader("Moves for %s <- %s", block.getNr(), pred.getNr());
+				RegisterTransferGraph transferGraph = new RegisterTransferGraph(Set.of(nextRegister(Mode.getLs())));
 				IkeaBløck ikeaPred = blocks.get(pred);
 
 				for (Phi phi : phiBär.getOrDefault(block, List.of())) {
 					IkeaNode ikeaNode = nodes.get(phi.getPred(i));
 					IkeaBøx target = nodes.get(phi).box();
 					IkeaBøx source = ikeaNode.box();
-					renames.put(source, target);
-
-					ikeaPred.nodes().add(new IkeaMovRegister(source, target, IkeaRegisterSize.forMode(phi.getMode())));
+					transferGraph.addMove(source, target);
 				}
 
+				for (Pair<IkeaBøx, IkeaBøx> pair : transferGraph.generateMoveSequence()) {
+					ikeaPred.nodes().add(new IkeaMovRegister(pair.first(), pair.second()));
+				}
 
-				blocks.get(block).parents().add(new IkeaParentBløck(ikeaPred, renames));
+				blocks.get(block).parents().add(new IkeaParentBløck(ikeaPred));
 			}
 		});
 		BackEdges.disable(graph);

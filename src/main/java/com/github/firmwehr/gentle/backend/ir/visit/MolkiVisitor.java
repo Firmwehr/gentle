@@ -89,7 +89,7 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 		if (!isVoid(call.address().getEntity())) {
 			result += " -> " + reg(call.box());
 		}
-		
+
 		return result;
 	}
 
@@ -135,8 +135,9 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaMovRegister movRegister) {
-		String suffix = movRegister.getSize().getOldRegisterSuffix();
-		return "mov%s %s, %s".formatted(suffix, reg(movRegister.getSource()), reg(movRegister.box()));
+		String source = reg(movRegister.getSource()).replaceAll("[a-z]", "");
+		String target = reg(movRegister.box()).replaceAll("[a-z]", "");
+		return "movq %s, %s".formatted(source, target);
 	}
 
 	@Override

@@ -191,12 +191,9 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaMovRegister movRegister) {
-		String oldSuffix = movRegister.getSize().getOldRegisterSuffix();
-		String newSuffix = movRegister.getSize().getNewRegisterSuffix();
-
 		String result = "";
 		result += readFromStackToTarget(movRegister.getSource(), "%r8") + "\n";
-		result += "mov%s %%r8%s, %%r9%s".formatted(oldSuffix, newSuffix, newSuffix) + "\n";
+		result += "movq %r8, %r9\n";
 		result += storeFromTargetToStack(movRegister.box(), "%r9") + "\n";
 
 		return result;
