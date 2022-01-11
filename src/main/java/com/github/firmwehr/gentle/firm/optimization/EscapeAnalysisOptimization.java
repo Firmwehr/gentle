@@ -95,9 +95,10 @@ public class EscapeAnalysisOptimization {
 	}
 
 	private void dropAllocation(Call call) {
-		Node mem = skipProj(call.getMem());
-		Node proj = successor(call, true);
-		proj.setPred(Call.pnM, mem);
+		Node memoryProj = successor(call, true);
+		for (BackEdges.Edge edge : BackEdges.getOuts(memoryProj)) {
+			edge.node.setPred(edge.pos, call.getMem());
+		}
 	}
 
 	private void rewrite(Call call) {
