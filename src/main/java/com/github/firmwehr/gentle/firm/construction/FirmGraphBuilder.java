@@ -1,7 +1,6 @@
 package com.github.firmwehr.gentle.firm.construction;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
-import com.github.firmwehr.gentle.debug.AllocationInfo;
 import com.github.firmwehr.gentle.debug.DebugInfoAllocate.AllocateElementType;
 import com.github.firmwehr.gentle.debug.DebugInfoArrayAccessTarget.ArrayAccessTargetType;
 import com.github.firmwehr.gentle.debug.DebugInfoCompare.CompareElementType;
@@ -601,20 +600,17 @@ public class FirmGraphBuilder {
 
 		Node memberCount = construction.newConv(processValueExpression(context, expr.size()), Mode.getLu());
 
-		return allocateMemory(construction, typeSize, memberCount, expr, new AllocationInfo(true));
+		return allocateMemory(construction, typeSize, memberCount, expr);
 	}
 
 	private Node processNewObject(Context context, SNewObjectExpression expr) {
 		Construction construction = context.construction();
 		ClassType type = typeHelper.getClassType(expr.classDecl());
 
-		AllocationInfo info = new AllocationInfo(false);
-		return allocateMemory(construction, type.getSize(), construction.newConst(1, Mode.getLu()), expr, info);
+		return allocateMemory(construction, type.getSize(), construction.newConst(1, Mode.getLu()), expr);
 	}
 
-	private Node allocateMemory(
-		Construction construction, int typeSize, Node memberCount, SExpression source, AllocationInfo allocationInfo
-	) {
+	private Node allocateMemory(Construction construction, int typeSize, Node memberCount, SExpression source) {
 		Entity allocateEntity = entityHelper.getEntity(StdLibEntity.ALLOCATE);
 		Node allocateAddress = construction.newAddress(allocateEntity);
 
@@ -632,8 +628,6 @@ public class FirmGraphBuilder {
 		panopticon.putMetadata(call, forAllocate(source, AllocateElementType.CALL));
 		panopticon.putMetadata(resultsProj, forAllocate(source, AllocateElementType.RESULTS_PROJ));
 		panopticon.putMetadata(resultProj, forAllocate(source, AllocateElementType.RESULT_PROJ));
-
-		panopticon.putAllocationInfo(call, allocationInfo);
 
 		return resultProj;
 	}
