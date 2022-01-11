@@ -14,4 +14,9 @@ public record SBlock(List<SStatement> statements) implements SStatement {
 	public <T> T accept(Visitor<T> visitor) throws SemanticException {
 		return visitor.visit(this);
 	}
+
+	@Override
+	public String toDebugString() {
+		return "block";
+	}
 }

@@ -13,4 +13,9 @@ public record SWhileStatement(
 	public <T> T accept(Visitor<T> visitor) throws SemanticException {
 		return visitor.visit(this);
 	}
+
+	@Override
+	public String toDebugString() {
+		return "while from" + condition.sourceSpan();
+	}
 }

@@ -9,4 +9,9 @@ public record SExpressionStatement(SExpression expression) implements SStatement
 	public <T> T accept(Visitor<T> visitor) throws SemanticException {
 		return visitor.visit(this);
 	}
+
+	@Override
+	public String toDebugString() {
+		return "Expr statement for " + expression.toDebugString();
+	}
 }

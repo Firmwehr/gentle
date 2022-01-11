@@ -15,4 +15,9 @@ public record SIfStatement(
 	public <T> T accept(Visitor<T> visitor) throws SemanticException {
 		return visitor.visit(this);
 	}
+
+	@Override
+	public String toDebugString() {
+		return "if from" + condition.sourceSpan();
+	}
 }

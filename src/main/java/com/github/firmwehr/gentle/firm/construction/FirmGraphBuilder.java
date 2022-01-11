@@ -1,6 +1,19 @@
 package com.github.firmwehr.gentle.firm.construction;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
+import com.github.firmwehr.gentle.debug.AllocationInfo;
+import com.github.firmwehr.gentle.debug.DebugInfoAllocate.AllocateElementType;
+import com.github.firmwehr.gentle.debug.DebugInfoArrayAccessTarget.ArrayAccessTargetType;
+import com.github.firmwehr.gentle.debug.DebugInfoCompare.CompareElementType;
+import com.github.firmwehr.gentle.debug.DebugInfoCondToBoolBlock.CondToBoolBlockType;
+import com.github.firmwehr.gentle.debug.DebugInfoFieldAccess.FieldAccessElementType;
+import com.github.firmwehr.gentle.debug.DebugInfoIfBlock.IfBlockType;
+import com.github.firmwehr.gentle.debug.DebugInfoImplicitMainReturn;
+import com.github.firmwehr.gentle.debug.DebugInfoMethodInvocation.MethodInvocationElementType;
+import com.github.firmwehr.gentle.debug.DebugInfoShortCircuitBlock.ShortCircuitBlockType;
+import com.github.firmwehr.gentle.debug.DebugInfoWhileBlock.WhileBlockType;
+import com.github.firmwehr.gentle.debug.HasDebugInformation;
+import com.github.firmwehr.gentle.debug.Panopticon;
 import com.github.firmwehr.gentle.semantic.Namespace;
 import com.github.firmwehr.gentle.semantic.ast.LocalVariableDeclaration;
 import com.github.firmwehr.gentle.semantic.ast.SClassDeclaration;
@@ -57,6 +70,18 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import static com.github.firmwehr.gentle.debug.FirmNodeMetadata.forAllocate;
+import static com.github.firmwehr.gentle.debug.FirmNodeMetadata.forArrayAccessTarget;
+import static com.github.firmwehr.gentle.debug.FirmNodeMetadata.forCompare;
+import static com.github.firmwehr.gentle.debug.FirmNodeMetadata.forCondToBoolBlock;
+import static com.github.firmwehr.gentle.debug.FirmNodeMetadata.forCondToBoolPhi;
+import static com.github.firmwehr.gentle.debug.FirmNodeMetadata.forElement;
+import static com.github.firmwehr.gentle.debug.FirmNodeMetadata.forFieldLoad;
+import static com.github.firmwehr.gentle.debug.FirmNodeMetadata.forIfBlock;
+import static com.github.firmwehr.gentle.debug.FirmNodeMetadata.forMethodInvocation;
+import static com.github.firmwehr.gentle.debug.FirmNodeMetadata.forShortCircuitBlock;
+import static com.github.firmwehr.gentle.debug.FirmNodeMetadata.forWhileBlock;
+
 public class FirmGraphBuilder {
 
 	private final TypeHelper typeHelper;
@@ -101,6 +126,7 @@ public class FirmGraphBuilder {
 
 				Node proj = construction.newProj(argsTuple, typeHelper.getMode(parameter.type()), index);
 				construction.setVariable(index, proj);
+				Panopticon.getInstance().putMetadata(proj, forElement(parameter));
 			}
 		}
 
@@ -168,6 +194,9 @@ public class FirmGraphBuilder {
 
 		construction.setCurrentBlock(after);
 
+		Panopticon.getInstance().putMetadata(header, forWhileBlock(whileStatement, WhileBlockType.HEADER));
+		Panopticon.getInstance().putMetadata(body, forWhileBlock(whileStatement, WhileBlockType.BODY));
+		Panopticon.getInstance().putMetadata(after, forWhileBlock(whileStatement, WhileBlockType.AFTER));
 	}
 
 	private void jumpIfNotReturning(Context context, Block target) {
@@ -199,6 +228,10 @@ public class FirmGraphBuilder {
 
 		construction.setCurrentBlock(afterBlock);
 		afterBlock.mature();
+
+		Panopticon.getInstance().putMetadata(afterBlock, forIfBlock(ifStatement, IfBlockType.AFTER));
+		Panopticon.getInstance().putMetadata(trueBlock, forIfBlock(ifStatement, IfBlockType.TRUE));
+		Panopticon.getInstance().putMetadata(falseBlock, forIfBlock(ifStatement, IfBlockType.FALSE));
 	}
 
 	private void processReturn(Context context, SReturnStatement returnStatement) {
@@ -207,20 +240,23 @@ public class FirmGraphBuilder {
 			returnValues = new Node[]{processValueExpression(context, returnStatement.returnValue().get())};
 		}
 		if (context.currentMethod().isStatic()) {
-			returnValues =
-				new Node[]{processValueExpression(context, new SIntegerValueExpression(0, SourceSpan.dummy()))};
+			Node zeroReturn = processValueExpression(context, new SIntegerValueExpression(0, SourceSpan.dummy()));
+			Panopticon.getInstance().putMetadata(zeroReturn, forElement(new DebugInfoImplicitMainReturn()));
+			returnValues = new Node[]{zeroReturn};
 		}
 		Construction construction = context.construction();
 		Node returnNode = construction.newReturn(construction.getCurrentMem(), returnValues);
 		construction.getGraph().getEndBlock().addPred(returnNode);
 		context.setReturns(construction.getCurrentBlock());
+
+		Panopticon.getInstance().putMetadata(returnNode, forElement(returnStatement));
 	}
 
 	private void processLogicalExpression(Context context, SExpression expression, JumpTarget jumpTarget) {
 		switch (expression) {
 			case SBinaryOperatorExpression expr -> processLogicalBinaryOperator(context, expr, jumpTarget);
 			case SUnaryOperatorExpression expr -> processLogicalUnaryOperator(context, expr, jumpTarget);
-			default -> booleanToJump(context, processValueExpression(context, expression), jumpTarget);
+			default -> booleanToJump(context, processValueExpression(context, expression), jumpTarget, expression);
 		}
 	}
 
@@ -235,23 +271,23 @@ public class FirmGraphBuilder {
 			case SMethodInvocationExpression expr -> processMethodInvocation(context, expr);
 			case SNewArrayExpression expr -> processNewArray(context, expr);
 			case SNewObjectExpression expr -> processNewObject(context, expr);
-			case SNullExpression ignored -> processNull(context);
+			case SNullExpression nullExpression -> processNull(context, nullExpression);
 			case SSystemInReadExpression ignored -> processSystemInRead(context);
 			case SSystemOutFlushExpression ignored -> processSystemOutFlush(context);
 			case SSystemOutPrintlnExpression expr -> processSystemOutPrintln(context, expr);
 			case SSystemOutWriteExpression expr -> processSystemOutWrite(context, expr);
-			case SThisExpression ignored -> processThis(context);
+			case SThisExpression thisExpression -> processThis(context, thisExpression);
 			case SUnaryOperatorExpression expr -> processUnaryOperator(context, expr);
 		};
 	}
 
-	private void booleanToJump(Context context, Node node, JumpTarget jumpTarget) {
+	private void booleanToJump(Context context, Node node, JumpTarget jumpTarget, SExpression source) {
 		Preconditions.checkArgument(node.getMode().isInt(), "Expected boolean literal (Bu), got " + node);
 
 		Node right = context.construction().newConst(0, Mode.getBu());
 		JumpTarget invertedTarget = new JumpTarget(jumpTarget.falseBlock(), jumpTarget.trueBlock());
 
-		processRelation(context, node, right, Relation.Equal, invertedTarget);
+		processRelation(context, node, right, Relation.Equal, invertedTarget, source);
 	}
 
 	private Node processArrayAccess(Context context, SArrayAccessExpression expr) {
@@ -260,7 +296,12 @@ public class FirmGraphBuilder {
 		Mode innerMode = typeHelper.getMode(expr.type());
 		Node loadNode = construction.newLoad(construction.getCurrentMem(), target, innerMode);
 		construction.setCurrentMem(construction.newProj(loadNode, Mode.getM(), Load.pnM));
-		return construction.newProj(loadNode, innerMode, Load.pnRes);
+		Node resultProj = construction.newProj(loadNode, innerMode, Load.pnRes);
+
+		Panopticon.getInstance().putMetadata(target, forElement(expr));
+		Panopticon.getInstance().putMetadata(resultProj, forElement(expr));
+
+		return resultProj;
 	}
 
 	private void processLogicalBinaryOperator(Context context, SBinaryOperatorExpression expr, JumpTarget target) {
@@ -284,18 +325,20 @@ public class FirmGraphBuilder {
 
 		return switch (expr.operator()) {
 			case ASSIGN -> processAssignment(context, expr);
-			case LOGICAL_OR -> condToBool(context, target -> processLogicalOr(context, expr, target));
-			case LOGICAL_AND -> condToBool(context, target -> processLogicalAnd(context, expr, target));
-			case EQUAL -> condToBool(context, target -> processRelation(context, expr, Relation.Equal, target));
+			case LOGICAL_OR -> condToBool(context, target -> processLogicalOr(context, expr, target), expr);
+			case LOGICAL_AND -> condToBool(context, target -> processLogicalAnd(context, expr, target), expr);
+			case EQUAL -> condToBool(context, target -> processRelation(context, expr, Relation.Equal, target), expr);
 			case NOT_EQUAL -> condToBool(context,
-				target -> processRelation(context, expr, Relation.UnorderedLessGreater, target));
-			case LESS_THAN -> condToBool(context, target -> processRelation(context, expr, Relation.Less, target));
+				target -> processRelation(context, expr, Relation.UnorderedLessGreater, target), expr);
+			case LESS_THAN -> condToBool(context, target -> processRelation(context, expr, Relation.Less, target),
+				expr);
 			case LESS_OR_EQUAL -> condToBool(context,
-				target -> processRelation(context, expr, Relation.LessEqual, target));
-			case GREATER_THAN -> condToBool(context,
-				target -> processRelation(context, expr, Relation.Greater, target));
+				target -> processRelation(context, expr, Relation.LessEqual, target), expr);
+			case GREATER_THAN -> condToBool(context, target -> processRelation(context, expr, Relation.Greater,
+					target),
+				expr);
 			case GREATER_OR_EQUAL -> condToBool(context,
-				target -> processRelation(context, expr, Relation.GreaterEqual, target));
+				target -> processRelation(context, expr, Relation.GreaterEqual, target), expr);
 			case ADD -> construction.newAdd(processValueExpression(context, expr.lhs()),
 				processValueExpression(context, expr.rhs()));
 			case SUBTRACT -> construction.newSub(processValueExpression(context, expr.lhs()),
@@ -326,7 +369,7 @@ public class FirmGraphBuilder {
 		};
 	}
 
-	private Node condToBool(Context context, Consumer<JumpTarget> processInner) {
+	private Node condToBool(Context context, Consumer<JumpTarget> processInner, HasDebugInformation source) {
 		// TODO: Can we use the MUX node in some cases?
 		Construction construction = context.construction();
 		Block trueBlock = construction.newBlock();
@@ -346,8 +389,15 @@ public class FirmGraphBuilder {
 
 		construction.setCurrentBlock(afterBlock);
 		afterBlock.mature();
-		return construction.newPhi(
+		Node phi = construction.newPhi(
 			new Node[]{construction.newConst(0, Mode.getBu()), construction.newConst(1, Mode.getBu())}, Mode.getBu());
+
+		Panopticon.getInstance().putMetadata(afterBlock, forCondToBoolBlock(source, CondToBoolBlockType.AFTER));
+		Panopticon.getInstance().putMetadata(trueBlock, forCondToBoolBlock(source, CondToBoolBlockType.TRUE));
+		Panopticon.getInstance().putMetadata(falseBlock, forCondToBoolBlock(source, CondToBoolBlockType.FALSE));
+		Panopticon.getInstance().putMetadata(phi, forCondToBoolPhi(source));
+
+		return phi;
 	}
 
 	private void assertNotReturning(Context context, Block block) {
@@ -358,7 +408,7 @@ public class FirmGraphBuilder {
 
 	private void processAssignment(Context context, SBinaryOperatorExpression expr, JumpTarget jumpTarget) {
 		Node rhs = processAssignment(context, expr);
-		booleanToJump(context, rhs, jumpTarget);
+		booleanToJump(context, rhs, jumpTarget, expr);
 	}
 
 	private Node processAssignment(Context context, SBinaryOperatorExpression expr) {
@@ -402,7 +452,18 @@ public class FirmGraphBuilder {
 		Type innerType = typeHelper.getType(expr.type());
 		Node typeSizeNode = construction.newConst(innerType.getSize(), Mode.getLs());
 		Node offsetNode = construction.newMul(construction.newConv(indexNode, Mode.getLs()), typeSizeNode);
-		return construction.newConv(construction.newAdd(arrayNode, offsetNode), Mode.getP());
+		Node addressAdd = construction.newAdd(arrayNode, offsetNode);
+		Node addressConv = construction.newConv(addressAdd, Mode.getP());
+
+		Panopticon.getInstance().putMetadata(typeSizeNode, forArrayAccessTarget(expr,
+			ArrayAccessTargetType.TYPE_SIZE));
+		Panopticon.getInstance().putMetadata(offsetNode, forArrayAccessTarget(expr, ArrayAccessTargetType.OFFSET));
+		Panopticon.getInstance()
+			.putMetadata(addressAdd, forArrayAccessTarget(expr, ArrayAccessTargetType.RESULT_COMPUTATION));
+		Panopticon.getInstance()
+			.putMetadata(addressConv, forArrayAccessTarget(expr, ArrayAccessTargetType.RESULT_CONVERSION));
+
+		return addressConv;
 	}
 
 	private void processLogicalOr(Context context, SBinaryOperatorExpression expr, JumpTarget jumpTarget) {
@@ -412,6 +473,8 @@ public class FirmGraphBuilder {
 		falseBlock.mature();
 		context.construction().setCurrentBlock(falseBlock);
 		processLogicalExpression(context, expr.rhs(), jumpTarget);
+
+		Panopticon.getInstance().putMetadata(falseBlock, forShortCircuitBlock(expr, ShortCircuitBlockType.OR));
 	}
 
 	private void processLogicalAnd(Context context, SBinaryOperatorExpression expr, JumpTarget jumpTarget) {
@@ -421,6 +484,8 @@ public class FirmGraphBuilder {
 		trueBlock.mature();
 		context.construction().setCurrentBlock(trueBlock);
 		processLogicalExpression(context, expr.rhs(), jumpTarget);
+
+		Panopticon.getInstance().putMetadata(trueBlock, forShortCircuitBlock(expr, ShortCircuitBlockType.AND));
 	}
 
 	private void processRelation(
@@ -428,10 +493,12 @@ public class FirmGraphBuilder {
 	) {
 		Node left = processValueExpression(context, expr.lhs());
 		Node right = processValueExpression(context, expr.rhs());
-		processRelation(context, left, right, relation, target);
+		processRelation(context, left, right, relation, target, expr);
 	}
 
-	private void processRelation(Context context, Node left, Node right, Relation relation, JumpTarget jumpTarget) {
+	private void processRelation(
+		Context context, Node left, Node right, Relation relation, JumpTarget jumpTarget, SExpression source
+	) {
 		Construction construction = context.construction();
 		Node cmp = construction.newCmp(left, right, relation);
 		Node cond = construction.newCond(cmp);
@@ -439,10 +506,19 @@ public class FirmGraphBuilder {
 		Node falseProj = construction.newProj(cond, Mode.getX(), Cond.pnFalse);
 		jumpTarget.trueBlock().addPred(trueProj);
 		jumpTarget.falseBlock().addPred(falseProj);
+
+		Panopticon.getInstance().putMetadata(cmp, forCompare(source, CompareElementType.COMPARE));
+		Panopticon.getInstance().putMetadata(cond, forCompare(source, CompareElementType.COND));
+		Panopticon.getInstance().putMetadata(trueProj, forCompare(source, CompareElementType.TRUE_PROJ));
+		Panopticon.getInstance().putMetadata(falseProj, forCompare(source, CompareElementType.FALSE_PROJ));
 	}
 
 	private Node processBooleanValue(Context context, SBooleanValueExpression expr) {
-		return context.construction().newConst(expr.value() ? 1 : 0, Mode.getBu());
+		Node resultConst = context.construction().newConst(expr.value() ? 1 : 0, Mode.getBu());
+
+		Panopticon.getInstance().putMetadata(resultConst, forElement(expr));
+
+		return resultConst;
 	}
 
 	private Node processFieldAccess(Context context, SFieldAccessExpression expr) {
@@ -452,11 +528,22 @@ public class FirmGraphBuilder {
 		Mode mode = typeHelper.getMode(expr.type());
 		Node load = construction.newLoad(construction.getCurrentMem(), member, mode);
 		construction.setCurrentMem(construction.newProj(load, Mode.getM(), Load.pnM));
-		return construction.newProj(load, mode, Load.pnRes);
+
+		Node loadResProj = construction.newProj(load, mode, Load.pnRes);
+
+		Panopticon.getInstance().putMetadata(member, forFieldLoad(expr, FieldAccessElementType.MEMBER));
+		Panopticon.getInstance().putMetadata(load, forFieldLoad(expr, FieldAccessElementType.LOAD));
+		Panopticon.getInstance().putMetadata(loadResProj, forFieldLoad(expr, FieldAccessElementType.LOAD_RESULT));
+
+		return loadResProj;
 	}
 
 	private Node processIntegerValue(Context context, SIntegerValueExpression expr) {
-		return context.construction().newConst(expr.value(), Mode.getIs());
+		Node result = context.construction().newConst(expr.value(), Mode.getIs());
+
+		Panopticon.getInstance().putMetadata(result, forElement(expr));
+
+		return result;
 	}
 
 	private Node processLocalVariable(Context context, SLocalVariableExpression expr) {
@@ -464,8 +551,11 @@ public class FirmGraphBuilder {
 
 		int index = context.slotTable().computeIndex(variable);
 		Mode mode = typeHelper.getMode(expr.localVariable().type());
+		Node variableLoad = context.construction().getVariable(index, mode);
 
-		return context.construction().getVariable(index, mode);
+		Panopticon.getInstance().putMetadata(variableLoad, forElement(expr));
+
+		return variableLoad;
 	}
 
 	private Node processMethodInvocation(Context context, SMethodInvocationExpression expr) {
@@ -483,13 +573,24 @@ public class FirmGraphBuilder {
 		Entity methodEntity = entityHelper.computeMethodEntity(method);
 		Node address = construction.newAddress(methodEntity);
 		Node call = construction.newCall(construction.getCurrentMem(), address, fArguments, methodEntity.getType());
-		Node proj = construction.newProj(call, Mode.getT(), Call.pnTResult);
+		Node resultsProj = construction.newProj(call, Mode.getT(), Call.pnTResult);
 		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
+
+		Panopticon.getInstance().putMetadata(address, forMethodInvocation(expr, MethodInvocationElementType.ADDRESS));
+		Panopticon.getInstance().putMetadata(call, forMethodInvocation(expr, MethodInvocationElementType.CALL));
+		Panopticon.getInstance()
+			.putMetadata(resultsProj, forMethodInvocation(expr, MethodInvocationElementType.RESULT_PROJ));
+
 		if (method.returnType() instanceof SVoidType) {
 			return construction.newBad(Mode.getANY());
 		}
 		// 0 as we only have one return element
-		return construction.newProj(proj, typeHelper.getMode(method.returnType().asExprType()), 0);
+		Node resultProj = construction.newProj(resultsProj, typeHelper.getMode(method.returnType().asExprType()), 0);
+
+		Panopticon.getInstance()
+			.putMetadata(resultProj, forMethodInvocation(expr, MethodInvocationElementType.RESULT_PROJ));
+
+		return resultProj;
 	}
 
 	private Node processNewArray(Context context, SNewArrayExpression expr) {
@@ -503,33 +604,50 @@ public class FirmGraphBuilder {
 
 		Node memberCount = construction.newConv(processValueExpression(context, expr.size()), Mode.getLu());
 
-		return allocateMemory(construction, typeSize, memberCount);
+		return allocateMemory(construction, typeSize, memberCount, expr, new AllocationInfo(true));
 	}
 
 	private Node processNewObject(Context context, SNewObjectExpression expr) {
 		Construction construction = context.construction();
 		ClassType type = typeHelper.getClassType(expr.classDecl());
 
-		return allocateMemory(construction, type.getSize(), construction.newConst(1, Mode.getLu()));
+		AllocationInfo info = new AllocationInfo(false);
+		return allocateMemory(construction, type.getSize(), construction.newConst(1, Mode.getLu()), expr, info);
 	}
 
 	private Node allocateMemory(
-		Construction construction, int memberSize, Node memberCount
+		Construction construction, int typeSize, Node memberCount, SExpression source, AllocationInfo allocationInfo
 	) {
 		Entity allocateEntity = entityHelper.getEntity(StdLibEntity.ALLOCATE);
 		Node allocateAddress = construction.newAddress(allocateEntity);
 
-		Node[] arguments = {memberCount, construction.newConst(memberSize, Mode.getLu())};
+		Node typeSizeConst = construction.newConst(typeSize, Mode.getLu());
+		Node[] arguments = {memberCount, typeSizeConst};
 		Node call =
 			construction.newCall(construction.getCurrentMem(), allocateAddress, arguments, allocateEntity.getType());
 
 		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
-		Node proj = construction.newProj(call, Mode.getT(), Call.pnTResult);
-		return construction.newProj(proj, Mode.getP(), 0);
+		Node resultsProj = construction.newProj(call, Mode.getT(), Call.pnTResult);
+		Node resultProj = construction.newProj(resultsProj, Mode.getP(), 0);
+
+		Panopticon.getInstance()
+			.putMetadata(allocateAddress, forAllocate(source, AllocateElementType.ALLOCATE_ADDRESS));
+		Panopticon.getInstance().putMetadata(typeSizeConst, forAllocate(source, AllocateElementType.TYPE_SIZE));
+		Panopticon.getInstance().putMetadata(call, forAllocate(source, AllocateElementType.CALL));
+		Panopticon.getInstance().putMetadata(resultsProj, forAllocate(source, AllocateElementType.RESULTS_PROJ));
+		Panopticon.getInstance().putMetadata(resultProj, forAllocate(source, AllocateElementType.RESULT_PROJ));
+
+		Panopticon.getInstance().putAllocationInfo(call, allocationInfo);
+
+		return resultProj;
 	}
 
-	private Node processNull(Context context) {
-		return context.construction().newConst(0, Mode.getP());
+	private Node processNull(Context context, SNullExpression nullExpression) {
+		Node result = context.construction().newConst(0, Mode.getP());
+
+		Panopticon.getInstance().putMetadata(result, forElement(nullExpression));
+
+		return result;
 	}
 
 	private Node processSystemInRead(Context context) {
@@ -576,17 +694,26 @@ public class FirmGraphBuilder {
 			putCharEntity.getType());
 
 		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
+
 		return construction.newBad(Mode.getANY());
 	}
 
-	private Node processThis(Context context) {
-		return context.construction().getVariable(0, Mode.getP());
+	private Node processThis(Context context, SThisExpression thisExpression) {
+		Node result = context.construction().getVariable(0, Mode.getP());
+
+		Panopticon.getInstance().putMetadata(result, forElement(thisExpression));
+
+		return result;
 	}
 
 	private void processLogicalUnaryOperator(Context context, SUnaryOperatorExpression expr, JumpTarget jumpTarget) {
 		Construction construction = context.construction();
 		switch (expr.operator()) {
-			case NEGATION -> construction.newMinus(processValueExpression(context, expr.expression()));
+			case NEGATION -> {
+				Node minus = construction.newMinus(processValueExpression(context, expr.expression()));
+
+				Panopticon.getInstance().putMetadata(minus, forElement(expr));
+			}
 			case LOGICAL_NOT -> {
 				JumpTarget invertedJumpTarget = new JumpTarget(jumpTarget.falseBlock(), jumpTarget.trueBlock());
 				processLogicalExpression(context, expr.expression(), invertedJumpTarget);
@@ -597,13 +724,19 @@ public class FirmGraphBuilder {
 	private Node processUnaryOperator(Context context, SUnaryOperatorExpression expr) {
 		Construction construction = context.construction();
 		return switch (expr.operator()) {
-			case NEGATION -> construction.newMinus(processValueExpression(context, expr.expression()));
+			case NEGATION -> {
+				Node node = construction.newMinus(processValueExpression(context, expr.expression()));
+
+				Panopticon.getInstance().putMetadata(node, forElement(expr));
+
+				yield node;
+			}
 			case LOGICAL_NOT -> {
 				// !b => (b == false)
 				Node innerExpr = processValueExpression(context, expr.expression());
 				Node constFalse = construction.newConst(0, Mode.getBu());
 				yield condToBool(context,
-					target -> processRelation(context, innerExpr, constFalse, Relation.Equal, target));
+					target -> processRelation(context, innerExpr, constFalse, Relation.Equal, target, expr), expr);
 			}
 		};
 	}
