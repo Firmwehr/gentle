@@ -5,6 +5,7 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Cmp;
+import firm.nodes.Node;
 
 import java.util.List;
 
@@ -47,4 +48,10 @@ public class IkeaCmp implements IkeaNode {
 	public <T> T accept(IkeaVisitor<T> visitor) {
 		return visitor.visit(this);
 	}
+
+	@Override
+	public List<Node> getUnderlyingFirmNodes() {
+		return List.of(cmp);
+	}
+
 }

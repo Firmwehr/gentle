@@ -21,4 +21,9 @@ public record IkeaConst(
 		return visitor.visit(this);
 	}
 
+	@Override
+	public List<Node> getUnderlyingFirmNodes() {
+		return List.of(node);
+	}
+
 }

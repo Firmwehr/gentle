@@ -80,6 +80,14 @@ public record FirmNodeMetadata(
 		return forElement(new DebugInfoAllocate(source, type));
 	}
 
+	public String toDebugInfoString(Source source) {
+		String message = toDebugString(source);
+		int line = findSourcePos(source).map(SourcePosition::line).orElse(-1);
+		int col = findSourcePos(source).map(SourcePosition::column).orElse(-1);
+
+		return message + " @ " + line + ":" + col;
+	}
+
 	public Pointer toDebugInfo(Source source) {
 		String message = toDebugString(source);
 		int line = findSourcePos(source).map(SourcePosition::line).orElse(-1);

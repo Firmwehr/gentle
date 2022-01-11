@@ -179,12 +179,13 @@ public class GentleCompiler {
 			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer(source, parser.parse());
 			SProgram program = semanticAnalyzer.analyze();
 
-			List<Graph> graphs = new FirmBuilder().convert(program, new Panopticon(source));
+			Panopticon panopticon = new Panopticon(source);
+			List<Graph> graphs = new FirmBuilder().convert(program, panopticon);
 
 			// generate matching filename for input and call backend handler
 			String assemblyFilename = FilenameUtils.removeExtension(path.getFileName().toString()) + ".s";
 			Path assemblyFile = path.resolveSibling(assemblyFilename);
-			handler.handleGraphs(assemblyFile, graphs);
+			handler.handleGraphs(assemblyFile, graphs, panopticon);
 
 			System.exit(0);
 
@@ -203,14 +204,15 @@ public class GentleCompiler {
 		}
 	}
 
-	private static void generateWithGentleBackend(Path assemblyFile, List<Graph> graphs) throws IOException {
+	private static void generateWithGentleBackend(Path assemblyFile, List<Graph> graphs, Panopticon panopticon)
+		throws IOException {
 		LOGGER.info("handing over to gentle backend...");
 
 		Files.deleteIfExists(assemblyFile);
 		for (Graph graph : firm.Program.getGraphs()) {
 			CodeSelection codeSelection = new CodeSelection(graph);
 			List<IkeaBløck> blocks = codeSelection.convertBlocks();
-			DjungelskogVisitor visitor = new DjungelskogVisitor();
+			DjungelskogVisitor visitor = new DjungelskogVisitor(panopticon);
 			String res = visitor.visit(graph, blocks);
 			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
 		}
@@ -218,7 +220,8 @@ public class GentleCompiler {
 		new ExternalLinker().link(assemblyFile, RuntimeAbi.CDECL);
 	}
 
-	private static void generateWithMolkiBackend(Path assemblyFile, List<Graph> graphs) throws IOException {
+	private static void generateWithMolkiBackend(Path assemblyFile, List<Graph> graphs, Panopticon panopticon)
+		throws IOException {
 		LOGGER.info("handing over to gentle/molki backend...");
 
 		Files.deleteIfExists(assemblyFile);
@@ -234,7 +237,8 @@ public class GentleCompiler {
 		new ExternalLinker().link(finalAssemblyFile, RuntimeAbi.CDECL);
 	}
 
-	private static void generateWithFirmBackend(Path assemblyFile, List<Graph> graphs) throws IOException {
+	private static void generateWithFirmBackend(Path assemblyFile, List<Graph> graphs, Panopticon panopticon)
+		throws IOException {
 		LOGGER.info("handing over to firm backend...");
 
 		String file = assemblyFile.toString();
@@ -253,9 +257,10 @@ public class GentleCompiler {
 		 *
 		 * @param assemblyFile Target name of assembly file.
 		 * @param graphs The generated graph.
+		 * @param panopticon the generated debug store
 		 *
 		 * @throws IOException If the handler encountered an error during an IO error during code generation.
 		 */
-		void handleGraphs(Path assemblyFile, List<Graph> graphs) throws IOException;
+		void handleGraphs(Path assemblyFile, List<Graph> graphs, Panopticon panopticon) throws IOException;
 	}
 }

@@ -24,4 +24,8 @@ public class Panopticon {
 	public Optional<FirmNodeMetadata> getMetadata(Node node) {
 		return Optional.ofNullable(metadata.get(node));
 	}
+
+	public Optional<String> getMetadataString(Node node) {
+		return Optional.ofNullable(metadata.get(node)).map(it -> it.toDebugInfoString(source));
+	}
 }

@@ -62,6 +62,12 @@ public class IkeaDiv implements IkeaNode {
 		return visitor.visit(this);
 	}
 
+	@Override
+	public List<Node> getUnderlyingFirmNodes() {
+		return List.of(node);
+	}
+
+
 	public enum Result {
 		QUOTIENT,
 		MOD
