@@ -66,6 +66,9 @@ public interface CommandArguments {
 	@Option(names = "--no-remove-unused", description = "keep call arguments even if they are not used in the method")
 	boolean noRemoveUnused();
 
+	@Option(names = "--no-escape-analysis", description = "keep allocations for objects that do not escape")
+	boolean noEscapeAnalysis();
+
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",
 		paramLabel = "FILE")
 	Path path();

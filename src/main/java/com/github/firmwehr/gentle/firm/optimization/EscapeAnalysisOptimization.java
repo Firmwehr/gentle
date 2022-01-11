@@ -39,8 +39,25 @@ public class EscapeAnalysisOptimization {
 
 	private final Graph graph;
 
-	public EscapeAnalysisOptimization(Graph graph) { // TODO private
+	private EscapeAnalysisOptimization(Graph graph) { // TODO private
 		this.graph = graph;
+	}
+
+	public static GraphOptimizationStep<Graph, Boolean> escapeAnalysisOptimization() {
+		return GraphOptimizationStep.<Graph, Boolean>builder()
+			.withDescription("EscapeAnalysisOptimization")
+			.withOptimizationFunction(graph -> {
+				int runs = 0;
+				while (true) {
+					EscapeAnalysisOptimization optimization = new EscapeAnalysisOptimization(graph);
+					if (optimization.optimize()) {
+						runs++;
+					} else {
+						return runs > 0;
+					}
+				}
+			})
+			.build();
 	}
 
 	public boolean optimize() {

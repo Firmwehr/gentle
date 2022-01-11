@@ -95,16 +95,15 @@ public class FirmBuilder {
 		if (!CompilerArguments.get().noArithmeticOptimizations()) {
 			builder.addGraphStep(ArithmeticOptimization.arithmeticOptimization());
 		}
+		if (!CompilerArguments.get().noEscapeAnalysis()) {
+			builder.addGraphStep(EscapeAnalysisOptimization.escapeAnalysisOptimization());
+		}
 		if (!CompilerArguments.get().noRemoveUnused()) {
 			builder.addCallGraphStep(UnusedParameterOptimization.unusedParameterOptimization());
 		}
 
 		Optimizer optimizer = builder.build();
 		optimizer.optimize();
-
-		for (Graph graph : Program.getGraphs()) {
-			new EscapeAnalysisOptimization(graph).optimize();
-		}
 
 		return Lists.newArrayList(firm.Program.getGraphs());
 	}
