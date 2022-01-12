@@ -246,6 +246,7 @@ public class FirmGraphBuilder {
 			returnValues = new Node[]{zeroReturn};
 		}
 		Construction construction = context.construction();
+		// Arguments need to be evaluated first so memory chain is built correctly
 		Node returnNode = construction.newReturn(construction.getCurrentMem(), returnValues);
 		construction.getGraph().getEndBlock().addPred(returnNode);
 		context.setReturns(construction.getCurrentBlock());
@@ -295,6 +296,7 @@ public class FirmGraphBuilder {
 		Construction construction = context.construction();
 		Node target = computeArrayAccessTarget(context, expr);
 		Mode innerMode = typeHelper.getMode(expr.type());
+		// Arguments need to be evaluated first so memory chain is built correctly
 		Node loadNode = construction.newLoad(construction.getCurrentMem(), target, innerMode);
 		construction.setCurrentMem(construction.newProj(loadNode, Mode.getM(), Load.pnM));
 		Node resultProj = construction.newProj(loadNode, innerMode, Load.pnRes);
@@ -354,6 +356,7 @@ public class FirmGraphBuilder {
 				Node leftPromoted = construction.newConv(lhs, Mode.getLs());
 				Node rightPromoted = construction.newConv(rhs, Mode.getLs());
 
+				// Arguments need to be evaluated first so memory chain is built correctly
 				Node divNode = construction.newDiv(construction.getCurrentMem(), leftPromoted, rightPromoted,
 					binding_ircons.op_pin_state.op_pin_state_pinned);
 				construction.setCurrentMem(construction.newProj(divNode, Mode.getM(), Div.pnM));
@@ -361,9 +364,11 @@ public class FirmGraphBuilder {
 				yield construction.newConv(projResult, Mode.getIs());
 			}
 			case MODULO -> {
-				Node modNode =
-					construction.newMod(construction.getCurrentMem(), processValueExpression(context, expr.lhs()),
-						processValueExpression(context, expr.rhs()), binding_ircons.op_pin_state.op_pin_state_pinned);
+				Node left = processValueExpression(context, expr.lhs());
+				Node right = processValueExpression(context, expr.rhs());
+				// Arguments need to be evaluated first so memory chain is built correctly
+				Node modNode = construction.newMod(construction.getCurrentMem(), left, right,
+					binding_ircons.op_pin_state.op_pin_state_pinned);
 				construction.setCurrentMem(construction.newProj(modNode, Mode.getM(), Mod.pnM));
 				yield construction.newProj(modNode, Mode.getIs(), Mod.pnRes);
 			}
@@ -428,6 +433,7 @@ public class FirmGraphBuilder {
 				Node member = construction.newMember(processValueExpression(context, fieldAccess.expression()),
 					entityHelper.getEntity(fieldAccess.field()));
 				Node rhs = processValueExpression(context, expr.rhs());
+				// Arguments need to be evaluated first so memory chain is built correctly
 				Node storeNode = construction.newStore(construction.getCurrentMem(), member, rhs);
 				construction.setCurrentMem(construction.newProj(storeNode, Mode.getM(), Store.pnM));
 				yield rhs;
@@ -435,6 +441,7 @@ public class FirmGraphBuilder {
 			case SArrayAccessExpression arrayAccess -> {
 				Node target = computeArrayAccessTarget(context, arrayAccess);
 				Node rhs = processValueExpression(context, expr.rhs());
+				// Arguments need to be evaluated first so memory chain is built correctly
 				Node arrayStore = construction.newStore(construction.getCurrentMem(), target, rhs);
 				construction.setCurrentMem(construction.newProj(arrayStore, Mode.getM(), Store.pnM));
 				yield rhs;
@@ -524,6 +531,7 @@ public class FirmGraphBuilder {
 		Node exprNode = processValueExpression(context, expr.expression());
 		Node member = construction.newMember(exprNode, entityHelper.getEntity(expr.field()));
 		Mode mode = typeHelper.getMode(expr.type());
+		// Arguments need to be evaluated first so memory chain is built correctly
 		Node load = construction.newLoad(construction.getCurrentMem(), member, mode);
 		construction.setCurrentMem(construction.newProj(load, Mode.getM(), Load.pnM));
 
@@ -570,6 +578,7 @@ public class FirmGraphBuilder {
 		SMethod method = expr.method();
 		Entity methodEntity = entityHelper.computeMethodEntity(method);
 		Node address = construction.newAddress(methodEntity);
+		// Arguments need to be evaluated first so memory chain is built correctly
 		Node call = construction.newCall(construction.getCurrentMem(), address, fArguments, methodEntity.getType());
 		Node resultsProj = construction.newProj(call, Mode.getT(), Call.pnTResult);
 		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
@@ -616,6 +625,7 @@ public class FirmGraphBuilder {
 
 		Node typeSizeConst = construction.newConst(typeSize, Mode.getLu());
 		Node[] arguments = {memberCount, typeSizeConst};
+		// Arguments need to be evaluated first so memory chain is built correctly
 		Node call =
 			construction.newCall(construction.getCurrentMem(), allocateAddress, arguments, allocateEntity.getType());
 
@@ -644,6 +654,7 @@ public class FirmGraphBuilder {
 		Construction construction = context.construction();
 		Entity getCharEntity = entityHelper.getEntity(StdLibEntity.GETCHAR);
 		Node getCharAddress = construction.newAddress(getCharEntity);
+		// Arguments need to be evaluated first so memory chain is built correctly
 		var call =
 			construction.newCall(construction.getCurrentMem(), getCharAddress, new Node[]{}, getCharEntity.getType());
 		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
@@ -655,6 +666,7 @@ public class FirmGraphBuilder {
 		Construction construction = context.construction();
 		Entity flushEntity = entityHelper.getEntity(StdLibEntity.FLUSH);
 		Node flushAddress = construction.newAddress(flushEntity);
+		// Arguments need to be evaluated first so memory chain is built correctly
 		var call = construction.newCall(construction.getCurrentMem(), flushAddress, new Node[0],
 			flushEntity.getType());
 		construction.setCurrentMem(construction.newProj(call, Mode.getM(), Call.pnM));
@@ -680,6 +692,7 @@ public class FirmGraphBuilder {
 
 		Node argumentNode = processValueExpression(context, argument);
 
+		// Arguments need to be evaluated first so memory chain is built correctly
 		var call = construction.newCall(construction.getCurrentMem(), putCharAddress, new Node[]{argumentNode},
 			putCharEntity.getType());
 

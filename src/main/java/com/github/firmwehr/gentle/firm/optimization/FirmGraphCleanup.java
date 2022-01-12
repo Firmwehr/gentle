@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.firm.optimization;
 
+import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.GraphDumper;
 import firm.BackEdges;
 import firm.Graph;
@@ -27,6 +28,8 @@ import firm.nodes.Phi;
  * </ul>
  */
 public class FirmGraphCleanup extends NodeVisitor.Default {
+
+	private static final Logger LOGGER = new Logger(FirmGraphCleanup.class);
 
 	private final Graph graph;
 	private boolean changed;
@@ -60,6 +63,7 @@ public class FirmGraphCleanup extends NodeVisitor.Default {
 				edge.node.setPred(edge.pos, node.getOp());
 			}
 			changed = true;
+			LOGGER.debug("Removed Conv %s as it was superfluous", node);
 		}
 	}
 
@@ -78,6 +82,7 @@ public class FirmGraphCleanup extends NodeVisitor.Default {
 			edge.node.setPred(edge.pos, current);
 		}
 		changed = true;
+		LOGGER.debug("Removed Phi %s as it was trivial", node);
 	}
 
 	@Override
@@ -89,6 +94,7 @@ public class FirmGraphCleanup extends NodeVisitor.Default {
 				edge.node.setPred(edge.pos, node.getMem());
 			}
 			changed = true;
+			LOGGER.debug("Removed load %s as it was unused", node);
 		}
 	}
 }
