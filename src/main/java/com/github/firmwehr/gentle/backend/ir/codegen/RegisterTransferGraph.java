@@ -15,6 +15,17 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 
+/**
+ * Builds and solves register transfer graphs by decomposing the register permutation into an ordered sequence of
+ * register-register moves.
+ * <p>
+ * This is not trivial as the graph induced by the permutation might have cycles (e.g. {@code A -> B, B -> A} if two
+ * registers are swapped). The cycles can be of arbitrary length, if registers are just shifted by one, e.g. {@code A ->
+ * B -> C -> D}...
+ * <p>
+ * Cycles are broken by using an additional temporary register if one is available. If no free register is available, an
+ * ordered sequence of register swaps is generated.
+ */
 @SuppressWarnings("UnstableApiUsage")
 public class RegisterTransferGraph {
 
