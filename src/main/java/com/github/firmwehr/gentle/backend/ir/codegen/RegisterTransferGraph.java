@@ -39,11 +39,23 @@ public class RegisterTransferGraph {
 		this.graph = GraphBuilder.directed().allowsSelfLoops(true).build();
 	}
 
+	/**
+	 * Adds a move edge to this graph. This ensures that after this transfer the value in {@code target} must match the
+	 * value stored in {@code source} <em>before the transfer</em>.
+	 *
+	 * @param source the source of the edge
+	 * @param target the target of the edge
+	 */
 	public void addMove(IkeaBøx source, IkeaBøx target) {
 		graph.putEdge(source, target);
 		LOGGER.debug("Added move %s -> %s", source, target);
 	}
 
+	/**
+	 * Generates a valid solution for this register transfer graph.
+	 *
+	 * @return an ordered sequence of moves from {@link Pair#first()} tp {@link Pair#second()}
+	 */
 	public List<Pair<IkeaBøx, IkeaBøx>> generateMoveSequence() {
 		if (graph.edges().isEmpty()) {
 			LOGGER.debug("Nothing to move!");
@@ -51,7 +63,7 @@ public class RegisterTransferGraph {
 		}
 
 		List<Pair<IkeaBøx, IkeaBøx>> generatedMoves = new ArrayList<>();
-		generateEasyMoves(generatedMoves);
+		solveStraightPaths(generatedMoves);
 
 		// Unbelievable
 		if (graph.edges().isEmpty()) {
@@ -61,6 +73,23 @@ public class RegisterTransferGraph {
 		LOGGER.debug("Doing it the hard way");
 		// Pain. We have cycles (not the renderer).
 
+		if (!freeRegisters.isEmpty()) {
+			IkeaBøx tempRegister = freeRegisters.iterator().next();
+			LOGGER.debug("Free register found, using %s as a scratchpad", tempRegister);
+			solveCyclesWithFreeRegister(generatedMoves, tempRegister);
+		} else {
+			throw new InternalCompilerException("Here be transpositions, only relevant if registers are limited");
+		}
+
+		if (!graph.edges().isEmpty()) {
+			throw new InternalCompilerException(
+				"Register transfer graph could not be solved. Leftover edges: " + graph.edges());
+		}
+
+		return generatedMoves;
+	}
+
+	private void solveCyclesWithFreeRegister(List<Pair<IkeaBøx, IkeaBøx>> generatedMoves, IkeaBøx tempRegister) {
 		// Moves:
 		// temp <- r1
 		// r1   <- r2
@@ -68,54 +97,54 @@ public class RegisterTransferGraph {
 		// r3   <- r4
 		// ...
 		// rn   <- temp
-		if (!freeRegisters.isEmpty()) {
-			IkeaBøx tempRegister = freeRegisters.poll();
-			LOGGER.debug("Free register found, using %s as a scratchpad", tempRegister);
 
-			while (!graph.edges().isEmpty()) {
-				EndpointPair<IkeaBøx> startEdge = graph.edges().iterator().next();
-				LOGGER.debug("Processing %s -> %s", startEdge.source(), startEdge.target());
+		while (!graph.edges().isEmpty()) {
+			EndpointPair<IkeaBøx> startEdge = graph.edges().iterator().next();
+			LOGGER.debug("Processing %s -> %s", startEdge.source(), startEdge.target());
 
-				if (startEdge.source().equals(startEdge.target())) {
-					LOGGER.debug("Self-loop found, NOPing out");
-					graph.removeEdge(startEdge);
-					continue;
-				}
-
-				// temp <- r1
-				generatedMoves.add(new Pair<>(startEdge.source(), tempRegister));
-				LOGGER.debug("Adding move %s -> %s", startEdge.source(), tempRegister);
-				IkeaBøx lastNode = startEdge.target();
-
-				// r1   <- r2
-				// r2   <- r3
-				// r3   <- r4
-				IkeaBøx current = startEdge.source();
-				while (!graph.predecessors(current).isEmpty()) {
-					LOGGER.debug("Entered with current %s and preds %s", current, graph.predecessors(current));
-					IkeaBøx source = graph.predecessors(current).iterator().next();
-					generatedMoves.add(new Pair<>(source, current));
-					LOGGER.debug("Adding move %s -> %s", source, current);
-					graph.removeEdge(source, current);
-					current = source;
-				}
-
-				// rn   <- temp
-				generatedMoves.add(new Pair<>(tempRegister, lastNode));
-				LOGGER.debug("Adding move %s -> %s", tempRegister, lastNode);
-				graph.removeEdge(startEdge.source(), lastNode);
+			if (startEdge.source().equals(startEdge.target())) {
+				LOGGER.debug("Self-loop found, NOPing out");
+				graph.removeEdge(startEdge);
+				continue;
 			}
-		} else {
-			throw new InternalCompilerException("Here be transpositions, only relevant if registers are limited");
-		}
 
-		return generatedMoves;
+			// temp <- r1
+			generatedMoves.add(new Pair<>(startEdge.source(), tempRegister));
+			LOGGER.debug("Adding move %s -> %s", startEdge.source(), tempRegister);
+			IkeaBøx lastNode = startEdge.target();
+
+			// r1   <- r2
+			// r2   <- r3
+			// r3   <- r4
+			IkeaBøx current = startEdge.source();
+			while (!graph.predecessors(current).isEmpty()) {
+				LOGGER.debug("Entered with current %s and preds %s", current, graph.predecessors(current));
+				IkeaBøx source = graph.predecessors(current).iterator().next();
+				generatedMoves.add(new Pair<>(source, current));
+				LOGGER.debug("Adding move %s -> %s", source, current);
+				graph.removeEdge(source, current);
+				current = source;
+			}
+
+			// rn   <- temp
+			generatedMoves.add(new Pair<>(tempRegister, lastNode));
+			LOGGER.debug("Adding move %s -> %s", tempRegister, lastNode);
+			graph.removeEdge(startEdge.source(), lastNode);
+		}
 	}
 
-	private void generateEasyMoves(List<Pair<IkeaBøx, IkeaBøx>> generatedMoves) {
+	/**
+	 * Finds all "straight paths", i.e. sequences of moves like {@code A -> B -> C ... -> Z} that do <em>not</em>
+	 * form a
+	 * cycle. Such paths can be solved by moving registers in reverse order: the last one can be safely overwritten as
+	 * its value is never used.
+	 *
+	 * @param generatedMoves the list to store generated moves in
+	 */
+	private void solveStraightPaths(List<Pair<IkeaBøx, IkeaBøx>> generatedMoves) {
 		Optional<EndpointPair<IkeaBøx>> edgeOpt;
 		//noinspection NestedAssignment
-		while ((edgeOpt = findFreeTarget()).isPresent()) {
+		while ((edgeOpt = findEdgeWithUnusedTarget()).isPresent()) {
 			EndpointPair<IkeaBøx> edge = edgeOpt.get();
 			LOGGER.debug("Found victim %s -> %s", edge.source(), edge.target());
 			generatedMoves.add(new Pair<>(edge.source(), edge.target()));
@@ -147,7 +176,10 @@ public class RegisterTransferGraph {
 		}
 	}
 
-	private Optional<EndpointPair<IkeaBøx>> findFreeTarget() {
+	/**
+	 * @return an edge where the target has outdegree 0, if one exists
+	 */
+	private Optional<EndpointPair<IkeaBøx>> findEdgeWithUnusedTarget() {
 		for (EndpointPair<IkeaBøx> edge : graph.edges()) {
 			if (graph.outDegree(edge.target()) == 0) {
 				return Optional.of(edge);
