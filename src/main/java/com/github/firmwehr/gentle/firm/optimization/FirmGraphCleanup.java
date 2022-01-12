@@ -9,6 +9,23 @@ import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 import firm.nodes.Phi;
 
+/**
+ * Cleans up firm graphs.
+ *
+ * <ul>
+ * <li>
+ * Optimizations might lead to Conv nodes that have the same mode as their predecessor. In that case, the Conv node can
+ * be dropped, as it does not convert anything.
+ * </li>
+ * <li>
+ * Phis with multiple incoming edges are trivial if they all come from only one predecessor. In such case, they can be
+ * removed and all successors can be rewritten to have that single predecessor as predecessor.
+ * </li>
+ * <li>
+ * Loads without data projection can be removed, as the Load itself does not modify memory and the result is not used.
+ * </li>
+ * </ul>
+ */
 public class FirmGraphCleanup extends NodeVisitor.Default {
 
 	private final Graph graph;
@@ -53,7 +70,7 @@ public class FirmGraphCleanup extends NodeVisitor.Default {
 		for (Node pred : node.getPreds()) {
 			if (current == null) {
 				current = pred;
-			} else if (!current.equals(pred)){
+			} else if (!current.equals(pred)) {
 				return;
 			}
 		}
