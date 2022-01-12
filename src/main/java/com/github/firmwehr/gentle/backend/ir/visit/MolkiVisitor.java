@@ -71,7 +71,7 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 	public String visit(IkeaRet ret) {
 		String result = "";
 		if (ret.getValue().isPresent()) {
-			result += "mov %s, %%@r0".formatted(reg(ret.getValue().get().box()).replaceAll("[a-z]", ""));
+			result += "mov %s, %%@r0".formatted(as64BitRegister(reg(ret.getValue().get().box())));
 		}
 		result += "\nreturn";
 		return result;
@@ -83,13 +83,13 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 		result += call.arguments()
 			.stream()
 			.map(it -> reg(it.box()))
-			.map(it -> it.replaceAll("[a-z]", ""))
+			.map(this::as64BitRegister)
 			.collect(joining(" | ", "[ ", " " + "]"));
 
 		if (!isVoid(call.address().getEntity())) {
 			result += " -> " + reg(call.box());
 		}
-		
+
 		return result;
 	}
 
@@ -135,8 +135,11 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaMovRegister movRegister) {
-		String suffix = movRegister.getSize().getOldRegisterSuffix();
-		return "mov%s %s, %s".formatted(suffix, reg(movRegister.getSource()), reg(movRegister.box()));
+		// Always move 64 bit registers, no matter what size we initially stored in them. The upper parts are zeroed
+		// and this will not harm 32 bit registers, but it *will* ensure 64 bit work correctly.
+		String source = as64BitRegister(reg(movRegister.getSource()));
+		String target = as64BitRegister(reg(movRegister.box()));
+		return "movq %s, %s".formatted(source, target);
 	}
 
 	@Override
@@ -219,6 +222,11 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 		result += "\n.endfunction\n";
 
 		return result;
+	}
+
+	private String as64BitRegister(String movRegister) {
+		// Strip any suffix. This works as we operate on virtual registers that do not contain letters.
+		return movRegister.replaceAll("[a-z]", "");
 	}
 
 	private String blockMarker(IkeaBløck block) {
