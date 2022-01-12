@@ -114,13 +114,25 @@ public class RegisterTransferGraph {
 
 			// Free as early as possible: Rewire to read from target
 			for (IkeaBøx successor : graph.successors(edge.source())) {
-				// TODO: Why can we leave self loops in peace and not redirect them, if we mark source as free ?
-				// We might want to do that here!
+				// TODO: Verify this code is correct once we can have self loops with pyhsical registers
+				// Do not rewire self loops to save a move
+				if (edge.source().equals(successor)) {
+					LOGGER.debug("Skipped self loop: %s -> %s", edge.source(), successor);
+					continue;
+				}
+				LOGGER.debug("Rewriting out edge to %s to start at %s", successor, edge.target());
 				graph.removeEdge(edge.source(), successor);
 				graph.putEdge(edge.target(), successor);
 			}
 
-			freeRegisters.add(edge.source());
+			// It is only free if we do not have a self loop
+			if (!graph.successors(edge.source()).contains(edge.source())) {
+				// TODO: Verify this code is correct once we can have self loops with pyhsical registers
+				LOGGER.debug("Freeing register %s as it has no self loop", edge.source());
+				freeRegisters.add(edge.source());
+			} else {
+				LOGGER.debug("Keeping register %s as it has a self loop", edge.source());
+			}
 		}
 	}
 
