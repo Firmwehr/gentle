@@ -15,4 +15,9 @@ public record SReturnStatement(
 	public <T> T accept(Visitor<T> visitor) throws SemanticException {
 		return visitor.visit(this);
 	}
+
+	@Override
+	public Optional<SourceSpan> debugSpan() {
+		return Optional.of(SourceSpan.from(sourceSpan, returnValue.stream().map(SExpression::sourceSpan).toList()));
+	}
 }

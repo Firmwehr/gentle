@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Load;
+import firm.nodes.Node;
 
 import java.util.List;
 
@@ -42,4 +43,10 @@ public class IkeaMovLoad implements IkeaNode {
 	public <T> T accept(IkeaVisitor<T> visitor) {
 		return visitor.visit(this);
 	}
+
+	@Override
+	public List<Node> getUnderlyingFirmNodes() {
+		return List.of(node);
+	}
+
 }

@@ -23,11 +23,13 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
+import com.github.firmwehr.gentle.debug.DebugStore;
 import com.google.common.collect.Lists;
 import firm.Entity;
 import firm.Graph;
 import firm.MethodType;
 import firm.Mode;
+import firm.nodes.Node;
 
 import java.util.List;
 import java.util.OptionalInt;
@@ -36,7 +38,13 @@ import java.util.StringJoiner;
 // just like the panda, this code is reeeeeeeally stupid
 public class DjungelskogVisitor implements IkeaVisitor<String> {
 
+	private final DebugStore debugStore;
+
 	private String currentReturnLabel;
+
+	public DjungelskogVisitor(DebugStore debugStore) {
+		this.debugStore = debugStore;
+	}
 
 	@Override
 	public String defaultReturnValue() {
@@ -45,7 +53,7 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String defaultVisit(IkeaNode node) {
-		return node.getClass().getSimpleName();
+		throw new InternalCompilerException("Unexpected node found: " + node);
 	}
 
 	private String readFromStackToTarget(IkeaBøx box, String target) {
@@ -69,7 +77,7 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		return String.join("\n", lines) + '\n';
 	}
 
-	private String boiler(String asmInstruction, IkeaBøx left, IkeaBøx right, IkeaBøx result) {
+	private String simpleBinaryOperator(String asmInstruction, IkeaBøx left, IkeaBøx right, IkeaBøx result) {
 		// @formatter:off
 		return fromLines(
 			"// " + asmInstruction,
@@ -84,12 +92,12 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaAdd add) {
-		return boiler("add", add.getRight().box(), add.getLeft().box(), add.box());
+		return simpleBinaryOperator("add", add.getRight().box(), add.getLeft().box(), add.box());
 	}
 
 	@Override
 	public String visit(IkeaSub sub) {
-		return boiler("sub", sub.getRight().box(), sub.getLeft().box(), sub.box());
+		return simpleBinaryOperator("sub", sub.getRight().box(), sub.getLeft().box(), sub.box());
 	}
 
 	@Override
@@ -270,10 +278,15 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 	@Override
 	public String visit(IkeaBløck block) {
 		StringJoiner result = new StringJoiner("\n");
+		debugStore.getMetadataString(block.origin()).ifPresent(it -> result.add("/* " + it + " */"));
 
 		for (IkeaNode node : block.nodes()) {
 			if (node instanceof IkeaConst || node instanceof IkeaArgNode) {
 				continue;
+			}
+			for (Node underlyingFirmNode : node.getUnderlyingFirmNodes()) {
+				debugStore.getMetadataString(underlyingFirmNode)
+					.ifPresent(string -> result.add("/* " + string + " */"));
 			}
 			result.add(node.accept(this));
 		}
