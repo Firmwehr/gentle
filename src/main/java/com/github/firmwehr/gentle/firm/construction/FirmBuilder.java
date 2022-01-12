@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.cli.CompilerArguments;
 import com.github.firmwehr.gentle.debug.DebugStore;
 import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
+import com.github.firmwehr.gentle.firm.optimization.FirmGraphCleanup;
 import com.github.firmwehr.gentle.firm.optimization.Optimizer;
 import com.github.firmwehr.gentle.firm.optimization.UnusedParameterOptimization;
 import com.github.firmwehr.gentle.output.Logger;
@@ -84,6 +85,8 @@ public class FirmBuilder {
 		}
 
 		Optimizer.Builder builder = Optimizer.builder();
+
+		builder.addGraphStep(FirmGraphCleanup.firmGraphCleanup());
 
 		if (!CompilerArguments.get().noConstantFolding()) {
 			builder.addGraphStep(ConstantFolding.constantFolding());
