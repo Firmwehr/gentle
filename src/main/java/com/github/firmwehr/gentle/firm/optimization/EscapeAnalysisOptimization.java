@@ -34,6 +34,33 @@ import java.util.Set;
 
 import static java.util.stream.Collectors.toMap;
 
+/**
+ * Scalar replacement of allocations that do not escape the method scope.
+ * <p>
+ * This is done by filtering for allocations where the object is <b>never</b>:
+ * <ul>
+ *     <li>stored</li>
+ *     <li>passed to a method call</li>
+ *     <li>returned</li>
+ * </ul>
+ * <p>
+ * As an edge case, object allocation is not replaced if the pointer is input of a comparison.
+ * Additionally, an object is considered as escaping if
+ * <ul>
+ * <li>stores into or loads from that object have dynamic offsets.</li>
+ * <li>the object size is dynamic.</li>
+ * </ul>
+ * <p>
+ * Different fields in an object are represented as {@link LocalAddress} which contains the base pointer
+ * and the offset.
+ * <p>
+ * For allocations that meet the named criteria, all Loads and Stores are replaced by
+ * maintaining predecessor nodes for the given {@link LocalAddress} (initialised to their default values).
+ * The predecessors are updated on Stores and used on Loads.
+ * <p>
+ * Memory Phis are used to determine where data Phis are required. Each time a memory Phi is visited,
+ * a new input of corresponding data Phis can be set.
+ */
 public class EscapeAnalysisOptimization {
 	private static final Logger LOGGER = new Logger(EscapeAnalysisOptimization.class);
 
@@ -74,7 +101,9 @@ public class EscapeAnalysisOptimization {
 				if (!(node.getPred(2) instanceof Const)) {
 					return; // dynamically sized array, would be somewhat more difficult to deal with correctly
 				}
-				filterNonEscapingAllocations(node).ifPresent(allocationCalls::add);
+				if (!escapes(node)) {
+					allocationCalls.add(node);
+				}
 			}
 		});
 		rewriteAll(allocationCalls);
@@ -128,6 +157,10 @@ public class EscapeAnalysisOptimization {
 		dropAllocation(call);
 	}
 
+	/**
+	 * Returns the memory successor if {@code memory} is true, or the first non-memory successor otherwise. This should
+	 * only be used if exactly one successor of each kind exists.
+	 */
 	private static Node successor(Node node, boolean memory) {
 		if (node instanceof Proj) {
 			for (BackEdges.Edge edge : BackEdges.getOuts(node)) {
@@ -148,6 +181,11 @@ public class EscapeAnalysisOptimization {
 			() -> new InternalCompilerException("Don't know how to transform " + pred + " into local address"));
 	}
 
+	/**
+	 * Returns a {@link LocalAddress} if the given node matches the required layout.
+	 * <p>
+	 * Valid layouts are direct Projs (a pointer with offset 0), or Adds of a Proj and a Const.
+	 */
 	private static Optional<LocalAddress> fromPredIfMatches(Node pred) {
 		if (pred instanceof Proj proj) {
 			return Optional.of(new LocalAddress(proj, 0)); // 0th field in class
@@ -170,6 +208,9 @@ public class EscapeAnalysisOptimization {
 			return;
 		}
 		for (BackEdges.Edge out : BackEdges.getOuts(node)) {
+			// when walking down from the call, we only need to consider tuple nodes (Load, Store)
+			// or pointer nodes (Proj). Memory nodes don't bring us more relevant information here
+			// as the data nodes will always lead to all its usages
 			if ((out.node.getMode().equals(Mode.getT()) || out.node.getMode().equals(Mode.getP())) &&
 				!out.node.visited()) {
 				LOGGER.debug("visiting %s", out.node);
@@ -181,25 +222,25 @@ public class EscapeAnalysisOptimization {
 	}
 
 	// return calls that do not escape
-	private Optional<Call> filterNonEscapingAllocations(Call allocationCall) {
+	private boolean escapes(Call allocationCall) {
 		if (BackEdges.getNOuts(allocationCall) < 2) {
-			return Optional.of(allocationCall);
+			return false;
 		}
 		Node projResT = successor(allocationCall, false);
 		Proj resultProj = (Proj) successor(projResT, false);
-		if (!escapes(resultProj)) {
-			return Optional.of(allocationCall);
-		}
-		return Optional.empty();
+		return escapes(resultProj);
 	}
 
 	private boolean escapes(Proj callResProj) {
+		// DFS, keep track of the nodes we need to visit
 		Deque<Node> deepOuts = new ArrayDeque<>();
 		deepOuts.add(callResProj);
 		while (!deepOuts.isEmpty()) {
 			Node next = deepOuts.removeLast();
 			for (BackEdges.Edge edge : BackEdges.getOuts(next)) {
 				if (edge.node.getMode().equals(Mode.getM())) {
+					// we want to ignore memory nodes, otherwise we'll visit a lot of unrelated nodes
+					// we reach every related Load/Store/Cmp/call through data nodes
 					LOGGER.debug("stop at %s (memory)", edge.node);
 					continue;
 				}
@@ -217,7 +258,10 @@ public class EscapeAnalysisOptimization {
 					return true;
 				}
 				if (edge.node instanceof Store store) {
+					// if call is reachable from the value that is stored here
+					// when walking up the predecessors -> case a)
 					if (!callResProjIsReachableFromStoreValue(store.getValue(), callResProj, new HashSet<>())) {
+						// if address is dynamic/in an unknown format -> case b)
 						if (fromPredIfMatches(store.getPtr()).isPresent()) {
 							// Store *in* allocated object would be replaced
 							LOGGER.debug("stop at %s", edge.node);
@@ -237,11 +281,6 @@ public class EscapeAnalysisOptimization {
 					LOGGER.debug("%s is used in %s", next, edge.node);
 					return true;
 				}
-				if (edge.node instanceof Proj proj && proj.getMode().equals(Mode.getM())) {
-					// don't follow memory nodes
-					LOGGER.debug("stop at %s", edge.node);
-					continue;
-				}
 				// a node that can't be ignored
 				deepOuts.add(edge.node);
 			}
@@ -250,6 +289,10 @@ public class EscapeAnalysisOptimization {
 		return false;
 	}
 
+	/**
+	 * Walks up the predecessors of the stored value to see if the call is reachable through data nodes. The {@code
+	 * seen} set is required to avoid infinite recursion caused by data phis.
+	 */
 	private boolean callResProjIsReachableFromStoreValue(Node storePred, Proj callResProj, Set<Node> seen) {
 		if (!seen.add(storePred)) {
 			return false;
@@ -271,14 +314,19 @@ public class EscapeAnalysisOptimization {
 		return false;
 	}
 
+	/**
+	 * Does the actual replacement by keeping the state of each scalar value through Stores, Loads and Phis.
+	 * <p>
+	 * Instances of this class are used per call.
+	 */
 	static class CallRewriter {
 
-		private final Call call;
+		private final Call call; // the allocation call
 		private final Graph graph;
-		private final Map<LocalAddress, Mode> modes;
-		private final Map<Phi, Map<LocalAddress, Phi>> phis = new HashMap<>();
-		private final Set<Node> interestingNodes;
-		private final List<Runnable> replacements;
+		private final Map<LocalAddress, Mode> modes; // all local addresses and their modes
+		private final Map<Phi, Map<LocalAddress, Phi>> phis = new HashMap<>(); // memory Phis -> data Phis per address
+		private final Set<Node> interestingNodes; // Loads and Stores that need to be replaced
+		private final List<Runnable> replacements; // tasks that delete from the graph need to be delayed
 
 		CallRewriter(Call call, Set<Node> interestingNodes, Map<LocalAddress, Mode> modes) {
 			this.call = call;
@@ -299,6 +347,11 @@ public class EscapeAnalysisOptimization {
 			}
 		}
 
+		/**
+		 * @param node the node we want to visit
+		 * @param inIndex the index of the pred we're coming from.
+		 * @param predecessors the state of predecessors in the current path
+		 */
 		private void walkRecursive(Node node, int inIndex, JImmutableMap<LocalAddress, Node> predecessors) {
 			if (node.visited()) {
 				LOGGER.debug("skip %s", node);
@@ -308,37 +361,49 @@ public class EscapeAnalysisOptimization {
 			JImmutableMap<LocalAddress, Node> follow = predecessors;
 			if (node instanceof Phi memoryPhi) {
 				Node block = node.getBlock();
+				// for each local address, we (might) need a data Phi
 				for (LocalAddress address : modes.keySet()) {
 					Node pred = predecessors.get(address);
-					Phi dataPhi;
+					Phi dataPhi; // data Phi corresponding to the memory Phi for the given address
 					if (phis.containsKey(memoryPhi) && phis.get(memoryPhi).containsKey(address)) {
 						LOGGER.debug("load data phi for memory phi %s and address %s", memoryPhi, address);
 						dataPhi = phis.get(memoryPhi).get(address);
 					} else {
+						// if the Phi does not exist, we're visiting the memory Phi the first time.
+						// we create a Phi with n Unknowns as predecessors, where n is the number
+						// of inputs of the memory Phi (as this is the amount of times we'll come
+						// back again
 						Mode mode = modes.get(address);
 						Node[] ins = createUnknowns(memoryPhi.getPredCount(), mode);
 						dataPhi = (Phi) graph.newPhi(block, ins, mode);
 						LOGGER.debug("insert new data phi %s for %s", dataPhi, address);
 						phis.computeIfAbsent(memoryPhi, ignored -> new HashMap<>()).putIfAbsent(address, dataPhi);
 					}
+					// set pred at the index of the in index of the memory Phi to the current pred
 					dataPhi.setPred(inIndex, pred);
+					// further replacements of Loads should use this Phi as pred
 					follow = follow.assign(address, dataPhi);
 				}
 			} else if (node instanceof Load load && interestingNodes.contains(load)) {
 				LocalAddress address = fromPred(load.getPtr());
+				// load the last value that would have been stored (including Phis)
 				Node value = follow.get(address);
 				replacements.add(() -> replaceLoad(load, value));
 			} else if (node instanceof Store store && interestingNodes.contains(store)) {
+				// assign to the value that would have been stored, so the next Load/Phi can use it
 				follow = follow.assign(fromPred(store.getPtr()), store.getValue());
 				replacements.add(() -> replaceStore(store));
 			}
+
 			if (!(node instanceof Phi)) {
+				// we need to visit Phis multiple times, but each of their outs only once
 				node.markVisited();
 			}
+			
 			if (node.getMode().equals(Mode.getM())) {
 				for (BackEdges.Edge edge : BackEdges.getOuts(node)) {
 					LOGGER.debug("(M) edge with node %s", edge.node);
-					if (!edge.node.getMode().equals(Mode.getX())) {
+					if (!edge.node.getMode().equals(Mode.getX())) { // ignore control flow, e.g. Return
 						walkRecursive(edge.node, edge.pos, follow);
 					}
 				}
@@ -354,6 +419,10 @@ public class EscapeAnalysisOptimization {
 			}
 		}
 
+		/**
+		 * Strip the Store from the memory chain by setting the predecessor of the Store's successor to the Store's
+		 * predecessor
+		 */
 		private void replaceStore(Store store) {
 			Node memoryProj = successor(store, true);
 			for (BackEdges.Edge edge : BackEdges.getOuts(memoryProj)) {
@@ -369,6 +438,10 @@ public class EscapeAnalysisOptimization {
 			return nodes;
 		}
 
+		/**
+		 * Rewire the users of the loaded data to use the given value instead. Also, strip the Load from the memory
+		 * chain by setting the predecessor of the Load's successor to the Load's predecessor
+		 */
 		private void replaceLoad(Load load, Node value) {
 			Node dataProj = successor(load, false);
 			for (BackEdges.Edge edge : BackEdges.getOuts(dataProj)) {
