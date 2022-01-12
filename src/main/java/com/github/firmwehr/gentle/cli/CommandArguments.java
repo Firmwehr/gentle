@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.cli;
 
+import firm.Firm;
 import net.jbock.Command;
 import net.jbock.Option;
 import net.jbock.Parameter;
@@ -7,6 +8,7 @@ import net.jbock.util.StringConverter;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Optional;
 
 @Command(name = "gentle", description = "A small MiniJava compiler.", publicParser = true)
@@ -20,6 +22,7 @@ public interface CommandArguments {
 	String COMPILE_FIRM = "--compile-firm";
 	String COMPILE_MOLKI = "--compile-molki";
 	String MOLKI_BINARY = "--molki-binary";
+	String FIRM_VERSION = "--firm-version";
 
 	@Option(names = ECHO, description = "output the file as is")
 	boolean echo();
@@ -48,6 +51,9 @@ public interface CommandArguments {
 	@Option(names = MOLKI_BINARY, description = "path to molki binary", converter = ExistingFileConverter.class)
 	Optional<Path> molkiBinary();
 
+	@Option(names = FIRM_VERSION, description = "firm library version to use", converter = FirmVersionConverter.class)
+	Optional<Firm.FirmVersion> firmVersion();
+
 	@Option(names = "--dump-graphs", description = "generate graph dump files")
 	boolean dumpGraphs();
 
@@ -64,6 +70,7 @@ public interface CommandArguments {
 		paramLabel = "FILE")
 	Path path();
 
+
 	class ExistingFileConverter extends StringConverter<Path> {
 
 		@Override
@@ -78,6 +85,27 @@ public interface CommandArguments {
 			}
 
 			return path;
+		}
+	}
+
+	class FirmVersionConverter extends StringConverter<Firm.FirmVersion> {
+
+		// @formatter:off
+		private static final Map<String, Firm.FirmVersion> LOOKUP = Map.of(
+			"release", Firm.FirmVersion.RELEASE,
+			"debug", Firm.FirmVersion.DEBUG,
+			"releaseWithDebugSymbols", Firm.FirmVersion.REL_WITH_DEBUG_INFO
+		);
+		// @formatter:on
+
+		@Override
+		protected Firm.FirmVersion convert(String token) {
+			var version = LOOKUP.get(token);
+			if (version == null) {
+				throw new IllegalArgumentException("%s is not a valid library version. (Available: %s)".formatted(token,
+					String.join(", ", LOOKUP.keySet())));
+			}
+			return version;
 		}
 	}
 }
