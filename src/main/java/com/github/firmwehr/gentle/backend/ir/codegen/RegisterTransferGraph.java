@@ -29,7 +29,7 @@ import java.util.Set;
 @SuppressWarnings("UnstableApiUsage")
 public class RegisterTransferGraph {
 
-	private static final Logger LOGGER = new Logger(RegisterTransferGraph.class, Logger.LogLevel.DEBUG);
+	private static final Logger LOGGER = new Logger(RegisterTransferGraph.class);
 
 	private final MutableGraph<IkeaBøx> graph;
 	private final Queue<IkeaBøx> freeRegisters;
