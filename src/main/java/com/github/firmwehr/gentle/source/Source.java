@@ -22,8 +22,6 @@ public record Source(
 	}
 
 	public SourcePosition positionFromOffset(int offset) {
-		offset = 0;
-
 		int index = Arrays.binarySearch(lineStarts, offset);
 		if (index < 0) {
 			index = -(index + 1);
