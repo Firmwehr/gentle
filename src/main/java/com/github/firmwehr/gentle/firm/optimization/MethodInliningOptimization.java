@@ -8,7 +8,9 @@ import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,51 +19,81 @@ public class MethodInliningOptimization {
 	// values carefully picked by having no clue
 	private static final double CALLEE_INLINE_COST_THRESHOLD = 16d;
 	private static final double CALLER_INLINE_COST_THRESHOLD = 32d;
-	private static final double CALLEE_INLINE_COST_THRESHOLD_COMBINED = 40d;
+	private static final double INCREASE_THRESHOLD = 26d;
 	private final CallGraph callGraph;
-	private boolean changed;
 
-	public MethodInliningOptimization(CallGraph callGraph) {
+	private MethodInliningOptimization(CallGraph callGraph) {
 		this.callGraph = callGraph;
 	}
 
-	private boolean optimize() {
+	public static GraphOptimizationStep<CallGraph, Set<Graph>> methodInlineOptimization() {
+		return GraphOptimizationStep.<CallGraph, Set<Graph>>builder()
+			.withDescription("MethodInlining")
+			.withOptimizationFunction(callGraph -> new MethodInliningOptimization(callGraph).optimize())
+			.build();
+	}
+
+	private Set<Graph> optimize() {
 		Map<Graph, Double> inlineCandidates = new HashMap<>();
+		Set<Graph> changed = new HashSet<>();
 		callGraph.walkPostorder(graph -> {
 			double selfCost = new CostCalculator(graph).cost();
 			if (selfCost > CALLER_INLINE_COST_THRESHOLD) {
 				return;
 			}
-			Map<Call, Graph> localCandidates = findInlineCandidates(graph, inlineCandidates, selfCost);
-			inlineAll(localCandidates);
-			selfCost = new CostCalculator(graph).cost();
-			if (selfCost < CALLEE_INLINE_COST_THRESHOLD) {
-				inlineCandidates.put(graph, selfCost);
+			List<InlineCandidate> localCandidates = findInlineCandidates(graph, inlineCandidates);
+			if (inlineAll(graph, localCandidates)) {
+				changed.add(graph);
+				selfCost = new CostCalculator(graph).cost();
+				if (selfCost < CALLER_INLINE_COST_THRESHOLD) {
+					inlineCandidates.put(graph, selfCost);
+				}
 			}
 		});
 		return changed;
 	}
 
-	private void inlineAll(Set<Graph> candidates) {
-		for (Graph c : candidates) {
-			inline(c);
+	private boolean inlineAll(Graph graph, List<InlineCandidate> candidates) {
+		double approxAddedCost = 0;
+		// we want to inline cheap methods first (as calling overhead is dominant there)
+		candidates.sort(Comparator.comparingDouble(InlineCandidate::cost));
+		for (InlineCandidate c : candidates) {
+			inline(graph, c);
+			approxAddedCost += c.cost();
+			if (approxAddedCost > INCREASE_THRESHOLD) {
+				return true;
+			}
 		}
-		changed = true;
+		return approxAddedCost > 0; // true if anything was inlined
 	}
 
-	private Map<Call, Graph> findInlineCandidates(Graph graph, Map<Graph, Double> candidates, double selfCost) {
-		List<InlineCandidate> result = new ArrayList<>();
-		graph.walk(new NodeVisitor.Default() {
+	private void inline(Graph graph, InlineCandidate candidate) {
+		Map<Node, Node> calleeToCallerCopied = new HashMap<>();
+		Graph toInline = candidate.graph();
+		toInline.walkPostorder(new NodeVisitor.Default() {
 			@Override
-			public void visit(Call node) {
-				Graph graph = ((Address) node.getPtr()).getEntity().getGraph();
-				if (graph != null) {
-					if (candidates.getOrDefault(graph, Double.MAX_VALUE) + selfCost < CALLEE_INLINE_COST_THRESHOLD_COMBINED) {
-						result.add(new InlineCandidate(node, graph, ));
-					}
+			public void defaultVisit(Node old) {
+				Node copy = old.copyInto(graph);
+				calleeToCallerCopied.put(old, copy);
+				for (int i = 0; i < old.getPredCount(); i++) {
+					// set the new pred
+					copy.setPred(i, calleeToCallerCopied.get(old.getPred(i)));
 				}
 			}
 		});
+
+	}
+
+	private List<InlineCandidate> findInlineCandidates(Graph graph, Map<Graph, Double> candidates) {
+		List<InlineCandidate> result = new ArrayList<>();
+		Set<Call> calls = callGraph.callSitesIn(graph);
+		for (Call call : calls) {
+			Graph called = ((Address) call.getPtr()).getEntity().getGraph();
+			if (called != null) { // is null for runtime calls
+				double cost = candidates.getOrDefault(called, Double.MAX_VALUE);
+				result.add(new InlineCandidate(call, called, cost));
+			}
+		}
 		return result;
 	}
 
