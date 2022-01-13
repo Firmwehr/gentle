@@ -90,19 +90,26 @@ public record FirmNodeMetadata(
 
 	public Pointer toDebugInfo(Source source) {
 		String message = toDebugString(source);
-		int line = findSourcePos(source).map(SourcePosition::line).orElse(-1);
-		int col = findSourcePos(source).map(SourcePosition::column).orElse(-1);
 
-		return DebugInfo.createInfo(message, line, col);
+		var maybeSourcePosition = findSourcePos(source);
+		if (maybeSourcePosition.isEmpty()) {
+			return DebugInfo.createInfo(message, -1, -1);
+		}
+		var sourcePosition = maybeSourcePosition.get();
+		return DebugInfo.createInfo(message, sourcePosition.line(), sourcePosition.column());
 	}
 
 	private Optional<SourcePosition> findSourcePos(Source source) {
-		return semanticElements.stream()
-			.flatMap(it -> it.debugSpan().stream())
-			.findFirst()
-			.stream()
-			.map(it -> source.positionFromOffset(it.startOffset()))
-			.findFirst();
+		for (var element : semanticElements) {
+			var maybeSpan = element.debugSpan();
+			if (maybeSpan.isEmpty()) {
+				continue;
+			}
+			var span = maybeSpan.get();
+			var sourcePosition = source.positionFromOffset(span.startOffset());
+			return Optional.of(sourcePosition);
+		}
+		return Optional.empty();
 	}
 
 	private String toDebugString(Source source) {
