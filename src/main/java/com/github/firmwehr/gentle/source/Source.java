@@ -206,12 +206,33 @@ public record Source(
 		// build line start offset lookup array (workaround for not having to rewrite entire lexer logic)
 		var offset = 0;
 		var lineNum = 0;
+
 		var list = content.lines().toList();
-		var lineStarts = new int[list.size()];
+		int[] precomputed = new int[list.size()];
 		for (var line : list) {
-			lineStarts[lineNum++] = offset;
+
+			precomputed[lineNum] = offset;
 			offset += line.length();
+
+			if (offset >= content.length()) {
+				// end of input (no trailing line break)
+				break;
+			} else if (content.charAt(offset) == '\n') {
+				offset++;
+			} else if (content.charAt(offset) == '\r') {
+				offset++;
+
+				if (offset >= content.length()) {
+					// end of input
+					break;
+				} else if (content.charAt(offset) == '\n') {
+					offset++;
+				}
+			}
+
+			lineNum++;
 		}
-		return lineStarts;
+
+		return precomputed;
 	}
 }
