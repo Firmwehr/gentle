@@ -31,9 +31,7 @@ import java.util.Set;
 public class MethodInliningOptimization {
 	private static final Logger LOGGER = new Logger(MethodInliningOptimization.class, Logger.LogLevel.DEBUG);
 	// values carefully picked by having no clue
-	private static final double CALLEE_INLINE_COST_THRESHOLD = 16d;
-	private static final double CALLER_INLINE_COST_THRESHOLD = 32d;
-	private static final double INCREASE_THRESHOLD = 32d;
+	private static final double CALLER_INLINE_COST_THRESHOLD = 64d;
 	private final CallGraph callGraph;
 
 	private MethodInliningOptimization(CallGraph callGraph) {
@@ -51,14 +49,14 @@ public class MethodInliningOptimization {
 		Map<Graph, Double> inlineCandidates = new HashMap<>();
 		Set<Graph> changed = new HashSet<>();
 		callGraph.walkPostorder(graph -> {
-			double selfCost = new CostCalculator(graph).cost();
+			double selfCost = CostCalculator.calculate(graph).cost();
 			if (selfCost > CALLER_INLINE_COST_THRESHOLD) {
 				return;
 			}
 			List<InlineCandidate> localCandidates = findInlineCandidates(graph, inlineCandidates);
 			if (inlineAny(graph, localCandidates)) {
 				changed.add(graph);
-				selfCost = new CostCalculator(graph).cost();
+				selfCost = CostCalculator.calculate(graph).cost();
 				GraphDumper.dumpGraph(graph, "method-inlined");
 			}
 			inlineCandidates.put(graph, selfCost);
@@ -70,11 +68,11 @@ public class MethodInliningOptimization {
 		double approxAddedCost = 0;
 		// we want to inline cheap methods first (as calling overhead is dominant there)
 		candidates.sort(Comparator.comparingDouble(InlineCandidate::cost));
-		LOGGER.debug("candidates %s", candidates);
+		LOGGER.info("inline candidates for %s: %s", graph.getEntity().getLdName(), candidates);
 		for (InlineCandidate c : candidates) {
 			inline(graph, c);
 			approxAddedCost += c.cost();
-			if (approxAddedCost > INCREASE_THRESHOLD) {
+			if (approxAddedCost > CALLER_INLINE_COST_THRESHOLD) {
 				return true;
 			}
 		}
@@ -93,7 +91,8 @@ public class MethodInliningOptimization {
 			@Override
 			public void visit(Proj node) {
 				if (node.getPred().equals(toInline.getArgs())) {
-					LOGGER.debug("insert argument %s %s with pred %s", node, node.getNum(), call.getPred(2 + node.getNum()));
+					LOGGER.debug("insert argument %s %s with pred %s", node, node.getNum(),
+						call.getPred(2 + node.getNum()));
 					calleeToCallerCopied.put(node, call.getPred(2 + node.getNum()));
 				} else if (node.getMode().equals(Mode.getM()) && node.getPred().equals(toInline.getStart())) {
 					// memory Proj from start
@@ -125,7 +124,8 @@ public class MethodInliningOptimization {
 				Map<Mode, List<Node>> phis = new HashMap<>();
 				for (Return ret : returns) {
 					for (Node pred : ret.getPreds()) {
-						phis.computeIfAbsent(pred.getMode(), ignored -> new ArrayList<>()).add(calleeToCallerCopied.get(pred));
+						phis.computeIfAbsent(pred.getMode(), ignored -> new ArrayList<>())
+							.add(calleeToCallerCopied.get(pred));
 					}
 				}
 				for (Map.Entry<Mode, List<BackEdges.Edge>> entry : users.entrySet()) {
@@ -135,21 +135,11 @@ public class MethodInliningOptimization {
 						userEdge.node.setPred(userEdge.pos, phi);
 					}
 				}
-/*				for (Return ret : returns) {
-					for (Node pred : ret.getPreds()) {
-						Node newPred = calleeToCallerCopied.get(pred);
-						LOGGER.debug("pred %s, return %s map %s", pred, ret, calleeToCallerCopied);
-						// precalculated edges
-						for (BackEdges.Edge user : users.getOrDefault(newPred.getMode(), List.of())) {
-							LOGGER.debug("rewire %s to %s", user.node, newPred);
-							user.node.setPred(user.pos, newPred);
-						}
-					}
-				}*/
 			}
 
 			@Override
 			public void visit(Block old) {
+				LOGGER.debug("visiting %s", old);
 				if (old.getGraph().getStartBlock().equals(old)) {
 					// call.getBlock() is newly created block
 					calleeToCallerCopied.put(old, call.getBlock());
@@ -170,8 +160,14 @@ public class MethodInliningOptimization {
 
 			@Override
 			public void defaultVisit(Node old) {
+				LOGGER.debug("visiting %s (block: %s)", old, old.getBlock());
 				Node copy = old.copyInto(graph);
-				copy.setBlock(calleeToCallerCopied.get(old.getBlock()));
+				Node block = calleeToCallerCopied.get(old.getBlock());
+				if (block == null) {
+					visit((Block) old.getBlock());
+					block = calleeToCallerCopied.get(old.getBlock());
+				}
+				copy.setBlock(block);
 				calleeToCallerCopied.put(old, copy);
 				for (int i = 0; i < old.getPredCount(); i++) {
 					// set the new pred
@@ -188,7 +184,6 @@ public class MethodInliningOptimization {
 	}
 
 	private Map<Mode, List<BackEdges.Edge>> findUsers(Call call) {
-		LOGGER.debug("enable for %s", call.getGraph());
 		BackEdges.enable(call.getGraph());
 		Map<Mode, List<BackEdges.Edge>> users = new HashMap<>();
 		Queue<Node> nodesToSkip = new ArrayDeque<>();
@@ -199,13 +194,10 @@ public class MethodInliningOptimization {
 				if (edge.node instanceof Proj) {
 					nodesToSkip.add(edge.node);
 				} else {
-					LOGGER.debug("found user %s", edge.node);
 					users.computeIfAbsent(next.getMode(), ignored -> new ArrayList<>()).add(edge);
 				}
 			}
 		}
-		LOGGER.debug("all %s", users);
-		LOGGER.debug("disable for %s", call.getGraph());
 		BackEdges.disable(call.getGraph());
 		return users;
 	}
@@ -262,37 +254,50 @@ public class MethodInliningOptimization {
 
 	}
 
-	// TODO
-	// Should be aware of:
-	// - memory
-	// - loops
-	// 
+	// TODO better loop detection
 	static class CostCalculator extends NodeVisitor.Default {
-		private final Graph graph;
-		private double cost;
-		private final Map<Node, Double> costMap;
+		private static final double PHI_COST = 3d;
+		private static final double CONDITIONAL_JUMP_COST = 2d; // Proj X false OR Proj X true => 4 per Jmp
+		private static final double RUNTIME_CALL_COST = 1.5;
+		private static final double METHOD_CALL_COST = 2.5;
 
-		CostCalculator(Graph graph) {
-			this.graph = graph;
-			this.costMap = new HashMap<>();
-			this.cost = Double.NaN; // lazy, with NaN as invalid value
-			graph.walk(this);
+		private double cost;
+
+		static CostCalculator calculate(Graph graph) {
+			CostCalculator calculator = new CostCalculator();
+			graph.walk(calculator);
+			return calculator;
 		}
 
 		public double cost() {
-			if (Double.isNaN(cost)) {
-				cost = costMap.values().stream().mapToDouble(Double::doubleValue).sum();
-			}
 			return cost;
-		}
-
-		public double costOf(Node node) {
-			return costMap.getOrDefault(node, 0d); // TODO defaultValue needed?
 		}
 
 		@Override
 		public void defaultVisit(Node n) {
-			costMap.put(n, 1d);
+			for (Node pred : n.getPreds()) {
+				count(pred);
+			}
+		}
+
+		private void count(Node node) {
+			cost += switch (node) {
+				case Call call -> {
+					if (((Address) call.getPtr()).getEntity().getGraph() == null) {
+						yield RUNTIME_CALL_COST;
+					}
+					yield METHOD_CALL_COST;
+				}
+				case Phi ignored -> PHI_COST;
+				case Proj proj -> {
+					if (proj.getMode().equals(Mode.getX())) {
+						yield CONDITIONAL_JUMP_COST;
+					}
+					yield 0d;
+				}
+				case Return ignored -> CONDITIONAL_JUMP_COST;
+				default -> 1d;
+			};
 		}
 	}
 }
