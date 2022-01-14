@@ -207,9 +207,9 @@ public record Source(
 		var offset = 0;
 		var lineNum = 0;
 
-		var list = content.lines().toList();
+		List<String> list = content.lines().toList();
 		int[] precomputed = new int[list.size()];
-		for (var line : list) {
+		for (String line : list) {
 
 			precomputed[lineNum] = offset;
 			offset += line.length();
