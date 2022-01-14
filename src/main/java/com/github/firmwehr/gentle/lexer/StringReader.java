@@ -128,10 +128,6 @@ public class StringReader {
 		return readChars(untilNeedle + needle.length());
 	}
 
-	public String getUnderlying() {
-		return underlying;
-	}
-
 	public int getPosition() {
 		return position;
 	}

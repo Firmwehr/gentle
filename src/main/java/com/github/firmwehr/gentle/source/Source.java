@@ -2,105 +2,33 @@ package com.github.firmwehr.gentle.source;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.fusesource.jansi.Ansi.ansi;
 
-public record Source(String content) {
+public record Source(
+	String content,
+	int[] lineStarts
+) {
 	private static final int TAB_WIDTH = 4;
 	public static final String ERROR_COLOR = ansi().fgRed().toString();
 	public static final String LINE_COLOR = ansi().fgBlue().toString();
 
-	/**
-	 * Find the beginning of the line a certain character is in. If the character is part of a linebreak, it belongs to
-	 * the line preceding the line break.
-	 *
-	 * @param offset arbitrary character offset (may extend beyond end of content)
-	 *
-	 * @return index of the line's first character
-	 */
-	private int startOfLine(int offset) {
-		// First, go backwards until the end of the previous line to find the start of the current line.
-		int lineStart = offset;
-
-		if (offset >= content.length()) {
-			// We were past the end of the content, so we just skip back to the last character of the file. Since we
-			// didn't point at any character, we certainly didn't start at a linebreak character, so we can just skip
-			// that part of the logic.
-			lineStart = content.length() - 1;
-		} else if (isLineBreakChar(lineStart)) {
-			// Line breaks belong to the preceding line, not the following line.
-			// If we start in a line break, we advance to the character preceding the line break.
-			lineStart--;
-			if (lineStart >= 0 && isWindowsLinebreak(lineStart)) {
-				// We started on the \n in a \r\n, so we need to take another step back.
-				lineStart--;
-			}
-		}
-
-		// Now, advance backwards until we find the line break of the previous line.
-		while (lineStart >= 0 && !isLineBreakChar(lineStart)) {
-			lineStart--;
-		}
-
-		// Finally, move forward one step so that we're at the beginning of the current line.
-		lineStart++;
-
-		return lineStart;
-	}
-
-	/**
-	 * @param lineStart index of the line's first character
-	 *
-	 * @return 1 + index of the line's last non-linebreak character
-	 */
-	private int endOfLine(int lineStart) {
-		int index = content.length();
-
-		int newlineIndex = content.indexOf('\n', lineStart);
-		if (newlineIndex >= 0 && newlineIndex < index) {
-			index = newlineIndex;
-		}
-
-		int carriageReturnIndex = content.indexOf('\r', lineStart);
-		if (carriageReturnIndex >= 0 && carriageReturnIndex < index) {
-			index = carriageReturnIndex;
-		}
-
-		return index;
-	}
-
-	/**
-	 * @param offset arbitrary but valid character offset
-	 *
-	 * @return amount of linebreaks before (and excluding) the specified character
-	 */
-	private int linebreaksUntil(int offset) {
-		return (int) content.substring(0, offset)
-			.replace("\r\n", "\n")
-			.replace("\r", "\n")
-			.chars()
-			.filter(it -> it == '\n')
-			.count();
-	}
-
-	private boolean isLineBreakChar(int offset) {
-		return content.charAt(offset) == '\n' || content.charAt(offset) == '\r';
-	}
-
-	private boolean isWindowsLinebreak(int offset) {
-		return content.charAt(offset) == '\r' && content.charAt(offset + 1) == '\n';
+	public Source(String content) {
+		this(content, precomputeLineLookupArray(content));
 	}
 
 	public SourcePosition positionFromOffset(int offset) {
-		int lineStart = startOfLine(offset);
-
-		int column = offset - lineStart + 1; // Columns are 1-indexed
-		int row = linebreaksUntil(lineStart) + 1; // Rows are 1-indexed
-
-		return new SourcePosition(offset, row, column);
+		int index = Arrays.binarySearch(lineStarts, offset);
+		if (index < 0) {
+			index = -(index + 1);
+			index--;
+		}
+		var lineStartOffset = lineStarts[index];
+		return new SourcePosition(offset, index + 1, offset - lineStartOffset + 1);
 	}
 
 	public String getLine(int row) {
@@ -272,5 +200,39 @@ public record Source(String content) {
 		}
 
 		builder.append(codeLine).append("\n").append(noteLine);
+	}
+
+	private static int[] precomputeLineLookupArray(String content) {
+		// build line start offset lookup array (workaround for not having to rewrite entire lexer logic)
+		var offset = 0;
+		var lineNum = 0;
+
+		List<String> list = content.lines().toList();
+		int[] precomputed = new int[list.size()];
+		for (String line : list) {
+
+			precomputed[lineNum] = offset;
+			offset += line.length();
+
+			if (offset >= content.length()) {
+				// end of input (no trailing line break)
+				break;
+			} else if (content.charAt(offset) == '\n') {
+				offset++;
+			} else if (content.charAt(offset) == '\r') {
+				offset++;
+
+				if (offset >= content.length()) {
+					// end of input
+					break;
+				} else if (content.charAt(offset) == '\n') {
+					offset++;
+				}
+			}
+
+			lineNum++;
+		}
+
+		return precomputed;
 	}
 }
