@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
+import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Node;
@@ -15,4 +16,6 @@ public interface IkeaNode {
 	<T> T accept(IkeaVisitor<T> visitor);
 
 	List<Node> getUnderlyingFirmNodes();
+
+	IkeaBløck getBlock();
 }

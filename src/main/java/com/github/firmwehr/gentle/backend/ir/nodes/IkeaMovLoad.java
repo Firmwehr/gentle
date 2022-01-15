@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
+import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
@@ -13,12 +14,16 @@ public class IkeaMovLoad implements IkeaNode {
 	private final IkeaNode address;
 	private final IkeaRegisterSize size;
 	private final Load node;
+	private final IkeaBløck block;
 
-	public IkeaMovLoad(IkeaBøx box, IkeaNode address, IkeaRegisterSize size, Load node) {
+	public IkeaMovLoad(
+		IkeaBøx box, IkeaNode address, IkeaRegisterSize size, Load node, IkeaBløck block
+	) {
 		this.box = box;
 		this.address = address;
 		this.size = size;
 		this.node = node;
+		this.block = block;
 	}
 
 	@Override
@@ -45,4 +50,8 @@ public class IkeaMovLoad implements IkeaNode {
 		return List.of(node);
 	}
 
+	@Override
+	public IkeaBløck getBlock() {
+		return block;
+	}
 }

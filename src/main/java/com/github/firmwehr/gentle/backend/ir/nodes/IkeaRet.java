@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
+import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
@@ -13,10 +14,12 @@ import java.util.Optional;
 public class IkeaRet implements IkeaNode {
 	private final Optional<IkeaNode> value;
 	private final Return firmReturn;
+	private final IkeaBløck block;
 
-	public IkeaRet(Optional<IkeaNode> value, Return firmReturn) {
+	public IkeaRet(Optional<IkeaNode> value, Return firmReturn, IkeaBløck block) {
 		this.value = value;
 		this.firmReturn = firmReturn;
+		this.block = block;
 	}
 
 	@Override
@@ -41,5 +44,10 @@ public class IkeaRet implements IkeaNode {
 	@Override
 	public List<Node> getUnderlyingFirmNodes() {
 		return List.of(firmReturn);
+	}
+
+	@Override
+	public IkeaBløck getBlock() {
+		return block;
 	}
 }

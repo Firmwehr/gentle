@@ -17,14 +17,18 @@ public class IkeaJcc implements IkeaNode {
 	private final Cond cond;
 	private final Relation relation;
 	private final IkeaNode parent;
+	private final IkeaBløck block;
 
 
-	public IkeaJcc(IkeaBløck trueTarget, IkeaBløck falseTarget, Cond cond, Relation relation, IkeaNode parent) {
+	public IkeaJcc(
+		IkeaBløck trueTarget, IkeaBløck falseTarget, Cond cond, Relation relation, IkeaNode parent, IkeaBløck block
+	) {
 		this.trueTarget = trueTarget;
 		this.falseTarget = falseTarget;
 		this.cond = cond;
 		this.relation = relation;
 		this.parent = parent;
+		this.block = block;
 	}
 
 	public IkeaBløck getTrueTarget() {
@@ -63,4 +67,8 @@ public class IkeaJcc implements IkeaNode {
 		return List.of(cond);
 	}
 
+	@Override
+	public IkeaBløck getBlock() {
+		return block;
+	}
 }

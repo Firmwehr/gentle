@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
+import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Node;
@@ -13,12 +14,14 @@ public class IkeaSub implements IkeaNode {
 	private final IkeaNode left;
 	private final IkeaNode right;
 	private final Sub sub;
+	private final IkeaBløck block;
 
-	public IkeaSub(IkeaBøx box, IkeaNode left, IkeaNode right, Sub sub) {
+	public IkeaSub(IkeaBøx box, IkeaNode left, IkeaNode right, Sub sub, IkeaBløck block) {
 		this.box = box;
 		this.left = Objects.requireNonNull(left, "left can not be null!");
 		this.right = Objects.requireNonNull(right, "right can not be null!");
 		this.sub = sub;
+		this.block = block;
 	}
 
 	@Override
@@ -47,5 +50,10 @@ public class IkeaSub implements IkeaNode {
 	@Override
 	public List<Node> getUnderlyingFirmNodes() {
 		return List.of(sub);
+	}
+
+	@Override
+	public IkeaBløck getBlock() {
+		return block;
 	}
 }

@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
+import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Address;
@@ -12,7 +13,8 @@ public record IkeaCall(
 	IkeaBøx box,
 	Address address,
 	List<IkeaNode> arguments,
-	Call call
+	Call call,
+	IkeaBløck block
 ) implements IkeaNode {
 
 	@Override
@@ -30,4 +32,8 @@ public record IkeaCall(
 		return List.of(call);
 	}
 
+	@Override
+	public IkeaBløck getBlock() {
+		return block;
+	}
 }

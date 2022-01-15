@@ -14,10 +14,12 @@ public class IkeaPhi implements IkeaNode {
 	private IkeaBøx box;
 	private final Phi phi;
 	private final Map<IkeaBløck, IkeaNode> parents;
+	private final IkeaBløck block;
 
-	public IkeaPhi(IkeaBøx box, Phi phi) {
+	public IkeaPhi(IkeaBøx box, Phi phi, IkeaBløck block) {
 		this.box = box;
 		this.phi = phi;
+		this.block = block;
 		this.parents = new HashMap<>();
 	}
 
@@ -49,4 +51,8 @@ public class IkeaPhi implements IkeaNode {
 		return List.of(phi);
 	}
 
+	@Override
+	public IkeaBløck getBlock() {
+		return block;
+	}
 }

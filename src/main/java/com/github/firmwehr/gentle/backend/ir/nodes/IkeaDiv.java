@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
+import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Node;
@@ -13,14 +14,18 @@ public class IkeaDiv implements IkeaNode {
 	private final IkeaNode right;
 	private final Node node;
 	private final Result result;
+	private final IkeaBløck block;
 
-	public IkeaDiv(IkeaBøx boxQuotient, IkeaBøx boxMod, IkeaNode left, IkeaNode right, Node node, Result result) {
+	public IkeaDiv(
+		IkeaBøx boxQuotient, IkeaBøx boxMod, IkeaNode left, IkeaNode right, Node node, Result result, IkeaBløck block
+	) {
 		this.boxQuotient = boxQuotient;
 		this.boxMod = boxMod;
 		this.left = left;
 		this.right = right;
 		this.node = node;
 		this.result = result;
+		this.block = block;
 	}
 
 	@Override
@@ -67,6 +72,10 @@ public class IkeaDiv implements IkeaNode {
 		return List.of(node);
 	}
 
+	@Override
+	public IkeaBløck getBlock() {
+		return block;
+	}
 
 	public enum Result {
 		QUOTIENT,

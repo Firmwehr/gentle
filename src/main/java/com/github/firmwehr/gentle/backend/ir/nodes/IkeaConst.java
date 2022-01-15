@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
+import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaImmediate;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Node;
@@ -8,7 +9,8 @@ import java.util.List;
 
 public record IkeaConst(
 	IkeaImmediate box,
-	Node node
+	Node node,
+	IkeaBløck block
 ) implements IkeaNode {
 
 	@Override
@@ -26,4 +28,8 @@ public record IkeaConst(
 		return List.of(node);
 	}
 
+	@Override
+	public IkeaBløck getBlock() {
+		return block;
+	}
 }

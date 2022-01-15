@@ -33,6 +33,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
 import com.github.firmwehr.gentle.backend.ir.register.ControlFlowGraph;
+import com.github.firmwehr.gentle.backend.ir.register.Dominance;
 import com.github.firmwehr.gentle.backend.ir.register.LifetimeAnalysis;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
@@ -114,9 +115,10 @@ public class CodeSelection extends NodeVisitor.Default {
 				if (node.getMode().equals(Mode.getM())) {
 					return;
 				}
-				IkeaPhi ikeaPhi = new IkeaPhi(nextRegister(node), node);
+				IkeaBløck block = blocks.get((Block) node.getBlock());
+				IkeaPhi ikeaPhi = new IkeaPhi(nextRegister(node), node, block);
 				nodes.put(node, ikeaPhi);
-				blocks.get((Block) node.getBlock()).nodes().add(ikeaPhi);
+				block.nodes().add(ikeaPhi);
 				phiBär.computeIfAbsent((Block) node.getBlock(), ignore -> new ArrayList<>()).add(node);
 			}
 		});
@@ -138,7 +140,7 @@ public class CodeSelection extends NodeVisitor.Default {
 				}
 
 				for (Pair<IkeaBøx, IkeaBøx> pair : transferGraph.generateMoveSequence()) {
-					ikeaPred.nodes().add(new IkeaMovRegister(pair.first(), pair.second()));
+					ikeaPred.nodes().add(new IkeaMovRegister(pair.first(), pair.second(), blocks.get(block)));
 				}
 
 				blocks.get(block).parents().add(new IkeaParentBløck(ikeaPred, parentNodes));
@@ -167,6 +169,9 @@ public class CodeSelection extends NodeVisitor.Default {
 		LifetimeAnalysis analysis = new LifetimeAnalysis(ControlFlowGraph.forBlocks(orderedBlocks));
 		analysis.buildLifetimes();
 
+		Dominance dominance = new Dominance(ControlFlowGraph.forBlocks(orderedBlocks));
+		dominance.computeDominance();
+
 		return orderedBlocks;
 	}
 
@@ -186,7 +191,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaAdd ikeaAdd = new IkeaAdd(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+		IkeaAdd ikeaAdd =
+			new IkeaAdd(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node, block);
 		nodes.put(node, ikeaAdd);
 		block.nodes().add(ikeaAdd);
 	}
@@ -247,7 +253,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		if (type.getNRess() == 1 && !type.getResType(0).getMode().equals(Mode.getANY())) {
 			box = nextRegister(type.getResType(0).getMode());
 		}
-		IkeaCall ikeaCall = new IkeaCall(box, (Address) node.getPred(1/*not a magic value!*/), arguments, node);
+		IkeaCall ikeaCall = new IkeaCall(box, (Address) node.getPred(1/*not a magic value!*/), arguments, node, block);
 		nodes.put(node, ikeaCall);
 		block.nodes().add(ikeaCall);
 	}
@@ -270,7 +276,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			wasInverted = true;
 		}
 
-		return new IkeaCmp(left, right, node, wasInverted);
+		return new IkeaCmp(left, right, node, wasInverted, block);
 	}
 
 	@Override
@@ -298,7 +304,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			relation = relation.inversed();
 		}
 
-		IkeaJcc ikeaJcc = new IkeaJcc(blocks.get(trueBlock), blocks.get(falseBlock), node, relation, cmp);
+		IkeaJcc ikeaJcc = new IkeaJcc(blocks.get(trueBlock), blocks.get(falseBlock), node, relation, cmp, block);
 		this.nodes.put(node, ikeaJcc);
 		block.nodes().add(cmp);
 		block.nodes().add(ikeaJcc);
@@ -313,7 +319,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaImmediate box = new IkeaImmediate(node.getTarval(), IkeaRegisterSize.forMode(node.getMode()));
-		IkeaConst ikeaConst = new IkeaConst(box, node);
+		IkeaConst ikeaConst = new IkeaConst(box, node, block);
 		nodes.put(node, ikeaConst);
 		block.nodes().add(ikeaConst);
 	}
@@ -328,7 +334,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaRegisterSize sourceSize = IkeaRegisterSize.forMode(node.getOp().getMode());
 		IkeaRegisterSize targetSize = IkeaRegisterSize.forMode(node.getMode());
-		IkeaConv ikeaConv = new IkeaConv(nextRegister(node), nodes.get(node.getOp()), sourceSize, targetSize, node);
+		IkeaConv ikeaConv =
+			new IkeaConv(nextRegister(node), nodes.get(node.getOp()), sourceSize, targetSize, node, block);
 		nodes.put(node, ikeaConv);
 		block.nodes().add(ikeaConv);
 	}
@@ -348,8 +355,8 @@ public class CodeSelection extends NodeVisitor.Default {
 			nodes.get(node.getLeft()),
 			nodes.get(node.getRight()),
 			node,
-			IkeaDiv.Result.QUOTIENT
-		);
+			IkeaDiv.Result.QUOTIENT,
+		block);
 		// @formatter:on
 		nodes.put(node, ikeaDiv);
 		block.nodes().add(ikeaDiv);
@@ -365,7 +372,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		for (BackEdges.Edge edge : BackEdges.getOuts(node)) {
 			if (edge.node instanceof Block targetBlock) {
-				IkeaJmp ikeaJmp = new IkeaJmp(blocks.get(targetBlock), node);
+				IkeaJmp ikeaJmp = new IkeaJmp(blocks.get(targetBlock), node, block);
 				nodes.put(node, ikeaJmp);
 				block.nodes().add(ikeaJmp);
 			}
@@ -395,7 +402,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		Mode mode = node.getLoadMode();
 		IkeaMovLoad ikeaMovLoad =
-			new IkeaMovLoad(nextRegister(mode), nodes.get(node.getPtr()), IkeaRegisterSize.forMode(mode), node);
+			new IkeaMovLoad(nextRegister(mode), nodes.get(node.getPtr()), IkeaRegisterSize.forMode(mode), node, block);
 		nodes.put(node, ikeaMovLoad);
 		block.nodes().add(ikeaMovLoad);
 	}
@@ -408,7 +415,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaNeg ikeaNeg = new IkeaNeg(nextRegister(node), nodes.get(node.getOp()), node);
+		IkeaNeg ikeaNeg = new IkeaNeg(nextRegister(node), nodes.get(node.getOp()), node, block);
 		nodes.put(node, ikeaNeg);
 		block.nodes().add(ikeaNeg);
 	}
@@ -428,7 +435,8 @@ public class CodeSelection extends NodeVisitor.Default {
 			nodes.get(node.getLeft()),
 			nodes.get(node.getRight()),
 			node,
-			IkeaDiv.Result.MOD
+			IkeaDiv.Result.MOD,
+			block
 		);
 		// @formatter:on
 		nodes.put(node, ikeaDiv);
@@ -443,7 +451,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaMul ikeaMul = new IkeaMul(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+		IkeaMul ikeaMul =
+			new IkeaMul(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node, block);
 		nodes.put(node, ikeaMul);
 		block.nodes().add(ikeaMul);
 	}
@@ -479,7 +488,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		IkeaBløck block = blocks.get((Block) proj.getBlock());
 		IkeaVirtualRegister box = new IkeaVirtualRegister(proj.getNum(), IkeaRegisterSize.forMode(proj.getMode()));
-		IkeaArgNode ikeaArgNode = new IkeaArgNode(box, proj);
+		IkeaArgNode ikeaArgNode = new IkeaArgNode(box, proj, block);
 		nodes.put(proj, ikeaArgNode);
 		block.nodes().add(ikeaArgNode);
 	}
@@ -493,7 +502,8 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaRet ikeaRet = new IkeaRet(
-			Util.predsStream(node).filter(n -> !n.getMode().equals(Mode.getM())).findFirst().map(nodes::get), node);
+			Util.predsStream(node).filter(n -> !n.getMode().equals(Mode.getM())).findFirst().map(nodes::get), node,
+			block);
 		nodes.put(node, ikeaRet);
 		block.nodes().add(ikeaRet);
 	}
@@ -520,9 +530,8 @@ public class CodeSelection extends NodeVisitor.Default {
 			return;
 		}
 
-
 		IkeaRegisterSize size = IkeaRegisterSize.forMode(node.getValue().getMode());
-		IkeaMovStore ikeaMovStore = new IkeaMovStore(value, nodes.get(node.getPtr()), size, node);
+		IkeaMovStore ikeaMovStore = new IkeaMovStore(value, nodes.get(node.getPtr()), size, node, block);
 		nodes.put(node, ikeaMovStore);
 		block.nodes().add(ikeaMovStore);
 	}
@@ -575,7 +584,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaSub ikeaSub = new IkeaSub(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+		IkeaSub ikeaSub =
+			new IkeaSub(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node, block);
 		nodes.put(node, ikeaSub);
 		block.nodes().add(ikeaSub);
 	}
@@ -590,7 +600,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaRegisterSize size = IkeaRegisterSize.forMode(node.getMode());
 		IkeaImmediate immediate = new IkeaImmediate(node.getMode().getNull(), size);
-		IkeaConst ikeaConst = new IkeaConst(immediate, node);
+		IkeaConst ikeaConst = new IkeaConst(immediate, node, block);
 		nodes.put(node, ikeaConst);
 		block.nodes().add(ikeaConst);
 	}

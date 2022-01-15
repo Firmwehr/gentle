@@ -13,10 +13,12 @@ import java.util.List;
 public class IkeaJmp implements IkeaNode {
 	private final IkeaBløck target;
 	private final Jmp node;
+	private final IkeaBløck block;
 
-	public IkeaJmp(IkeaBløck target, Jmp node) {
+	public IkeaJmp(IkeaBløck target, Jmp node, IkeaBløck block) {
 		this.target = target;
 		this.node = node;
+		this.block = block;
 	}
 
 	@Override
@@ -43,4 +45,8 @@ public class IkeaJmp implements IkeaNode {
 		return List.of(node);
 	}
 
+	@Override
+	public IkeaBløck getBlock() {
+		return block;
+	}
 }
