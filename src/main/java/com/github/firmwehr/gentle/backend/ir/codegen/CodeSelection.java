@@ -32,8 +32,11 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShl;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
+import com.github.firmwehr.gentle.backend.ir.register.ControlFlowGraph;
+import com.github.firmwehr.gentle.backend.ir.register.LifetimeAnalysis;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
+import com.github.firmwehr.gentle.util.GraphDumper;
 import com.github.firmwehr.gentle.util.Pair;
 import firm.BackEdges;
 import firm.Graph;
@@ -71,6 +74,7 @@ import firm.nodes.Unknown;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -100,6 +104,7 @@ public class CodeSelection extends NodeVisitor.Default {
 	public List<IkeaBløck> convertBlocks() {
 		LOGGER.info("Converting blocks for %s", graph.getEntity().getLdName());
 		CriticalEdges.breakCriticalEdges(graph);
+		GraphDumper.dumpGraph(graph, "critical-edges");
 
 		BackEdges.enable(graph);
 		graph.walkBlocks(block -> blocks.put(block, new IkeaBløck(new ArrayList<>(), new ArrayList<>(), block)));
@@ -111,6 +116,7 @@ public class CodeSelection extends NodeVisitor.Default {
 				}
 				IkeaPhi ikeaPhi = new IkeaPhi(nextRegister(node), node);
 				nodes.put(node, ikeaPhi);
+				blocks.get((Block) node.getBlock()).nodes().add(ikeaPhi);
 				phiBär.computeIfAbsent((Block) node.getBlock(), ignore -> new ArrayList<>()).add(node);
 			}
 		});
@@ -121,19 +127,21 @@ public class CodeSelection extends NodeVisitor.Default {
 				LOGGER.debugHeader("Moves for %s <- %s", block.getNr(), pred.getNr());
 				RegisterTransferGraph transferGraph = new RegisterTransferGraph(Set.of(nextRegister(Mode.getLs())));
 				IkeaBløck ikeaPred = blocks.get(pred);
+				Set<IkeaNode> parentNodes = new HashSet<>();
 
 				for (Phi phi : phiBär.getOrDefault(block, List.of())) {
 					IkeaNode ikeaNode = nodes.get(phi.getPred(i));
 					IkeaBøx target = nodes.get(phi).box();
 					IkeaBøx source = ikeaNode.box();
 					transferGraph.addMove(source, target);
+					parentNodes.add(ikeaNode);
 				}
 
 				for (Pair<IkeaBøx, IkeaBøx> pair : transferGraph.generateMoveSequence()) {
 					ikeaPred.nodes().add(new IkeaMovRegister(pair.first(), pair.second()));
 				}
 
-				blocks.get(block).parents().add(new IkeaParentBløck(ikeaPred));
+				blocks.get(block).parents().add(new IkeaParentBløck(ikeaPred, parentNodes));
 			}
 		});
 		BackEdges.disable(graph);
@@ -155,6 +163,10 @@ public class CodeSelection extends NodeVisitor.Default {
 			.collect(Collectors.toCollection(ArrayList::new));
 		orderedBlocks.remove(blocks.get(graph.getStartBlock()));
 		orderedBlocks.add(0, blocks.get(graph.getStartBlock()));
+
+		LifetimeAnalysis analysis = new LifetimeAnalysis(ControlFlowGraph.forBlocks(orderedBlocks));
+		analysis.buildLifetimes();
+
 		return orderedBlocks;
 	}
 
@@ -202,8 +214,14 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Phi node) {
-		// Ignored here. Only added for completeness, as this visitor verifies no node is missed
-		// Phis are handled in a separate phase
+		if (node.getMode().equals(Mode.getM())) {
+			return;
+		}
+		IkeaPhi ikeaPhi = (IkeaPhi) nodes.get(node);
+		for (int i = 0; i < node.getPredCount(); i++) {
+			IkeaBløck parent = blocks.get((Block) node.getBlock().getPred(i).getBlock());
+			ikeaPhi.addParent(nodes.get(node.getPred(i)), parent);
+		}
 	}
 
 	@Override

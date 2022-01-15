@@ -28,4 +28,26 @@ public record IkeaBløck(
 	public int id() {
 		return origin.getNr();
 	}
+
+	@Override
+	public int hashCode() {
+		return id();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
+		IkeaBløck ikeaBløck = (IkeaBløck) o;
+		return ikeaBløck.id() == id();
+	}
+
+	@Override
+	public String toString() {
+		return "IkeaBløck{" + "origin=" + origin + '}';
+	}
 }
