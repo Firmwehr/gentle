@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.firm.optimization;
 
+import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.firm.optimization.callgraph.CallGraph;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.GraphDumper;
@@ -13,6 +14,7 @@ import firm.bindings.binding_irop;
 import firm.nodes.Address;
 import firm.nodes.Block;
 import firm.nodes.Call;
+import firm.nodes.Const;
 import firm.nodes.End;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
@@ -34,7 +36,7 @@ import java.util.Set;
 public class MethodInliningOptimization {
 	private static final Logger LOGGER = new Logger(MethodInliningOptimization.class, Logger.LogLevel.DEBUG);
 	// values carefully picked by having no clue
-	private static final double CALLER_INLINE_COST_THRESHOLD = 1024;
+	private static final double CALLER_INLINE_COST_THRESHOLD = 256;
 	private final CallGraph callGraph;
 
 	private MethodInliningOptimization(CallGraph callGraph) {
@@ -55,16 +57,16 @@ public class MethodInliningOptimization {
 			LOGGER.debug("scanning %s", graph.getEntity().getLdName());
 			LOGGER.debug("args %s", graph.getArgs());
 			double selfCost = CostCalculator.calculate(graph).cost();
-			if (selfCost > CALLER_INLINE_COST_THRESHOLD) {
+			if (selfCost <= CALLER_INLINE_COST_THRESHOLD) {
+				List<InlineCandidate> localCandidates = findInlineCandidates(graph, inlineCandidates);
+				if (inlineAny(graph, localCandidates)) {
+					LOGGER.debug("inlined -> modified %s", graph.getEntity().getLdName());
+					changed.add(graph);
+					selfCost = CostCalculator.calculate(graph).cost();
+					GraphDumper.dumpGraph(graph, "method-inlined");
+				}
+			} else {
 				LOGGER.debug("skipping because of self cost");
-				return;
-			}
-			List<InlineCandidate> localCandidates = findInlineCandidates(graph, inlineCandidates);
-			if (inlineAny(graph, localCandidates)) {
-				LOGGER.debug("inlined -> modified %s", graph.getEntity().getLdName());
-				changed.add(graph);
-				selfCost = CostCalculator.calculate(graph).cost();
-				GraphDumper.dumpGraph(graph, "method-inlined");
 			}
 			inlineCandidates.put(graph, selfCost);
 		});
@@ -205,7 +207,7 @@ public class MethodInliningOptimization {
 				newBlock.setPred(i, calleeToCallerCopied.get(old.getPred(i)));
 			}
 		});
-		LOGGER.debug("inlined %s into %s", toInline, graph);
+		LOGGER.info("inlined %s into %s", toInline, graph);
 		LOGGER.debug("enabled = %s", BackEdges.enabled(graph));
 	}
 
@@ -216,13 +218,34 @@ public class MethodInliningOptimization {
 			Graph called = ((Address) call.getPtr()).getEntity().getGraph();
 			if (called != null) { // is null for runtime calls
 				double cost = candidates.getOrDefault(called, Double.MAX_VALUE);
-				if (cost == Double.MAX_VALUE) {
+				if (cost >= Double.MAX_VALUE) {
 					LOGGER.debug("no cost available for %s?", called.getEntity().getLdName());
+					continue; // skip this call, cannot be inlined
 				}
+				LOGGER.debug("pre cost: %s", cost);
+				cost -= benefit(call, cost / 2);
+				LOGGER.debug("after cost: %s (-%s)", cost, benefit(call, cost / 2));
 				result.add(new InlineCandidate(call, called, cost));
 			}
 		}
 		return result;
+	}
+
+	private double benefit(Call call, double halvedCost) {
+		double benefit = 0;
+		int paramCount = call.getPredCount() - 1; // -2 + 1, to avoid div by 0
+		for (Node pred : call.getPreds()) {
+			boolean comesFromAllocCall = pred instanceof Proj proj && proj.getMode().equals(Mode.getP()) &&
+				proj.getPred() instanceof Call allocCall && Util.isAllocCall(allocCall);
+			if (pred instanceof Const) {
+				benefit += halvedCost / paramCount;
+			} else if (comesFromAllocCall) {
+				benefit += halvedCost / (paramCount + 2); // might be an escape analysis candidate if inlined
+			} else {
+				benefit += halvedCost / (paramCount * 4);
+			}
+		}
+		return benefit;
 	}
 
 	record InlineCandidate(
@@ -315,7 +338,6 @@ public class MethodInliningOptimization {
 	private boolean belongsToStart(Node node) {
 		Pointer op = binding_irnode.get_irn_op(node.ptr);
 		int flags = binding_irop.get_op_flags(op);
-		LOGGER.debug("flags %s", Integer.toBinaryString(flags));
 		return (flags & binding_irop.irop_flags.irop_flag_start_block.val) != 0;
 	}
 
@@ -328,17 +350,21 @@ public class MethodInliningOptimization {
 	}
 
 	// TODO better loop detection
-	// TODO no calls to self pls thx
 	static class CostCalculator extends NodeVisitor.Default {
 		private static final double PHI_COST = 3d;
 		private static final double CONDITIONAL_JUMP_COST = 2d; // Proj X false OR Proj X true => 4 per Jmp
 		private static final double RUNTIME_CALL_COST = 1.5;
 		private static final double METHOD_CALL_COST = 2.5;
+		private final Graph graph;
 
 		private double cost;
 
+		public CostCalculator(Graph graph) {
+			this.graph = graph;
+		}
+
 		static CostCalculator calculate(Graph graph) {
-			CostCalculator calculator = new CostCalculator();
+			CostCalculator calculator = new CostCalculator(graph);
 			graph.walk(calculator);
 			return calculator;
 		}
@@ -359,6 +385,10 @@ public class MethodInliningOptimization {
 				case Call call -> {
 					if (((Address) call.getPtr()).getEntity().getGraph() == null) {
 						yield RUNTIME_CALL_COST;
+					}
+					if (((Address) call.getPtr()).getEntity().equals(graph.getEntity())) {
+						// we really want to prevent inlining of recursive calls
+						yield Double.POSITIVE_INFINITY;
 					}
 					yield METHOD_CALL_COST;
 				}
