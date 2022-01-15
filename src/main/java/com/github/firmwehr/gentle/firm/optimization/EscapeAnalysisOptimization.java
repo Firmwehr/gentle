@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.firm.construction.StdLibEntity;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.GraphDumper;
+import com.github.firmwehr.gentle.util.Pair;
 import firm.BackEdges;
 import firm.Graph;
 import firm.Mode;
@@ -234,9 +235,16 @@ public class EscapeAnalysisOptimization {
 	private boolean escapes(Proj callResProj) {
 		// DFS, keep track of the nodes we need to visit
 		Deque<Node> deepOuts = new ArrayDeque<>();
+		// maintain visited set for recursive Phis
+		// we cannot use Node#markVisited() as this method is called
+		// during Visitor walk
+		Set<Node> visited = new HashSet<>();
 		deepOuts.add(callResProj);
 		while (!deepOuts.isEmpty()) {
 			Node next = deepOuts.removeLast();
+			if (!visited.add(next)) {
+				continue;
+			}
 			for (BackEdges.Edge edge : BackEdges.getOuts(next)) {
 				if (edge.node.getMode().equals(Mode.getM())) {
 					// we want to ignore memory nodes, otherwise we'll visit a lot of unrelated nodes
@@ -282,6 +290,7 @@ public class EscapeAnalysisOptimization {
 					return true;
 				}
 				// a node that can't be ignored
+				LOGGER.debug("add %s to outs to scan", edge.node);
 				deepOuts.add(edge.node);
 			}
 		}
@@ -324,16 +333,19 @@ public class EscapeAnalysisOptimization {
 		private final Call call; // the allocation call
 		private final Graph graph;
 		private final Map<LocalAddress, Mode> modes; // all local addresses and their modes
-		private final Map<Phi, Map<LocalAddress, Phi>> phis = new HashMap<>(); // memory Phis -> data Phis per address
+		private final Map<Phi, Map<LocalAddress, Phi>> phis; // memory Phis -> data Phis per address
 		private final Set<Node> interestingNodes; // Loads and Stores that need to be replaced
 		private final List<Runnable> replacements; // tasks that delete from the graph need to be delayed
+		private final Set<Pair<Phi, Integer>> visitedPhiIncomingEdges;
 
 		CallRewriter(Call call, Set<Node> interestingNodes, Map<LocalAddress, Mode> modes) {
 			this.call = call;
 			this.graph = call.getGraph();
 			this.modes = modes;
+			this.phis = new HashMap<>();
 			this.interestingNodes = interestingNodes;
 			this.replacements = new ArrayList<>();
+			this.visitedPhiIncomingEdges = new HashSet<>();
 		}
 
 		public void rewrite() {
@@ -356,6 +368,16 @@ public class EscapeAnalysisOptimization {
 			if (node.visited()) {
 				LOGGER.debug("skip %s", node);
 				return;
+			}
+			if (node instanceof Phi phi) {
+				// we need to visit Phis multiple times, but each of their outs only once
+				// as Phis can be self-referencing, we mark the incoming edges as visited
+				if (!visitedPhiIncomingEdges.add(new Pair<>(phi, inIndex))) {
+					LOGGER.debug("skip repeated in for phi %s", node);
+					return;
+				}
+			} else {
+				node.markVisited();
 			}
 			LOGGER.debug("visit %s", node);
 			JImmutableMap<LocalAddress, Node> follow = predecessors;
@@ -395,11 +417,6 @@ public class EscapeAnalysisOptimization {
 				replacements.add(() -> replaceStore(store));
 			}
 
-			if (!(node instanceof Phi)) {
-				// we need to visit Phis multiple times, but each of their outs only once
-				node.markVisited();
-			}
-			
 			if (node.getMode().equals(Mode.getM())) {
 				for (BackEdges.Edge edge : BackEdges.getOuts(node)) {
 					LOGGER.debug("(M) edge with node %s", edge.node);
