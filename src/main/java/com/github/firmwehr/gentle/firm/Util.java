@@ -1,9 +1,12 @@
 package com.github.firmwehr.gentle.firm;
 
+import com.github.firmwehr.gentle.firm.construction.StdLibEntity;
 import com.github.firmwehr.gentle.output.Logger;
 import firm.BackEdges;
 import firm.Graph;
 import firm.Mode;
+import firm.nodes.Address;
+import firm.nodes.Call;
 import firm.nodes.Const;
 import firm.nodes.Node;
 
@@ -68,5 +71,9 @@ public final class Util {
 
 	public static Stream<Node> outsStream(Node node) {
 		return StreamSupport.stream(BackEdges.getOuts(node).spliterator(), false).map(edge -> edge.node);
+	}
+
+	public static boolean isAllocCall(Call call) {
+		return ((Address) call.getPtr()).getEntity().equals(StdLibEntity.ALLOCATE.getEntity());
 	}
 }
