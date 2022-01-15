@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 public class LifetimeAnalysis {
 
-	private static final Logger LOGGER = new Logger(LifetimeAnalysis.class, Logger.LogLevel.DEBUG);
+	private static final Logger LOGGER = new Logger(LifetimeAnalysis.class);
 
 	private final Map<IkeaBløck, BlockLiveliness> liveness;
 	private final ControlFlowGraph controlFlowGraph;
@@ -35,7 +35,7 @@ public class LifetimeAnalysis {
 		Queue<IkeaBløck> worklist = new ArrayDeque<>();
 		worklist.add(controlFlowGraph.getEnd());
 
-		// LIVE_out[final] = ∅, rest also initialozed to this for now
+		// LIVE_out[final] = ∅, rest also initialized to this for now
 		for (IkeaBløck block : controlFlowGraph.getAllBlocks()) {
 			liveness.put(block, BlockLiveliness.forBlock(block));
 		}
@@ -54,6 +54,10 @@ public class LifetimeAnalysis {
 				worklist.addAll(controlFlowGraph.outputBlocks(block));
 			}
 		}
+	}
+
+	public Set<IkeaNode> getLiveOut(IkeaBløck block) {
+		return Set.copyOf(liveness.get(block).liveOut());
 	}
 
 	private record BlockLiveliness(

@@ -34,7 +34,9 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
 import com.github.firmwehr.gentle.backend.ir.register.ControlFlowGraph;
 import com.github.firmwehr.gentle.backend.ir.register.Dominance;
+import com.github.firmwehr.gentle.backend.ir.register.Interference;
 import com.github.firmwehr.gentle.backend.ir.register.LifetimeAnalysis;
+import com.github.firmwehr.gentle.backend.ir.register.Uses;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.GraphDumper;
@@ -166,11 +168,43 @@ public class CodeSelection extends NodeVisitor.Default {
 		orderedBlocks.remove(blocks.get(graph.getStartBlock()));
 		orderedBlocks.add(0, blocks.get(graph.getStartBlock()));
 
-		LifetimeAnalysis analysis = new LifetimeAnalysis(ControlFlowGraph.forBlocks(orderedBlocks));
+		ControlFlowGraph controlFlowGraph = ControlFlowGraph.forBlocks(orderedBlocks);
+		LifetimeAnalysis analysis = new LifetimeAnalysis(controlFlowGraph);
 		analysis.buildLifetimes();
 
-		Dominance dominance = new Dominance(ControlFlowGraph.forBlocks(orderedBlocks));
+		Dominance dominance = new Dominance(controlFlowGraph);
 		dominance.computeDominance();
+
+		Uses uses = new Uses(controlFlowGraph);
+
+		Interference interference = new Interference(uses, dominance, analysis, controlFlowGraph);
+
+		if (this.graph.getEntity().getLdName().contains("ayy")) {
+			IkeaNode argNode = blocks.values()
+				.stream()
+				.flatMap(it -> it.nodes().stream())
+				.filter(it -> it instanceof IkeaArgNode)
+				.filter(it -> ((IkeaArgNode) it).getUnderlyingFirmNodes().get(0).getMode().isInt())
+				.findFirst()
+				.get();
+			IkeaNode phi = blocks.values()
+				.stream()
+				.flatMap(it -> it.nodes().stream())
+				.filter(it -> it instanceof IkeaPhi)
+				.findFirst()
+				.get();
+			IkeaNode call = blocks.values()
+				.stream()
+				.flatMap(it -> it.nodes().stream())
+				.filter(it -> it instanceof IkeaCall)
+				.filter(it -> ((IkeaCall) it).address().getEntity().getLdName().contains("ayy"))
+				.findFirst()
+				.get();
+
+			Set<IkeaNode> f = interference.interferenceNeighbours(call);
+			System.out.println(f);
+			int a = 3;
+		}
 
 		return orderedBlocks;
 	}

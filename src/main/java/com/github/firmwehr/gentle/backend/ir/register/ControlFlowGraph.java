@@ -7,10 +7,8 @@ import com.google.common.graph.Graph;
 import com.google.common.graph.GraphBuilder;
 import com.google.common.graph.MutableGraph;
 
-import java.util.ArrayDeque;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
-import java.util.Queue;
 import java.util.Set;
 
 /**
@@ -31,7 +29,7 @@ public class ControlFlowGraph {
 	 * @return all blocks that might branch off into the passed block
 	 */
 	public Set<IkeaBløck> inputBlocks(IkeaBløck block) {
-		return graph.predecessors(block);
+		return Collections.unmodifiableSet(graph.predecessors(block));
 	}
 
 	/**
@@ -40,7 +38,7 @@ public class ControlFlowGraph {
 	 * @return all blocks {@code block} branches off to
 	 */
 	public Set<IkeaBløck> outputBlocks(IkeaBløck block) {
-		return graph.successors(block);
+		return Collections.unmodifiableSet(graph.successors(block));
 	}
 
 	public Set<IkeaBløck> getAllBlocks() {
@@ -61,36 +59,6 @@ public class ControlFlowGraph {
 			.filter(it -> graph.outDegree(it) == 0)
 			.findFirst()
 			.orElseThrow(() -> new InternalCompilerException("Control flow graph has no end node: " + graph));
-	}
-
-	/**
-	 * Constructs a new control flow graph starting at the given end block. Only blocks reachable from it are
-	 * considered.
-	 *
-	 * @param endBlock the end block
-	 *
-	 * @return the constructed control flow graph
-	 */
-	public static ControlFlowGraph forEndBlock(IkeaBløck endBlock) {
-		MutableGraph<IkeaBløck> graph = GraphBuilder.directed().allowsSelfLoops(true).build();
-
-		Set<IkeaBløck> visited = new HashSet<>();
-		Queue<IkeaBløck> blocks = new ArrayDeque<>();
-		blocks.add(endBlock);
-
-		while (!blocks.isEmpty()) {
-			IkeaBløck block = blocks.poll();
-			if (!visited.add(block)) {
-				continue;
-			}
-
-			for (IkeaParentBløck parent : block.parents()) {
-				// reversed so an edge A -> B indicates control flow from A to B, not the other way round
-				graph.putEdge(parent.parent(), block);
-			}
-		}
-
-		return new ControlFlowGraph(graph);
 	}
 
 	public static ControlFlowGraph forBlocks(List<IkeaBløck> blocks) {

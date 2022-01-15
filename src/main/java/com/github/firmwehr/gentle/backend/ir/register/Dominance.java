@@ -23,12 +23,14 @@ public class Dominance {
 
 	private static final Logger LOGGER = new Logger(Dominance.class, Logger.LogLevel.DEBUG);
 
-	private final Map<IkeaBløck, Set<IkeaBløck>> dominators;
+	private final MutableGraph<IkeaNode> dominatorTree;
+	private final Map<IkeaBløck, Set<IkeaBløck>> blockDominators;
 	private final ControlFlowGraph controlFlowGraph;
 
 	public Dominance(ControlFlowGraph controlFlowGraph) {
 		this.controlFlowGraph = controlFlowGraph;
-		this.dominators = new HashMap<>();
+		this.blockDominators = new HashMap<>();
+		this.dominatorTree = GraphBuilder.directed().allowsSelfLoops(true).build();
 	}
 
 	public void computeDominance() {
@@ -42,33 +44,31 @@ public class Dominance {
 
 			Set<IkeaBløck> blockDominators = controlFlowGraph.inputBlocks(block)
 				.stream()
-				.map(dominators::get)
+				.map(this.blockDominators::get)
 				.filter(Objects::nonNull)
 				.reduce(Set.of(), (a, b) -> a.isEmpty() ? b : Sets.intersection(a, b));
 			LOGGER.debug("Block dominators %s", blockDominators);
 			blockDominators = new HashSet<>(blockDominators);
 			blockDominators.add(block);
 
-			if (blockDominators.equals(dominators.get(block))) {
+			if (blockDominators.equals(this.blockDominators.get(block))) {
 				LOGGER.debug("Was up to date");
 				continue;
 			}
-			dominators.put(block, blockDominators);
+			this.blockDominators.put(block, blockDominators);
 			worklist.addAll(controlFlowGraph.outputBlocks(block));
 			LOGGER.debug("Adding succesors %s", controlFlowGraph.outputBlocks(block));
 		}
 
-		for (Map.Entry<IkeaBløck, Set<IkeaBløck>> entry : dominators.entrySet()) {
+		for (Map.Entry<IkeaBløck, Set<IkeaBløck>> entry : blockDominators.entrySet()) {
 			LOGGER.debugHeader("Dominators for %s", entry.getKey());
 			for (IkeaBløck block : entry.getValue()) {
 				LOGGER.debug("%s", block);
 			}
 		}
 
-		MutableGraph<IkeaNode> dominatorTree = GraphBuilder.directed().allowsSelfLoops(true).build();
-
 		for (IkeaBløck block : controlFlowGraph.getAllBlocks()) {
-			Set<IkeaBløck> dominators = this.dominators.get(block);
+			Set<IkeaBløck> dominators = this.blockDominators.get(block);
 
 			// Handle dominance from other blocks
 			Set<IkeaNode> nodesInDominators = dominators.stream()
@@ -95,5 +95,9 @@ public class Dominance {
 			LOGGER.debug("-> %s",
 				dominatorTree.successors(node).stream().map(IkeaNode::getUnderlyingFirmNodes).toList());
 		}
+	}
+
+	public boolean dominates(IkeaNode first, IkeaNode second) {
+		return dominatorTree.hasEdgeConnecting(first, second);
 	}
 }
