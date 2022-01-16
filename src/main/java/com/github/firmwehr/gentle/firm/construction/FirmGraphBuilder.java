@@ -351,17 +351,12 @@ public class FirmGraphBuilder {
 			case DIVIDE -> {
 				Node lhs = processValueExpression(context, expr.lhs());
 				Node rhs = processValueExpression(context, expr.rhs());
-				// expansion to 64 bit to gracefully handle MIN_INT / -1 case which is valid in Java but causes
-				// floating point exception (sic) on x86
-				Node leftPromoted = construction.newConv(lhs, Mode.getLs());
-				Node rightPromoted = construction.newConv(rhs, Mode.getLs());
 
 				// Arguments need to be evaluated first so memory chain is built correctly
-				Node divNode = construction.newDiv(construction.getCurrentMem(), leftPromoted, rightPromoted,
+				Node divNode = construction.newDiv(construction.getCurrentMem(), lhs, rhs,
 					binding_ircons.op_pin_state.op_pin_state_pinned);
 				construction.setCurrentMem(construction.newProj(divNode, Mode.getM(), Div.pnM));
-				Node projResult = construction.newProj(divNode, Mode.getLs(), Div.pnRes);
-				yield construction.newConv(projResult, Mode.getIs());
+				yield construction.newProj(divNode, Mode.getIs(), Div.pnRes);
 			}
 			case MODULO -> {
 				Node left = processValueExpression(context, expr.lhs());

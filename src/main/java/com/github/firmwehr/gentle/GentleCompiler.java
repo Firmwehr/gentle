@@ -7,6 +7,7 @@ import com.github.firmwehr.gentle.backend.ir.visit.MolkiVisitor;
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandDispatcher;
 import com.github.firmwehr.gentle.debug.DebugStore;
+import com.github.firmwehr.gentle.firm.FirmJlsFixup;
 import com.github.firmwehr.gentle.firm.construction.FirmBuilder;
 import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
@@ -239,6 +240,7 @@ public class GentleCompiler {
 
 	private static void generateWithFirmBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
 		throws IOException {
+		graphs.forEach(FirmJlsFixup::fix);
 		LOGGER.info("handing over to firm backend...");
 
 		String file = assemblyFile.toString();
