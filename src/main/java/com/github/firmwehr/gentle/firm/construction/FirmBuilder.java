@@ -89,17 +89,23 @@ public class FirmBuilder {
 
 		builder.addGraphStep(FirmGraphCleanup.firmGraphCleanup());
 
-		if (!CompilerArguments.get().noConstantFolding()) {
+		if (!CompilerArguments.get().noConstantFolding()) { // constant folding is mandatory to pass course
 			builder.addGraphStep(ConstantFolding.constantFolding());
 		}
-		if (!CompilerArguments.get().noArithmeticOptimizations()) {
-			builder.addGraphStep(ArithmeticOptimization.arithmeticOptimization());
-		}
-		if (!CompilerArguments.get().noEscapeAnalysis()) {
-			builder.addGraphStep(EscapeAnalysisOptimization.escapeAnalysisOptimization());
-		}
-		if (!CompilerArguments.get().noRemoveUnused()) {
-			builder.addCallGraphStep(UnusedParameterOptimization.unusedParameterOptimization());
+
+		var enableOptimizations = CompilerArguments.get().optimizerLevel().orElse(Integer.MAX_VALUE) > 0;
+		if (enableOptimizations) {
+			if (!CompilerArguments.get().noArithmeticOptimizations()) {
+				builder.addGraphStep(ArithmeticOptimization.arithmeticOptimization());
+			}
+			if (!CompilerArguments.get().noEscapeAnalysis()) {
+				builder.addGraphStep(EscapeAnalysisOptimization.escapeAnalysisOptimization());
+			}
+			if (!CompilerArguments.get().noRemoveUnused()) {
+				builder.addCallGraphStep(UnusedParameterOptimization.unusedParameterOptimization());
+			}
+		} else {
+			LOGGER.info("optimization level set to 0, all optional optimization will be disabled");
 		}
 
 		Optimizer optimizer = builder.build();
