@@ -172,8 +172,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		LifetimeAnalysis analysis = new LifetimeAnalysis(controlFlowGraph);
 		analysis.buildLifetimes();
 
-		Dominance dominance = new Dominance(controlFlowGraph);
-		dominance.computeDominance();
+		Dominance dominance = Dominance.forCfg(controlFlowGraph);
 
 		Uses uses = new Uses(controlFlowGraph);
 
@@ -203,6 +202,12 @@ public class CodeSelection extends NodeVisitor.Default {
 
 			Set<IkeaNode> f = interference.interferenceNeighbours(call);
 			System.out.println(f);
+			System.out.println("\nFrontier");
+			IkeaBløck frontierBlock =
+				blocks.values().stream().filter(it -> it.origin().getNr() == 69).findFirst().orElseThrow();
+			for (IkeaBløck block : dominance.getDominanceFrontier(frontierBlock)) {
+				System.out.println(block);
+			}
 			int a = 3;
 		}
 
