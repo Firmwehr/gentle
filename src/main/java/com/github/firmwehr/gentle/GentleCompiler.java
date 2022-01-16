@@ -179,6 +179,12 @@ public class GentleCompiler {
 			DebugStore debugStore = new DebugStore(source);
 			List<Graph> graphs = new FirmBuilder().convert(program, debugStore);
 
+
+			var codePreselection = CodePreselection.arithmeticOptimization();
+			for (var graph : graphs) {
+				codePreselection.optimize(graph);
+			}
+
 			// generate matching filename for input and call backend handler
 			String assemblyFilename = FilenameUtils.removeExtension(path.getFileName().toString()) + ".s";
 			Path assemblyFile = path.resolveSibling(assemblyFilename);

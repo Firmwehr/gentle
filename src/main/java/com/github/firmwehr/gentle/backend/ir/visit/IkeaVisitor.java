@@ -12,6 +12,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJcc;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJmp;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaLea;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoad;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoadEx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStore;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
@@ -72,6 +73,10 @@ public interface IkeaVisitor<T> {
 
 	default T visit(IkeaMovLoad movLoad) {
 		return defaultVisit(movLoad);
+	}
+
+	default T visit(IkeaMovLoadEx movLoadEx) {
+		return defaultVisit(movLoadEx);
 	}
 
 	default T visit(IkeaMovRegister movRegister) {
