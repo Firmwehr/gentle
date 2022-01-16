@@ -57,6 +57,9 @@ public interface CommandArguments {
 	@Option(names = "--dump-graphs", description = "generate graph dump files")
 	boolean dumpGraphs();
 
+	@Option(names = "-O", description = "sets optimization level. 0 will disable all non-required optimization")
+	Optional<Integer> optimizerLevel();
+
 	@Option(names = "--no-constant-folding", description = "do not perform constant folding optimization")
 	boolean noConstantFolding();
 
