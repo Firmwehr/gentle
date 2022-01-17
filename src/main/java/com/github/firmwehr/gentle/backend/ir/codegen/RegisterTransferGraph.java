@@ -153,7 +153,7 @@ public class RegisterTransferGraph {
 			graph.removeEdge(edge);
 
 			// Free as early as possible: Rewire to read from target
-			for (IkeaBøx successor : graph.successors(edge.source())) {
+			for (IkeaBøx successor : Set.copyOf(graph.successors(edge.source()))) {
 				// TODO: Verify this code is correct once we can have self loops with pyhsical registers
 				// Do not rewire self loops to save a move
 				if (edge.source().equals(successor)) {
