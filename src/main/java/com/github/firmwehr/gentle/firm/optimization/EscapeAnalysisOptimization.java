@@ -174,6 +174,7 @@ public class EscapeAnalysisOptimization {
 			}
 		}
 		LOGGER.debug("%s has %s outs without memory", node, BackEdges.getNOuts(node));
+		GraphDumper.dumpGraph(node.getGraph(), "missing-successor");
 		throw new InternalCompilerException("No successor found for " + node);
 	}
 
@@ -257,13 +258,18 @@ public class EscapeAnalysisOptimization {
 					return true;
 				}
 				if (edge.node instanceof Load load) {
-					if (fromPredIfMatches(load.getPtr()).isPresent()) {
+					if (fromPredIfMatches(load.getPtr()).isEmpty()) {
+						LOGGER.debug("%s escapes on %s (invalid address)", callResProj, edge.node);
+						return true;
+					} else if (BackEdges.getNOuts(edge.node) <= 1) {
+						// unused loads will be removed by FirmGraphCleanup, then we can probably inline it :)
+						LOGGER.debug("%s escapes on %s (no data proj out)", callResProj, edge.node);
+						return true;
+					} else {
 						// Load from this call => ignore (would be replaced)
 						LOGGER.debug("stop at %s", edge.node);
 						continue;
 					}
-					LOGGER.debug("%s escapes on %s (invalid address)", callResProj, edge.node);
-					return true;
 				}
 				if (edge.node instanceof Store store) {
 					// if call is reachable from the value that is stored here
@@ -337,6 +343,7 @@ public class EscapeAnalysisOptimization {
 		private final Set<Node> interestingNodes; // Loads and Stores that need to be replaced
 		private final List<Runnable> replacements; // tasks that delete from the graph need to be delayed
 		private final Set<Pair<Phi, Integer>> visitedPhiIncomingEdges;
+		private final ForwardChain forwardChain;
 
 		CallRewriter(Call call, Set<Node> interestingNodes, Map<LocalAddress, Mode> modes) {
 			this.call = call;
@@ -346,6 +353,7 @@ public class EscapeAnalysisOptimization {
 			this.interestingNodes = interestingNodes;
 			this.replacements = new ArrayList<>();
 			this.visitedPhiIncomingEdges = new HashSet<>();
+			this.forwardChain = new ForwardChain();
 		}
 
 		public void rewrite() {
@@ -404,15 +412,18 @@ public class EscapeAnalysisOptimization {
 					// set pred at the index of the in index of the memory Phi to the current pred
 					dataPhi.setPred(inIndex, pred);
 					// further replacements of Loads should use this Phi as pred
+					LOGGER.debug("update pred %s -> %s", address, dataPhi);
 					follow = follow.assign(address, dataPhi);
 				}
 			} else if (node instanceof Load load && interestingNodes.contains(load)) {
 				LocalAddress address = fromPred(load.getPtr());
 				// load the last value that would have been stored (including Phis)
 				Node value = follow.get(address);
+				LOGGER.debug("remember replacement %s -> %s", load, value);
 				replacements.add(() -> replaceLoad(load, value));
 			} else if (node instanceof Store store && interestingNodes.contains(store)) {
 				// assign to the value that would have been stored, so the next Load/Phi can use it
+				LOGGER.debug("update pred %s -> %s", store, store.getValue());
 				follow = follow.assign(fromPred(store.getPtr()), store.getValue());
 				replacements.add(() -> replaceStore(store));
 			}
@@ -461,8 +472,10 @@ public class EscapeAnalysisOptimization {
 		 */
 		private void replaceLoad(Load load, Node value) {
 			Node dataProj = successor(load, false);
+			Node newValue = forwardChain.getForwarder(value);
+			forwardChain.rememberForward(dataProj, newValue);
 			for (BackEdges.Edge edge : BackEdges.getOuts(dataProj)) {
-				edge.node.setPred(edge.pos, value);
+				edge.node.setPred(edge.pos, newValue);
 			}
 			Node memoryProj = successor(load, true);
 			for (BackEdges.Edge edge : BackEdges.getOuts(memoryProj)) {
@@ -474,9 +487,29 @@ public class EscapeAnalysisOptimization {
 	/**
 	 * A field of an object, identified by a base pointer and the offset within the object.
 	 */
-	record LocalAddress(
+	private record LocalAddress(
 		Proj pointer,
 		long offset
 	) {
+	}
+
+	/**
+	 * When replacing, the stored pred might be already replaced (load 1 -> store  2 -> load 3).
+	 * If load 1 is replaced before load 3, the value stored at 2 does still point to the old successor
+	 * of load 1. We need to rewire it to the replaced value of load 1.
+	 */
+	private static class ForwardChain {
+		private final Map<Node, Node> forwards = new HashMap<>();
+
+		public void rememberForward(Node victim, Node murderer) {
+			forwards.put(victim, murderer);
+		}
+
+		public Node getForwarder(Node node) {
+			if (!forwards.containsKey(node)) {
+				return node;
+			}
+			return getForwarder(forwards.get(node));
+		}
 	}
 }
