@@ -178,14 +178,14 @@ public class MolkiVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaDiv div) {
-
 		String prefix = "/* " + div.getNode().toString() + " */\n";
+		// Always use the full size registers to ensure mplki generates an idiv "%rbx" and not "%ebx"
 		// @formatter:off
 		return prefix + "idiv [ %s | %s ] -> [ %s | %s]".formatted(
-			reg(div.getLeft().box()),
-			reg(div.getRight().box()),
-			reg(div.getBoxQuotient()),
-			reg(div.getBoxMod())
+			as64BitRegister(reg(div.getLeft().box())),
+			as64BitRegister(reg(div.getRight().box())),
+			as64BitRegister(reg(div.getBoxQuotient())),
+			as64BitRegister(reg(div.getBoxMod()))
 		);
 		// @formatter:on
 	}
