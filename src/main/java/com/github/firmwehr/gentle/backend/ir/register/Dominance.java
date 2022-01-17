@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -155,6 +156,22 @@ public class Dominance {
 				dominanceFrontier.putEdge(entry.getKey(), frontierNode);
 			}
 		}
+	}
+
+	public Optional<IkeaBløck> getIdom(IkeaBløck block) {
+		Set<IkeaBløck> dominators = new HashSet<>(blockDominators.predecessors(block));
+		dominators.remove(block);
+		// TODO: Do we want to explicitly model self-dominance?
+		if (dominators.isEmpty()) {
+			return Optional.empty();
+		}
+		for (IkeaBløck possibleIdom : dominators) {
+			// Dominator dominated by all others
+			if (dominators.stream().allMatch(it -> blockDominators.hasEdgeConnecting(it, possibleIdom))) {
+				return Optional.of(possibleIdom);
+			}
+		}
+		throw new InternalCompilerException("No idom found?");
 	}
 
 	public Set<IkeaBløck> getDominanceFrontier(IkeaBløck root) {
