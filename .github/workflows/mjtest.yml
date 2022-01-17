@@ -37,7 +37,7 @@ jobs:
         run: ./build
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git -C mjtest/tests reset --hard origin/master"
-      - run: "./mjtest/mjt.py compile-firm ./run"
+      - run: "./mjtest/mjt.py compile-firm-only compile-firm ./run"
 
   mjtest-djungelskog:
     name: "Run Djungelskog compile"
@@ -53,7 +53,7 @@ jobs:
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git -C mjtest/tests reset --hard origin/master"
       - run: "rm mjtest/tests/exec/ReallyEfficientFactorization.java"
-      - run: "./mjtest/mjt.py compile ./run"
+      - run: "./mjtest/mjt.py compile-only compile ./run"
 
   mjtest-molki:
     name: "Run molki compile"
@@ -74,4 +74,4 @@ jobs:
       - run: "git -C mjtest/tests reset --hard origin/master"
       - run: "rm mjtest/tests/exec/ReallyEfficientFactorization.java"
       - run: sed -i 's/"$@"/--molki-binary \/tmp\/molki\/molki.py --compile-molki "${@:2}"/' run
-      - run: "./mjtest/mjt.py compile-firm ./run"
+      - run: "./mjtest/mjt.py compile-firm-only compile-firm ./run"
