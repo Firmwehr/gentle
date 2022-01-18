@@ -6,6 +6,7 @@ import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaVirtualRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaReload;
 
 import java.util.Collection;
 import java.util.List;
@@ -59,9 +60,12 @@ public class SsaReconstruction {
 			// Try to find last def before use in use block
 			List<IkeaNode> nodes = use.getBlock().nodes();
 			for (int i = nodes.indexOf(use); i >= 0; i--) {
-				// TODO: Also check for reloads for this var
-				if (brokenVariables.contains(nodes.get(i))) {
-					return nodes.get(i);
+				IkeaNode node = nodes.get(i);
+				if (brokenVariables.contains(node)) {
+					return node;
+				}
+				if (node instanceof IkeaReload reload && brokenVariables.contains(reload.getOriginalDef())) {
+					return node;
 				}
 			}
 

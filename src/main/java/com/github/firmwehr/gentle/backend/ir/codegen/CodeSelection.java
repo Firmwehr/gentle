@@ -27,6 +27,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaReload;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShl;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
@@ -36,6 +37,7 @@ import com.github.firmwehr.gentle.backend.ir.register.ControlFlowGraph;
 import com.github.firmwehr.gentle.backend.ir.register.Dominance;
 import com.github.firmwehr.gentle.backend.ir.register.Interference;
 import com.github.firmwehr.gentle.backend.ir.register.LifetimeAnalysis;
+import com.github.firmwehr.gentle.backend.ir.register.SsaReconstruction;
 import com.github.firmwehr.gentle.backend.ir.register.Uses;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
@@ -208,6 +210,13 @@ public class CodeSelection extends NodeVisitor.Default {
 			for (IkeaBløck block : dominance.getDominanceFrontier(frontierBlock)) {
 				System.out.println(block);
 			}
+
+			IkeaReload reload =
+				new IkeaReload(new IkeaVirtualRegister(1000, IkeaRegisterSize.BITS_32), controlFlowGraph.getStart(),
+					argNode);
+			//			controlFlowGraph.getStart().nodes().add(reload);
+			SsaReconstruction reconstruction = new SsaReconstruction(dominance, uses);
+			reconstruction.ssaReconstruction(Set.of(argNode));
 			int a = 3;
 		}
 
