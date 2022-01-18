@@ -7,39 +7,23 @@ import firm.nodes.Load;
 import firm.nodes.Node;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 public class IkeaMovLoadEx implements IkeaNode {
-	private final IkeaNode base;
-	private final IkeaNode index;
-	private final int scale;
-	private final long displacement;
 
-	private final Load node;
 	private IkeaBøx box;
+	private final Load node;
 
-	public IkeaMovLoadEx(IkeaBøx box, IkeaNode base, IkeaNode index, int scale, long displacement, Load node) {
+	public BoxScheme getScheme() {
+		return scheme;
+	}
+
+	private final BoxScheme scheme;
+
+	public IkeaMovLoadEx(IkeaBøx box, Load node, BoxScheme scheme) {
 		this.box = box;
-		this.base = base;
-		this.index = index;
-		this.scale = scale;
-		this.displacement = displacement;
 		this.node = node;
-	}
-
-	public IkeaNode getBase() {
-		return base;
-	}
-
-	public IkeaNode getIndex() {
-		return index;
-	}
-
-	public int getScale() {
-		return scale;
-	}
-
-	public long getDisplacement() {
-		return displacement;
+		this.scheme = scheme;
 	}
 
 	@Override
@@ -49,7 +33,7 @@ public class IkeaMovLoadEx implements IkeaNode {
 
 	@Override
 	public List<IkeaNode> parents() {
-		return List.of(base, index);
+		return Stream.concat(scheme.base().stream(), scheme.index().stream()).toList();
 	}
 
 	@Override

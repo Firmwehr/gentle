@@ -6,6 +6,7 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.IkeaImmediate;
 import com.github.firmwehr.gentle.backend.ir.IkeaVirtualRegister;
+import com.github.firmwehr.gentle.backend.ir.nodes.BoxScheme;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAdd;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaArgNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCall;
@@ -203,19 +204,26 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		String oldSuffix = movLoadEx.box().size().getOldRegisterSuffix();
 		String newSuffix = movLoadEx.box().size().getNewRegisterSuffix();
 		String result = "";
-		result += readFromStackToTarget(movLoadEx.getBase().box(), "%r8") + "\n";
-		result += readFromStackToTarget(movLoadEx.getIndex().box(), "%r9") + "\n";
 
-		result +=
-			"mov%s %s(%%r8, %%r9, %s), %%r10%s".formatted(oldSuffix, movLoadEx.getDisplacement(), movLoadEx.getScale(),
-				newSuffix) + "\n";
+		var scheme = movLoadEx.getScheme();
+		if (scheme.base().isPresent()) {
+			result += readFromStackToTarget(scheme.base().get().box(), "%r8") + "\n";
+		}
+
+		if (scheme.index().isPresent()) {
+			result += readFromStackToTarget(scheme.index().get().box(), "%r9") + "\n";
+		}
+
+		result += "// HERE\n";
+		result += "mov%s %s, %%r10%s".formatted(oldSuffix, resolveAddressingScheme(scheme), newSuffix) + "\n";
 		result += storeFromTargetToStack(movLoadEx.box(), "%r10") + "\n";
 		return result;
 	}
 
 	@Override
 	public String visit(IkeaMovRegister movRegister) {
-		// Always move 64 bit registers, no matter what size we initially stored in them. The upper parts are zeroed
+		// Always move 64 bit registers, no matter what size we initially stored in them. The upper parts are
+		// zeroed
 		// and this will not harm 32 bit registers, but it *will* ensure 64 bit work correctly.
 		String result = "";
 		result += readFromStackToTarget(movRegister.getSource(), "%r8") + "\n";
@@ -398,4 +406,30 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		}
 		throw new InternalCompilerException("Git: " + box);
 	}
+
+	private static String resolveAddressingScheme(BoxScheme scheme) {
+		// TODO: consider replacing fixed registers with something better
+		// TODO: replace formatted() calls with string concatenation for sick performance gains
+
+		// sadly, gcc is very picky about what it likes to translate and what it doesn't, so we need spoon feed it
+		if (scheme.base().isPresent()) {
+			final var base = "%r8";
+
+			if (scheme.index().isPresent()) {
+				final var index = "%r9";
+
+				if (scheme.scale() > 0) {
+					return "%s(%s, %s, %s)".formatted(scheme.displacement(), base, index, scheme.scale());
+				}
+
+				return "%s(%s, %s)".formatted(scheme.displacement(), base, index);
+			}
+
+			return "%s(%s)".formatted(scheme.displacement(), base);
+		}
+
+		// the only way we should end up here is with a constant read from zero, so if you hit this, good luck
+		throw new InternalCompilerException("addressing scheme does not map to any assembly instruction");
+	}
+
 }

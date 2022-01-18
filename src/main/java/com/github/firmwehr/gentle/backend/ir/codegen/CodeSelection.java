@@ -8,6 +8,7 @@ import com.github.firmwehr.gentle.backend.ir.IkeaImmediate;
 import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaVirtualRegister;
+import com.github.firmwehr.gentle.backend.ir.nodes.BoxScheme;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAdd;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaArgNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCall;
@@ -347,16 +348,16 @@ public class CodeSelection extends NodeVisitor.Default {
 		var maybeScheme = preselection.scheme(node);
 		if (maybeScheme.isPresent()) {
 			var scheme = maybeScheme.get();
-			var base = nodes.get(scheme.base());
-			var index = nodes.get(scheme.index());
 
 			var mode = node.getLoadMode();
 			IkeaMovLoadEx mov =
-				new IkeaMovLoadEx(nextRegister(mode), base, index, scheme.scale(), scheme.displacement(), node);
+				new IkeaMovLoadEx(nextRegister(mode), node, BoxScheme.fromAddressingScheme(scheme, nodes::get));
 			nodes.put(node, mov);
 			block.nodes().add(mov);
+
+			return;
 		}
-		
+
 		if (preselection.hasBeenReplaced(node)) {
 			return;
 		}

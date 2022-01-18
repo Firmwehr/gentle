@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.backend.ir.codegen;
 
 import com.github.firmwehr.fiascii.FiAscii;
 import com.github.firmwehr.fiascii.asciiart.generating.BaseMatch;
+import com.github.firmwehr.fiascii.generated.MatchBaseDisplacement;
 import com.github.firmwehr.fiascii.generated.MatchBaseIndexScale;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.Pair;
@@ -14,10 +15,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 public class CodePreselectionMatcher implements CodePreselection {
 
@@ -28,8 +31,15 @@ public class CodePreselectionMatcher implements CodePreselection {
 	private static final List<MatchHandler<?>> MATCH_HANDLERS;
 
 	static {
-		MATCH_HANDLERS = List.of(new MatchHandler<>(CodePreselectionMatcher::matchBaseIndexScale,
-			CodePreselectionMatcher::handleMatchBaseIndexScale));
+		// ACHTUNG! Ze order is weri importent! We start wis ze big tree metsch and muv downwerts
+		// @formatter:off
+		MATCH_HANDLERS = List.of(
+			new MatchHandler<>(CodePreselectionMatcher::matchBaseIndexScale,
+				CodePreselectionMatcher::handleMatchBaseIndexScale),
+			new MatchHandler<>(CodePreselectionMatcher::matchBaseDisplacement,
+				CodePreselectionMatcher::handleMatchBaseDisplacement)
+		);
+		// @formatter:on
 	}
 
 	/**
@@ -97,7 +107,38 @@ public class CodePreselectionMatcher implements CodePreselection {
 		}
 	}
 
+
 	@FiAscii("""
+		// Common struct access pattern
+		          ┌───────────┐         ┌──────────────────────┐
+		          │ base: *   │         │ displacement: Const  │
+		          └──────┬────┘         └─────┬────────────────┘
+		                 │                    │
+		                 │                    │
+		                 └──────┬─────────────┘
+		                        │
+		                        │
+		                ┌───────▼─────┐          ┌────────────────┐
+		                │  *add: Add  │          │mem: * ; +memory│
+		                └──────┬──────┘          └──────┬─────────┘
+		                       │                        │
+		                       └──────────┬─────────────┘
+		                                  │
+		                            ┌─────▼─────────────┐
+		                            │ *terminator: Load │
+		                            └───────────────────┘
+		""")
+	public static Optional<MatchBaseDisplacement.Match> matchBaseDisplacement(Node node) {
+		return MatchBaseDisplacement.match(node);
+	}
+
+	public static AddressingScheme handleMatchBaseDisplacement(MatchBaseDisplacement.Match match) {
+		return new AddressingScheme(Optional.of(match.base()), Optional.empty(), 0,
+			match.displacement().getTarval().asInt());
+	}
+
+	@FiAscii("""
+		// Common array access pattern
 		  ┌─────────────┐          ┌──────────────┐
 		  │  index: *   │          │ scale: Const │
 		  └────┬────────┘          └──────┬───────┘
@@ -122,48 +163,29 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                       └──────────┬─────────────┘
 		                                  │
 		                            ┌─────▼─────────────┐
-		                            │ *terminator: Load │
+		                            │ terminator: Load  │
 		                            └───────────────────┘
 		""")
 	public static Optional<MatchBaseIndexScale.Match> matchBaseIndexScale(Node node) {
-		var maybeMatch = MatchBaseIndexScale.match(node);
-		if (maybeMatch.isPresent()) {
-			var match = maybeMatch.get();
-			var val = match.scale().getTarval().asLong();
-			if (val != 1 && val != 2 && val != 4 && val != 8) {
-				LOGGER.debug("rejection match with invalid scale of %s: %s", val, match);
-				return Optional.empty();
-			}
-
-			if (!isFreeFromExternalDependencies(match::markedNodes, match.terminator())) {
-				LOGGER.debug("rejecting match due to external dependencies: %s", match);
-			}
-		}
-		return maybeMatch;
+		return MatchBaseIndexScale.match(node);
 	}
 
 	public static AddressingScheme handleMatchBaseIndexScale(MatchBaseIndexScale.Match match) {
-		return new AddressingScheme(match.base(), match.index(), match.scale().getTarval().asInt(), 0);
+		return new AddressingScheme(Optional.of(match.base()), Optional.of(match.index()),
+			match.scale().getTarval().asInt(), 0);
 	}
 
 	/**
-	 * Checks if the given match is free from external connections, meaning that all nodes within the match will not be
-	 * depended on from other nodes outside of the match. The terminator node is special, since it can (and should)
-	 * have
-	 * other nodes depending on it, as it will be the result of the aggregated operation.
+	 * Checks if all marked nodes are free from external dependants. This ensures that we are not going to remove
+	 * operations that other nodes still depend on.
 	 *
 	 * @param matchSupplier A supplied that will provide the methode with all nodes of the matched subtree.
-	 * @param terminator Terminating node, that represents the final result of the aggregated computation.
 	 *
 	 * @return {@code true} if this match is free from external dependants or {@code false} if it isn't.
 	 */
-	private static boolean isFreeFromExternalDependencies(Supplier<Set<Node>> matchSupplier, Node terminator) {
+	private static boolean isFreeFromExternalDependencies(Supplier<Set<Node>> matchSupplier) {
 		var match = matchSupplier.get();
 		for (var n : match) {
-			// terminating node is part of match but can be depended upon
-			if (n.equals(terminator)) {
-				continue;
-			}
 
 			// back edges for other nodes are only allowed inside match
 			for (BackEdges.Edge edge : BackEdges.getOuts(n)) {
@@ -176,32 +198,65 @@ public class CodePreselectionMatcher implements CodePreselection {
 		return true;
 	}
 
+
+	@SuppressWarnings({"RedundantIfStatement"})
+	private static boolean isValidAddressingScheme(AddressingScheme scheme) {
+
+		// explicit null check since matcher logic can easily be wired wrong by accident
+		Objects.requireNonNull(scheme.base);
+		Objects.requireNonNull(scheme.index);
+
+		var scale = scheme.scale;
+		if (scale != 1 && scale != 2 && scale != 4 && scale != 8) {
+			return false;
+		}
+
+		// TODO: check if displacement is effectiv length of 33 bit (due to seperate signedness bit) I don't know
+		if ((scheme.displacement & 0x00000000FFFFFFFFL) != scheme.displacement) {
+			return false;
+		}
+
+		return true;
+	}
+
 	private record MatchHandler<M extends BaseMatch>(
 		Function<Node, Optional<M>> matcher,
 		Function<M, AddressingScheme> handler
 	) {
 		public Optional<Pair<AddressingScheme, BaseMatch>> analyse(Node node) {
 			var maybeMatch = matcher.apply(node);
-			return maybeMatch.map(matcher -> {
+			return maybeMatch.flatMap(matcher -> {
 				var match = maybeMatch.get();
-				return new Pair<>(handler.apply(match), match);
+				var scheme = handler.apply(match);
+
+				// only marked nodes will be folded into addressing scheme, so we only need to check them
+				if (!isFreeFromExternalDependencies(match::markedNodes)) {
+					LOGGER.debug("rejecting match due to external dependencies: %s", match);
+				}
+
+				// filter out match that can't be represented in x86
+				return isValidAddressingScheme(scheme) ? Optional.of(new Pair<>(scheme, match)) : Optional.empty();
 			});
 		}
 	}
 
 	/**
-	 * This represents all x86 addressing modes. The effective address is of the form: {@code base + (index * scale) +
-	 * displacement}.
+	 * This represents all (the more complex ones) x86 addressing modes. The effective address is of the form: {@code
+	 * base + (index * scale) + displacement}.
+	 *
+	 * @param base Node that will produce the base value.
+	 * @param index Node that will produce the index value.
+	 * @param scale The scalar for index multiplication. Must be 0, 1, 2, 4, 8.
+	 * @param displacement Total displacement. Must fit into 32bit signed integer.
 	 */
 	public record AddressingScheme(
-		Node base,
-		Node index,
-
-		// power of 2 from 0-8
+		Optional<Node> base,
+		Optional<Node> index,
 		int scale,
-
-		// must be 32 bit constant
 		long displacement
 	) {
+		public Stream<Node> stream() {
+			return Stream.concat(base.stream(), index.stream());
+		}
 	}
 }
