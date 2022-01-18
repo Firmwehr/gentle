@@ -87,8 +87,11 @@ dependencies {
 	implementation("io.github.jbock-java:jbock:$jbock")
 	annotationProcessor("io.github.jbock-java:jbock-compiler:$jbock")
 
-	implementation("com.github.firmwehr:FiAscii:e490ffd934")
-	annotationProcessor("com.github.firmwehr:FiAscii:e490ffd934")
+	// implementation("com.github.firmwehr:FiAscii:bfbb167a75a9c9704977a6dfdb3352ec6b0e6ff7")
+	// annotationProcessor("com.github.firmwehr:FiAscii:bfbb167a75a9c9704977a6dfdb3352ec6b0e6ff7")
+
+	implementation("com.github.firmwehr:FiAscii:1.0")
+	annotationProcessor("com.github.firmwehr:FiAscii:1.0")
 
 	// Persistent collections
 	implementation("org.javimmutable:javimmutable-collections:3.2.1")
