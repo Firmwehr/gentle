@@ -213,8 +213,7 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		if (scheme.index().isPresent()) {
 			result += readFromStackToTarget(scheme.index().get().box(), "%r9") + "\n";
 		}
-
-		result += "// HERE\n";
+		
 		result += "mov%s %s, %%r10%s".formatted(oldSuffix, resolveAddressingScheme(scheme), newSuffix) + "\n";
 		result += storeFromTargetToStack(movLoadEx.box(), "%r10") + "\n";
 		return result;
