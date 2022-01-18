@@ -16,6 +16,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaDiv;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJcc;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJmp;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoad;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoadEx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStore;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
@@ -188,12 +189,27 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaMovLoad movLoad) {
-		String oldSuffix = movLoad.getSize().getOldRegisterSuffix();
-		String newSuffix = movLoad.getSize().getNewRegisterSuffix();
+		String oldSuffix = movLoad.box().size().getOldRegisterSuffix();
+		String newSuffix = movLoad.box().size().getNewRegisterSuffix();
 		String result = "";
 		result += readFromStackToTarget(movLoad.getAddress().box(), "%r8") + "\n";
 		result += "mov%s (%%r8), %%r9%s".formatted(oldSuffix, newSuffix) + "\n";
 		result += storeFromTargetToStack(movLoad.box(), "%r9") + "\n";
+		return result;
+	}
+
+	@Override
+	public String visit(IkeaMovLoadEx movLoadEx) {
+		String oldSuffix = movLoadEx.box().size().getOldRegisterSuffix();
+		String newSuffix = movLoadEx.box().size().getNewRegisterSuffix();
+		String result = "";
+		result += readFromStackToTarget(movLoadEx.getBase().box(), "%r8") + "\n";
+		result += readFromStackToTarget(movLoadEx.getIndex().box(), "%r9") + "\n";
+
+		result +=
+			"mov%s %s(%%r8, %%r9, %s), %%r10%s".formatted(oldSuffix, movLoadEx.getDisplacement(), movLoadEx.getScale(),
+				newSuffix) + "\n";
+		result += storeFromTargetToStack(movLoadEx.box(), "%r10") + "\n";
 		return result;
 	}
 

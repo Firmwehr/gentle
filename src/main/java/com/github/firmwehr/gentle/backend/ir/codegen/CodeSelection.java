@@ -18,6 +18,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaDiv;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJcc;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJmp;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoad;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoadEx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStore;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
@@ -73,11 +74,14 @@ public class CodeSelection extends NodeVisitor.Default {
 	private final Map<Block, IkeaBløck> blocks;
 	private final Map<Block, List<Phi>> phiBär;
 	private final Map<Node, IkeaNode> nodes;
+
 	private final Graph graph;
+	private final CodePreselection preselection;
 	private int regCount;
 
-	public CodeSelection(Graph graph) {
+	public CodeSelection(Graph graph, CodePreselection preselection) {
 		this.graph = graph;
+		this.preselection = preselection;
 		this.blocks = new HashMap<>();
 		this.phiBär = new HashMap<>();
 		this.nodes = new HashMap<>();
@@ -155,6 +159,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Add node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaAdd ikeaAdd = new IkeaAdd(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
 		nodes.put(node, ikeaAdd);
@@ -190,6 +199,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Call node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		List<IkeaNode> arguments = Util.predsStream(node)
 			.filter(it -> !it.getMode().equals(Mode.getM()))
@@ -208,6 +222,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Cmp node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaNode left = nodes.get(node.getLeft());
 		IkeaNode right = nodes.get(node.getRight());
@@ -226,6 +245,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Cond node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		List<Node> nodes = Util.outsStream(node).toList();
 		Node trueProj = ((Proj) nodes.get(0)).getNum() == Cond.pnTrue ? nodes.get(0) : nodes.get(1);
@@ -250,6 +274,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Const node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaImmediate box = new IkeaImmediate(node.getTarval(), IkeaRegisterSize.forMode(node.getMode()));
 		IkeaConst ikeaConst = new IkeaConst(box, node);
@@ -259,6 +288,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Conv node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaRegisterSize sourceSize = IkeaRegisterSize.forMode(node.getOp().getMode());
 		IkeaRegisterSize targetSize = IkeaRegisterSize.forMode(node.getMode());
@@ -269,6 +303,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Div node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		// @formatter:off
 		IkeaDiv ikeaDiv = new IkeaDiv(
@@ -286,6 +325,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Jmp node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		for (BackEdges.Edge edge : BackEdges.getOuts(node)) {
 			if (edge.node instanceof Block targetBlock) {
@@ -299,6 +343,24 @@ public class CodeSelection extends NodeVisitor.Default {
 	@Override
 	public void visit(Load node) {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
+
+		var maybeScheme = preselection.scheme(node);
+		if (maybeScheme.isPresent()) {
+			var scheme = maybeScheme.get();
+			var base = nodes.get(scheme.base());
+			var index = nodes.get(scheme.index());
+
+			var mode = node.getLoadMode();
+			IkeaMovLoadEx mov =
+				new IkeaMovLoadEx(nextRegister(mode), base, index, scheme.scale(), scheme.displacement(), node);
+			nodes.put(node, mov);
+			block.nodes().add(mov);
+		}
+		
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		Mode mode = node.getLoadMode();
 		IkeaMovLoad ikeaMovLoad =
 			new IkeaMovLoad(nextRegister(mode), nodes.get(node.getPtr()), IkeaRegisterSize.forMode(mode), node);
@@ -308,6 +370,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Minus node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaNeg ikeaNeg = new IkeaNeg(nextRegister(node), nodes.get(node.getOp()), node);
 		nodes.put(node, ikeaNeg);
@@ -316,6 +383,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Mod node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		// @formatter:off
 		IkeaDiv ikeaDiv = new IkeaDiv(
@@ -333,6 +405,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Mul node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaMul ikeaMul = new IkeaMul(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
 		nodes.put(node, ikeaMul);
@@ -341,6 +418,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Proj node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		if (node.getMode().equals(Mode.getM()) || node.getMode().equals(Mode.getX()) ||
 			node.getPred() instanceof Start || node.getPred() instanceof Call) {
 			return;
@@ -361,6 +443,8 @@ public class CodeSelection extends NodeVisitor.Default {
 	}
 
 	private void visitArgument(Proj proj) {
+		// no need to check for replaced node since caller will already check for us
+
 		IkeaBløck block = blocks.get((Block) proj.getBlock());
 		IkeaVirtualRegister box = new IkeaVirtualRegister(proj.getNum(), IkeaRegisterSize.forMode(proj.getMode()));
 		IkeaArgNode ikeaArgNode = new IkeaArgNode(box, proj);
@@ -370,6 +454,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Return node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaRet ikeaRet = new IkeaRet(
 			Util.predsStream(node).filter(n -> !n.getMode().equals(Mode.getM())).findFirst().map(nodes::get), node);
@@ -379,6 +468,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Store node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaRegisterSize size = IkeaRegisterSize.forMode(node.getValue().getMode());
 		IkeaMovStore ikeaMovStore = new IkeaMovStore(nodes.get(node.getValue()), nodes.get(node.getPtr()), size, node);
@@ -388,6 +482,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Sub node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaSub ikeaSub = new IkeaSub(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
 		nodes.put(node, ikeaSub);
@@ -396,6 +495,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Unknown node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaRegisterSize size = IkeaRegisterSize.forMode(node.getMode());
 		IkeaImmediate immediate = new IkeaImmediate(node.getMode().getNull(), size);

@@ -1,6 +1,8 @@
 package com.github.firmwehr.gentle;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
+import com.github.firmwehr.gentle.backend.ir.codegen.CodePreselection;
+import com.github.firmwehr.gentle.backend.ir.codegen.CodePreselectionMatcher;
 import com.github.firmwehr.gentle.backend.ir.codegen.CodeSelection;
 import com.github.firmwehr.gentle.backend.ir.visit.DjungelskogVisitor;
 import com.github.firmwehr.gentle.cli.CommandArguments;
@@ -179,12 +181,6 @@ public class GentleCompiler {
 			DebugStore debugStore = new DebugStore(source);
 			List<Graph> graphs = new FirmBuilder().convert(program, debugStore);
 
-
-			var codePreselection = CodePreselection.arithmeticOptimization();
-			for (var graph : graphs) {
-				codePreselection.optimize(graph);
-			}
-
 			// generate matching filename for input and call backend handler
 			String assemblyFilename = FilenameUtils.removeExtension(path.getFileName().toString()) + ".s";
 			Path assemblyFile = path.resolveSibling(assemblyFilename);
@@ -213,7 +209,21 @@ public class GentleCompiler {
 
 		Files.deleteIfExists(assemblyFile);
 		for (Graph graph : firm.Program.getGraphs()) {
-			CodeSelection codeSelection = new CodeSelection(graph);
+			CodePreselection codePreselection = new CodePreselectionMatcher(graph);
+			/*
+			codePreselection = new CodePreselection() {
+				@Override
+				public Optional<CodePreselectionMatcher.AddressingScheme> scheme(Node n) {
+					return Optional.empty();
+				}
+
+				@Override
+				public boolean hasBeenReplaced(Node n) {
+					return false;
+				}
+			};*/
+
+			CodeSelection codeSelection = new CodeSelection(graph, codePreselection);
 			List<IkeaBløck> blocks = codeSelection.convertBlocks();
 			DjungelskogVisitor visitor = new DjungelskogVisitor(debugStore);
 			String res = visitor.visit(graph, blocks);

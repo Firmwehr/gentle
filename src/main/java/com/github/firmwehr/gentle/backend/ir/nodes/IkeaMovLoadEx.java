@@ -9,16 +9,37 @@ import firm.nodes.Node;
 import java.util.List;
 
 public class IkeaMovLoadEx implements IkeaNode {
-	private final IkeaNode address;
-	private final IkeaBøx.IkeaRegisterSize size;
+	private final IkeaNode base;
+	private final IkeaNode index;
+	private final int scale;
+	private final long displacement;
+
 	private final Load node;
 	private IkeaBøx box;
 
-	public IkeaMovLoadEx(IkeaBøx box, IkeaNode address, IkeaBøx.IkeaRegisterSize size, Load node) {
+	public IkeaMovLoadEx(IkeaBøx box, IkeaNode base, IkeaNode index, int scale, long displacement, Load node) {
 		this.box = box;
-		this.address = address;
-		this.size = size;
+		this.base = base;
+		this.index = index;
+		this.scale = scale;
+		this.displacement = displacement;
 		this.node = node;
+	}
+
+	public IkeaNode getBase() {
+		return base;
+	}
+
+	public IkeaNode getIndex() {
+		return index;
+	}
+
+	public int getScale() {
+		return scale;
+	}
+
+	public long getDisplacement() {
+		return displacement;
 	}
 
 	@Override
@@ -28,15 +49,7 @@ public class IkeaMovLoadEx implements IkeaNode {
 
 	@Override
 	public List<IkeaNode> parents() {
-		return List.of(address);
-	}
-
-	public IkeaNode getAddress() {
-		return address;
-	}
-
-	public IkeaBøx.IkeaRegisterSize getSize() {
-		return size;
+		return List.of(base, index);
 	}
 
 	@Override

@@ -35,10 +35,6 @@ public class IkeaMovLoad implements IkeaNode {
 		return address;
 	}
 
-	public IkeaRegisterSize getSize() {
-		return size;
-	}
-
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
 		return visitor.visit(this);
