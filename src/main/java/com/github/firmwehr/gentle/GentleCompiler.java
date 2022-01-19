@@ -61,6 +61,7 @@ public class GentleCompiler {
 			UserOutput.outputMessage(e.toString());
 			//noinspection UseOfSystemOutOrSystemErr
 			e.printStackTrace(System.out);
+			System.exit(1);
 		}
 
 		System.exit(0);
