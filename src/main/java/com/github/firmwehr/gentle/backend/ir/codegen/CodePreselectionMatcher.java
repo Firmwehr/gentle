@@ -14,8 +14,10 @@ import com.github.firmwehr.gentle.util.Pair;
 import firm.BackEdges;
 import firm.Graph;
 import firm.nodes.Const;
+import firm.nodes.Load;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
+import firm.nodes.Store;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -201,7 +203,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                       └──────────┬─────────────┘
 		                                  │
 		                            ┌─────▼─────────────┐
-		                            │  terminator: Load │
+		                            │  terminator: *    │
 		                            └───────────────────┘
 		""")
 	public static Optional<MatchBaseIndex.Match> matchBaseIndex(Node node) {
@@ -229,7 +231,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                       └──────────┬─────────────┘
 		                                  │
 		                            ┌─────▼─────────────┐
-		                            │  terminator: Load │
+		                            │  terminator: *    │
 		                            └───────────────────┘
 		""")
 	public static Optional<MatchBaseDisplacement.Match> matchBaseDisplacement(Node node) {
@@ -249,8 +251,8 @@ public class CodePreselectionMatcher implements CodePreselection {
 		│  index: *   │     │ scale: Const │  │  base: *   │   │ displacement: Const  │
 		└────┬────────┘     └──────┬───────┘  └──────┬─────┘   └──────┬───────────────┘
 		     │                     │                 │                │
-		     │                     │                 │                │
-		     └──────────┬──────────┘                 └───────┬────────┘        When you hope no one noticed
+		     │                     │                 │                │        When everyone is writing code
+		     └──────────┬──────────┘                 └───────┬────────┘        while you are creating ASCII art
 		                │                                    │                 ⣿⣿⣿⣿⣿⣿⡿⣟⠻⠯⠭⠉⠛⠋⠉⠉⠛⠻⢿⣿⣿⣿⣿⣿⣿
 		                │                                    │                 ⣿⣿⣿⣿⡽⠚⠉⠀⠀⠀⠀⠀⠀⠀⠀⣀⣀⣀⠀⠈⠙⢿⣿⣿⣿⣿
 		                │           Yes, I build it          │                 ⣿⣿⠏⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⣿⣿⣷⣦⡀⠶⣿⣿⣿⣿
@@ -271,7 +273,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                                  └──────────┬─────────────┘
 		                                             │
 		                                   ┌─────────▼─────────┐
-		                                   │ terminator: Load  │
+		                                   │ terminator: *     │
 		                                   └───────────────────┘
 			""")
 	public static Optional<MatchBaseIndexScaleDisplacement0.Match> matchBaseIndexScaleDisplacement0(Node node) {
@@ -311,7 +313,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                                  │
 		      Or this might be const      │
 		            ┌────────┐    ┌───────▼─────┐
-		            │  y: *  │    │ *add1: Add  │
+		            │  y: *  │    │ *add1: Add  │            Const check is done in code
 		            └────┬───┘    └───────┬─────┘
 		                 │                │
 		                 └───────┬────────┘
@@ -323,7 +325,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                         └──────────┬─────────────┘
 		                                    │
 		                          ┌─────────▼─────────┐
-		                          │ terminator: Load  │
+		                          │ terminator: *     │
 		                          └───────────────────┘
 		    """)
 	public static Optional<MatchBaseIndexScaleDisplacement1.Match> matchBaseIndexScaleDisplacement1(Node node) {
@@ -376,7 +378,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                                 └──────────┬─────────────┘
 		                                            │
 		                                  ┌─────────▼─────────┐
-		                                  │ terminator: Load  │
+		                                  │ terminator: *     │
 		                                  └───────────────────┘
 		""")
 	public static Optional<MatchBaseIndexDisplacement0.Match> matchBaseIndexDisplacement0(Node node) {
@@ -416,7 +418,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                                 └──────────┬─────────────┘
 		                                            │
 		                                  ┌─────────▼─────────┐
-		                                  │ terminator: Load  │
+		                                  │ terminator: *     │
 		                                  └───────────────────┘
 		""")
 	public static Optional<MatchBaseIndexDisplacement1.Match> matchBaseIndexDisplacement1(Node node) {
@@ -455,7 +457,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                       └──────────┬─────────────┘
 		                                  │
 		                            ┌─────▼─────────────┐
-		                            │ terminator: Load  │
+		                            │ terminator: *     │
 		                            └───────────────────┘
 		""")
 	public static Optional<MatchBaseIndexScale.Match> matchBaseIndexScale(Node node) {
@@ -539,6 +541,23 @@ public class CodePreselectionMatcher implements CodePreselection {
 			var maybeMatch = matcher.apply(node);
 			return maybeMatch.flatMap(matcher -> {
 				var match = maybeMatch.get();
+
+				/* fiascii always anchors it's matches on the root node (node with no incoming edges in pattern)
+				 * for all patterns in this class, this is the terminating op which must either be a store or load
+				 *
+				 * we didn't enforce this in the pattern, so we don't have to generate duplicated patterns, which
+				 * would result in a lot of wasted time
+				 *
+				 * so do the check here in code
+				 */
+				if (!(node instanceof Load) && !(node instanceof Store)) {
+					if (LOGGER.isDebugEnabled()) {
+						var graph = getGraphFromMatch(match);
+						LOGGER.debug("match [%s] in graph %s did not end in load/store op: %s", name, graph, match);
+					}
+					return Optional.empty();
+				}
+
 				var scheme = handler.apply(match);
 
 				// check if marked node has already been marked by previous match
