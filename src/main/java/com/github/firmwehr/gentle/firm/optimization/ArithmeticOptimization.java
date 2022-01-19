@@ -126,7 +126,7 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 
 	private Optional<Node> constructFastMod(ModByConstPattern.Match match) {
 		int divisor = match.value().getTarval().asInt();
-		Node block = match.mem().getBlock();
+		Node block = match.mod().getBlock();
 		Optional<Node> replacementOpt = constructFastModDivCommon(divisor, block, match.other());
 		if (replacementOpt.isEmpty()) {
 			return replacementOpt;
