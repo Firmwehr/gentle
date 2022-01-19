@@ -18,7 +18,8 @@ public record BoxScheme(
 	public static BoxScheme fromAddressingScheme(
 		CodePreselectionMatcher.AddressingScheme scheme, Function<Node, IkeaNode> mapper
 	) {
-		return new BoxScheme(scheme.base().map(mapper), scheme.index().map(mapper), scheme.scale(),
-			(int) /* code selection already checked size of displacement */ scheme.displacement());
+		// int casts are safe, preselection already checked them
+		return new BoxScheme(scheme.base().map(mapper), scheme.index().map(mapper), (int) scheme.scale(),
+			(int) scheme.displacement());
 	}
 }

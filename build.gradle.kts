@@ -90,9 +90,6 @@ dependencies {
 	implementation("com.github.firmwehr:FiAscii:188d11fdb4")
 	annotationProcessor("com.github.firmwehr:FiAscii:188d11fdb4")
 
-	//implementation("com.github.firmwehr:FiAscii:1.0")
-	//annotationProcessor("com.github.firmwehr:FiAscii:1.0")
-
 	// Persistent collections
 	implementation("org.javimmutable:javimmutable-collections:3.2.1")
 	// https://mvnrepository.com/artifact/net.java.dev.jna/jna
