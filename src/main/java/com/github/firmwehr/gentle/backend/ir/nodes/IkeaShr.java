@@ -2,7 +2,6 @@ package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
-import firm.nodes.Add;
 import firm.nodes.Node;
 import firm.nodes.Shr;
 

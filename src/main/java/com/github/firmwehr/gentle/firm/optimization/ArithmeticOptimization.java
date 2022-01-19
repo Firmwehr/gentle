@@ -16,7 +16,6 @@ import com.github.firmwehr.fiascii.generated.SubtractZeroPattern;
 import com.github.firmwehr.fiascii.generated.TimesNegOnePattern;
 import com.github.firmwehr.fiascii.generated.TimesOnePattern;
 import com.github.firmwehr.fiascii.generated.TimesZeroPattern;
-import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.Maths;
