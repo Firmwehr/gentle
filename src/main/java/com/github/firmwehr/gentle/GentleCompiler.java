@@ -7,6 +7,7 @@ import com.github.firmwehr.gentle.backend.ir.codegen.CodeSelection;
 import com.github.firmwehr.gentle.backend.ir.visit.DjungelskogVisitor;
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandDispatcher;
+import com.github.firmwehr.gentle.cli.CompilerArguments;
 import com.github.firmwehr.gentle.debug.DebugStore;
 import com.github.firmwehr.gentle.firm.FirmJlsFixup;
 import com.github.firmwehr.gentle.firm.construction.FirmBuilder;
@@ -211,7 +212,15 @@ public class GentleCompiler {
 
 		int preselectionCount = 0;
 		for (Graph graph : firm.Program.getGraphs()) {
-			CodePreselection codePreselection = new CodePreselectionMatcher(graph);
+
+			CodePreselection codePreselection;
+			if (CompilerArguments.get().optimizerLevel().orElse(1) > 0 &&
+				!CompilerArguments.get().noAdvancedCodeSelection()) {
+				codePreselection = new CodePreselectionMatcher(graph);
+			} else {
+				codePreselection = new CodePreselection.Dummy();
+			}
+
 			preselectionCount += codePreselection.replacedSubtrees();
 
 			CodeSelection codeSelection = new CodeSelection(graph, codePreselection);
@@ -233,7 +242,6 @@ public class GentleCompiler {
 
 		String file = assemblyFile.toString();
 		Backend.createAssembler(file, assemblyFile.getFileName().toString());
-		// TODO: move to compileCommand, once gentle backend can generate working assembler files
 		new ExternalLinker().link(assemblyFile, RuntimeAbi.AMD64_SYSTEMV_ABI);
 	}
 

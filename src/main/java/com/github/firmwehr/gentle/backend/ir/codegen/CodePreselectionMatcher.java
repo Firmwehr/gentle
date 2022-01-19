@@ -173,7 +173,6 @@ public class CodePreselectionMatcher implements CodePreselection {
 		return total;
 	}
 
-
 	private void visit(Store n) {
 		visitFoldable(n, n.getPred(1));
 	}
