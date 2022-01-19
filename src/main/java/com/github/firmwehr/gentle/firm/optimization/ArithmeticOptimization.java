@@ -126,12 +126,16 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 
 	private Optional<Node> constructFastMod(ModByConstPattern.Match match) {
 		int divisor = match.value().getTarval().asInt();
+		int absDivisor = Math.abs(divisor);
+		if (absDivisor == 1) { // x % ± 1 is always zero
+			return Optional.of(newConst(0, Mode.getIs()));
+		}
 		Node block = match.mod().getBlock();
-		Optional<Node> replacementOpt = constructFastModDivCommon(divisor, block, match.other());
+		Optional<Node> replacementOpt = constructFastModDivCommon(absDivisor, block, match.other());
 		if (replacementOpt.isEmpty()) {
 			return replacementOpt;
 		}
-		Node replacement = graph.newMul(block, replacementOpt.get(), newConst(divisor, Mode.getIs()));
+		Node replacement = graph.newMul(block, replacementOpt.get(), newConst(absDivisor, Mode.getIs()));
 		replacement = graph.newSub(block, match.other(), replacement);
 		return Optional.of(replacement);
 	}

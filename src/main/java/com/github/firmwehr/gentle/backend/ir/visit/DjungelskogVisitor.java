@@ -328,7 +328,9 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 	public String visit(IkeaShr shr) {
 		String result = "";
 		result += readFromStackToTarget(shr.getLeft().box(), "%r8") + "\n";
-		result += "shrl $%s, %%r8d".formatted(((IkeaImmediate) shr.getRight().box()).immediate().asInt() & 0x1F) + "\n";
+		int shift = ((IkeaImmediate) shr.getRight().box()).immediate().asInt();
+		result += "shr%s $%s, %%r8%s".formatted(shr.box().size().getOldRegisterSuffix(), shift,
+			getRegisterSuffix(shr.box())) + "\n";
 		result += storeFromTargetToStack(shr.box(), "%r8") + "\n";
 		return result;
 	}
@@ -337,7 +339,9 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 	public String visit(IkeaShrs shrs) {
 		String result = "";
 		result += readFromStackToTarget(shrs.getLeft().box(), "%r8") + "\n";
-		result += "sarl $%s, %%r8d".formatted(((IkeaImmediate) shrs.getRight().box()).immediate().asInt() & 0x1F) + "\n";
+		int shift = ((IkeaImmediate) shrs.getRight().box()).immediate().asInt();
+		result += "sar%s $%s, %%r8%s".formatted(shrs.box().size().getOldRegisterSuffix(), shift,
+			getRegisterSuffix(shrs.box())) + "\n";
 		result += storeFromTargetToStack(shrs.box(), "%r8") + "\n";
 		return result;
 	}
