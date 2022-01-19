@@ -1,10 +1,13 @@
 package com.github.firmwehr.gentle;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
+import com.github.firmwehr.gentle.backend.ir.codegen.CodePreselection;
+import com.github.firmwehr.gentle.backend.ir.codegen.CodePreselectionMatcher;
 import com.github.firmwehr.gentle.backend.ir.codegen.CodeSelection;
 import com.github.firmwehr.gentle.backend.ir.visit.DjungelskogVisitor;
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandDispatcher;
+import com.github.firmwehr.gentle.cli.CompilerArguments;
 import com.github.firmwehr.gentle.debug.DebugStore;
 import com.github.firmwehr.gentle.firm.FirmJlsFixup;
 import com.github.firmwehr.gentle.firm.construction.FirmBuilder;
@@ -206,13 +209,28 @@ public class GentleCompiler {
 		LOGGER.info("handing over to gentle backend...");
 
 		Files.deleteIfExists(assemblyFile);
+
+		int preselectionCount = 0;
 		for (Graph graph : firm.Program.getGraphs()) {
-			CodeSelection codeSelection = new CodeSelection(graph);
+
+			CodePreselection codePreselection;
+			if (CompilerArguments.get().optimizerLevel().orElse(1) > 0 &&
+				!CompilerArguments.get().noAdvancedCodeSelection()) {
+				codePreselection = new CodePreselectionMatcher(graph);
+			} else {
+				codePreselection = CodePreselection.DUMMY;
+			}
+
+			preselectionCount += codePreselection.replacedSubtrees();
+
+			CodeSelection codeSelection = new CodeSelection(graph, codePreselection);
 			List<IkeaBløck> blocks = codeSelection.convertBlocks();
 			DjungelskogVisitor visitor = new DjungelskogVisitor(debugStore);
 			String res = visitor.visit(graph, blocks);
 			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
 		}
+
+		LOGGER.info("code preselection matched %s subtrees in total across all graphs", preselectionCount);
 
 		new ExternalLinker().link(assemblyFile, RuntimeAbi.CDECL);
 	}
@@ -224,7 +242,6 @@ public class GentleCompiler {
 
 		String file = assemblyFile.toString();
 		Backend.createAssembler(file, assemblyFile.getFileName().toString());
-		// TODO: move to compileCommand, once gentle backend can generate working assembler files
 		new ExternalLinker().link(assemblyFile, RuntimeAbi.AMD64_SYSTEMV_ABI);
 	}
 

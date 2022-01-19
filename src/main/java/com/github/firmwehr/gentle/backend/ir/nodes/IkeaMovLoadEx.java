@@ -1,24 +1,28 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
+
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
-import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Load;
 import firm.nodes.Node;
 
 import java.util.List;
+import java.util.stream.Stream;
 
-public class IkeaMovLoad implements IkeaNode {
+public class IkeaMovLoadEx implements IkeaNode {
+
 	private IkeaBøx box;
-	private final IkeaNode address;
-	private final IkeaRegisterSize size;
 	private final Load node;
+	private final BoxScheme scheme;
 
-	public IkeaMovLoad(IkeaBøx box, IkeaNode address, IkeaRegisterSize size, Load node) {
+	public IkeaMovLoadEx(IkeaBøx box, Load node, BoxScheme scheme) {
 		this.box = box;
-		this.address = address;
-		this.size = size;
 		this.node = node;
+		this.scheme = scheme;
+	}
+
+	public BoxScheme getScheme() {
+		return scheme;
 	}
 
 	@Override
@@ -28,11 +32,7 @@ public class IkeaMovLoad implements IkeaNode {
 
 	@Override
 	public List<IkeaNode> parents() {
-		return List.of(address);
-	}
-
-	public IkeaNode getAddress() {
-		return address;
+		return Stream.concat(scheme.base().stream(), scheme.index().stream()).toList();
 	}
 
 	@Override
@@ -44,5 +44,4 @@ public class IkeaMovLoad implements IkeaNode {
 	public List<Node> getUnderlyingFirmNodes() {
 		return List.of(node);
 	}
-
 }

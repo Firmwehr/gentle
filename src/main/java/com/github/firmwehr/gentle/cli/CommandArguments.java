@@ -52,6 +52,9 @@ public interface CommandArguments {
 	@Option(names = "-O", description = "sets optimization level. 0 will disable all non-required optimization")
 	Optional<Integer> optimizerLevel();
 
+	@Option(names = "--no-advanced-code-selection", description = "disable advanced x86 codes generation")
+	boolean noAdvancedCodeSelection();
+
 	@Option(names = "--no-constant-folding", description = "do not perform constant folding optimization")
 	boolean noConstantFolding();
 

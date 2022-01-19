@@ -6,6 +6,7 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.IkeaImmediate;
 import com.github.firmwehr.gentle.backend.ir.IkeaVirtualRegister;
+import com.github.firmwehr.gentle.backend.ir.nodes.BoxScheme;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAdd;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaArgNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCall;
@@ -16,8 +17,10 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaDiv;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJcc;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJmp;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoad;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoadEx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStore;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStoreEx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
@@ -188,8 +191,8 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaMovLoad movLoad) {
-		String oldSuffix = movLoad.getSize().getOldRegisterSuffix();
-		String newSuffix = movLoad.getSize().getNewRegisterSuffix();
+		String oldSuffix = movLoad.box().size().getOldRegisterSuffix();
+		String newSuffix = movLoad.box().size().getNewRegisterSuffix();
 		String result = "";
 		result += readFromStackToTarget(movLoad.getAddress().box(), "%r8") + "\n";
 		result += "mov%s (%%r8), %%r9%s".formatted(oldSuffix, newSuffix) + "\n";
@@ -198,8 +201,29 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 	}
 
 	@Override
+	public String visit(IkeaMovLoadEx movLoadEx) {
+		String oldSuffix = movLoadEx.box().size().getOldRegisterSuffix();
+		String newSuffix = movLoadEx.box().size().getNewRegisterSuffix();
+		String result = "";
+
+		var scheme = movLoadEx.getScheme();
+		if (scheme.base().isPresent()) {
+			result += readFromStackToTarget(scheme.base().get().box(), "%r8") + "\n";
+		}
+
+		if (scheme.index().isPresent()) {
+			result += readFromStackToTarget(scheme.index().get().box(), "%r9") + "\n";
+		}
+
+		result += "mov%s %s, %%r10%s".formatted(oldSuffix, resolveAddressingScheme(scheme), newSuffix) + "\n";
+		result += storeFromTargetToStack(movLoadEx.box(), "%r10") + "\n";
+		return result;
+	}
+
+	@Override
 	public String visit(IkeaMovRegister movRegister) {
-		// Always move 64 bit registers, no matter what size we initially stored in them. The upper parts are zeroed
+		// Always move 64 bit registers, no matter what size we initially stored in them. The upper parts are
+		// zeroed
 		// and this will not harm 32 bit registers, but it *will* ensure 64 bit work correctly.
 		String result = "";
 		result += readFromStackToTarget(movRegister.getSource(), "%r8") + "\n";
@@ -218,6 +242,30 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		result += readFromStackToTarget(movStore.getValue().box(), "%r8") + "\n";
 		result += readFromStackToTarget(movStore.getAddress().box(), "%r9") + "\n";
 		result += "mov%s %%r8%s, (%%r9)".formatted(oldSuffix, newSuffix);
+
+		return result;
+	}
+
+	@Override
+	public String visit(IkeaMovStoreEx movStoreEx) {
+		String oldSuffix = movStoreEx.getValue().box().size().getOldRegisterSuffix();
+		String newSuffix = movStoreEx.getValue().box().size().getNewRegisterSuffix();
+
+		String result = "";
+
+		var scheme = movStoreEx.getScheme();
+		if (scheme.base().isPresent()) {
+			result += readFromStackToTarget(scheme.base().get().box(), "%r8") + "\n";
+		}
+
+		if (scheme.index().isPresent()) {
+			result += readFromStackToTarget(scheme.index().get().box(), "%r9") + "\n";
+		}
+
+		// loads value to store
+		result += readFromStackToTarget(movStoreEx.getValue().box(), "%r10") + "\n";
+
+		result += "mov%s %%r10%s, %s".formatted(oldSuffix, newSuffix, resolveAddressingScheme(scheme)) + "\n";
 
 		return result;
 	}
@@ -382,4 +430,30 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		}
 		throw new InternalCompilerException("Git: " + box);
 	}
+
+	private static String resolveAddressingScheme(BoxScheme scheme) {
+		// TODO: consider replacing fixed registers with something better
+		// TODO: replace formatted() calls with string concatenation for sick performance gains
+
+		// sadly, gcc is very picky about what it likes to translate and what it doesn't, so we need spoon feed it
+		if (scheme.base().isPresent()) {
+			final var base = "%r8";
+
+			if (scheme.index().isPresent()) {
+				final var index = "%r9";
+
+				if (scheme.scale() > 0) {
+					return "%s(%s, %s, %s)".formatted(scheme.displacement(), base, index, scheme.scale());
+				}
+
+				return "%s(%s, %s)".formatted(scheme.displacement(), base, index);
+			}
+
+			return "%s(%s)".formatted(scheme.displacement(), base);
+		}
+
+		// the only way we should end up here is with a constant read from zero, so if you hit this, good luck
+		throw new InternalCompilerException("addressing scheme does not map to any assembly instruction");
+	}
+
 }
