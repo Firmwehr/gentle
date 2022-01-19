@@ -208,20 +208,11 @@ public class GentleCompiler {
 		LOGGER.info("handing over to gentle backend...");
 
 		Files.deleteIfExists(assemblyFile);
+
+		int preselectionCount = 0;
 		for (Graph graph : firm.Program.getGraphs()) {
 			CodePreselection codePreselection = new CodePreselectionMatcher(graph);
-			/*
-			codePreselection = new CodePreselection() {
-				@Override
-				public Optional<CodePreselectionMatcher.AddressingScheme> scheme(Node n) {
-					return Optional.empty();
-				}
-
-				@Override
-				public boolean hasBeenReplaced(Node n) {
-					return false;
-				}
-			};*/
+			preselectionCount += codePreselection.replacedSubtrees();
 
 			CodeSelection codeSelection = new CodeSelection(graph, codePreselection);
 			List<IkeaBløck> blocks = codeSelection.convertBlocks();
@@ -230,9 +221,11 @@ public class GentleCompiler {
 			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
 		}
 
+		LOGGER.info("code preselection matched %s subtrees in total across all graphs", preselectionCount);
+
 		new ExternalLinker().link(assemblyFile, RuntimeAbi.CDECL);
 	}
-
+	
 	private static void generateWithFirmBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
 		throws IOException {
 		graphs.forEach(FirmJlsFixup::fix);

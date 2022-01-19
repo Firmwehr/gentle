@@ -4,13 +4,16 @@ import com.github.firmwehr.fiascii.FiAscii;
 import com.github.firmwehr.fiascii.asciiart.generating.BaseMatch;
 import com.github.firmwehr.fiascii.generated.MatchBaseDisplacement;
 import com.github.firmwehr.fiascii.generated.MatchBaseIndex;
-import com.github.firmwehr.fiascii.generated.MatchBaseIndexDisplacement;
+import com.github.firmwehr.fiascii.generated.MatchBaseIndexDisplacement0;
+import com.github.firmwehr.fiascii.generated.MatchBaseIndexDisplacement1;
 import com.github.firmwehr.fiascii.generated.MatchBaseIndexScale;
 import com.github.firmwehr.fiascii.generated.MatchBaseIndexScaleDisplacement0;
+import com.github.firmwehr.fiascii.generated.MatchBaseIndexScaleDisplacement1;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.Pair;
 import firm.BackEdges;
 import firm.Graph;
+import firm.nodes.Const;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 
@@ -23,7 +26,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -58,6 +60,18 @@ public class CodePreselectionMatcher implements CodePreselection {
 				CodePreselectionMatcher::matchBaseIndexScaleDisplacement0,
 				CodePreselectionMatcher::handleMatchBaseIndexScaleDisplacement0),
 			new MatchHandler<>(
+				"base + (index * scale) + displacement (variant 1)",
+				CodePreselectionMatcher::matchBaseIndexScaleDisplacement1,
+				CodePreselectionMatcher::handleMatchBaseIndexScaleDisplacement1),
+			new MatchHandler<>(
+				"base + (index) + displacement (variant 0)",
+				CodePreselectionMatcher::matchBaseIndexDisplacement0,
+				CodePreselectionMatcher::handleMatchBaseIndexDisplacement0),
+			new MatchHandler<>(
+				"base + (index) + displacement (variant 1)",
+				CodePreselectionMatcher::matchBaseIndexDisplacement1,
+				CodePreselectionMatcher::handleMatchBaseIndexDisplacement1),
+			new MatchHandler<>(
 				"base + (index * scale)",
 				CodePreselectionMatcher::matchBaseIndexScale,
 				CodePreselectionMatcher::handleMatchBaseIndexScale),
@@ -87,6 +101,11 @@ public class CodePreselectionMatcher implements CodePreselection {
 	 */
 	private final Set<Node> replaced = new HashSet<>();
 
+	/**
+	 * Number of replaced (matched) subtrees across all addressing schemes.
+	 */
+	private int total;
+
 	public CodePreselectionMatcher(Graph graph) {
 		this.graph = graph;
 
@@ -106,10 +125,6 @@ public class CodePreselectionMatcher implements CodePreselection {
 		}
 	}
 
-	public IdentityHashMap<MatchHandler<?>, Integer> getMatchCounter() {
-		return matchCounter;
-	}
-
 	private void performPreselection() {
 		BackEdges.enable(graph);
 		graph.walk(new NodeVisitor.Default() {
@@ -119,8 +134,6 @@ public class CodePreselectionMatcher implements CodePreselection {
 			}
 		});
 		BackEdges.disable(graph);
-
-		LOGGER.info("found %s address scheme opportunities covering %s nodes", groupedNodes.size(), replaced.size());
 	}
 
 	/**
@@ -147,6 +160,11 @@ public class CodePreselectionMatcher implements CodePreselection {
 		return replaced.contains(n);
 	}
 
+	@Override
+	public int replacedSubtrees() {
+		return total;
+	}
+
 	private void defaultVisit(Node n) {
 
 		for (var handler : MATCH_HANDLERS) {
@@ -160,6 +178,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 
 				//noinspection ConstantConditions
 				matchCounter.compute(handler, (matchHandler, integer) -> integer + 1);
+				total++;
 			}
 		}
 	}
@@ -182,7 +201,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                       └──────────┬─────────────┘
 		                                  │
 		                            ┌─────▼─────────────┐
-		                            │ *terminator: Load │
+		                            │  terminator: Load │
 		                            └───────────────────┘
 		""")
 	public static Optional<MatchBaseIndex.Match> matchBaseIndex(Node node) {
@@ -210,7 +229,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                       └──────────┬─────────────┘
 		                                  │
 		                            ┌─────▼─────────────┐
-		                            │ *terminator: Load │
+		                            │  terminator: Load │
 		                            └───────────────────┘
 		""")
 	public static Optional<MatchBaseDisplacement.Match> matchBaseDisplacement(Node node) {
@@ -223,7 +242,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 	}
 
 	@FiAscii("""
-			One of three variants (Variant 0)
+			Variant 0
 			We assume that constant folding has folded away all constant base variables
 			
 		┌─────────────┐     ┌──────────────┐  ┌────────────┐   ┌──────────────────────┐
@@ -265,7 +284,72 @@ public class CodePreselectionMatcher implements CodePreselection {
 	}
 
 	@FiAscii("""
-		base + index + displacement
+		    Variant 1
+		    This pattern checks for a different graph structure that performs the same calculation as variant 0
+		    however, both the base and displacment could be swapped.
+					
+		    To reduce the amount of required graph matching calls, we don't restrict the pattern to a Const node but
+		    instead perform the check in code by ourself
+					
+		┌─────────────┐     ┌──────────────┐
+		│  index: *   │     │ scale: Const │
+		└────┬────────┘     └──────┬───────┘
+		     │                     │
+		     │                     │
+		     └──────────┬──────────┘
+		                │
+		                │
+		                │
+		          ┌─────▼─────┐                       ┌─────────────┐
+		          │ *mul: Mul │                       │   x: *      │ This might be Const
+		          └─────┬─────┘                       └──────┬──────┘
+		                │                                    │
+		                │                                    │
+		                └─────────────────┬──────────────────┘
+		                                  │
+		                                  │
+		                                  │
+		      Or this might be const      │
+		            ┌────────┐    ┌───────▼─────┐
+		            │  y: *  │    │ *add1: Add  │
+		            └────┬───┘    └───────┬─────┘
+		                 │                │
+		                 └───────┬────────┘
+		                         │
+		                 ┌───────▼─────┐           ┌────────────────┐
+		                 │ *add0: Add  │           │mem: * ; +memory│
+		                 └───────┬─────┘           └──────┬─────────┘
+		                         │                        │
+		                         └──────────┬─────────────┘
+		                                    │
+		                          ┌─────────▼─────────┐
+		                          │ terminator: Load  │
+		                          └───────────────────┘
+		    """)
+	public static Optional<MatchBaseIndexScaleDisplacement1.Match> matchBaseIndexScaleDisplacement1(Node node) {
+		var match = MatchBaseIndexScaleDisplacement1.match(node);
+
+		return match.filter(m -> {
+			// for this pattern to work either x xor y needs to be const
+			return m.x() instanceof Const && !(m.y() instanceof Const) ||
+				m.y() instanceof Const && !(m.x() instanceof Const);
+		});
+	}
+
+	public static AddressingScheme handleMatchBaseIndexScaleDisplacement1(MatchBaseIndexScaleDisplacement1.Match match) {
+		/*
+		 * we have no way of carrying over the meaning of x and y, so we have to repeat the check, knowing that it's
+		 * one or the other
+		 */
+		var base = match.x() instanceof Const ? match.y() : match.x();
+		Const displacement = (Const) (match.x() instanceof Const ? match.x() : match.y());
+
+		return new AddressingScheme(Optional.of(base), Optional.of(match.index()), match.scale().getTarval().asLong(),
+			displacement.getTarval().asLong());
+	}
+
+	@FiAscii("""
+		base + index + displacement (variant 0)
 		                                     ┌────────────┐   ┌──────────────────────┐
 		                                     │  base: *   │   │ displacement: Const  │
 		                                     └──────┬─────┘   └──────┬───────────────┘
@@ -295,11 +379,51 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                                  │ terminator: Load  │
 		                                  └───────────────────┘
 		""")
-	public static Optional<MatchBaseIndexDisplacement.Match> matchBaseIndexDisplacement(Node node) {
-		return MatchBaseIndexDisplacement.match(node);
+	public static Optional<MatchBaseIndexDisplacement0.Match> matchBaseIndexDisplacement0(Node node) {
+		return MatchBaseIndexDisplacement0.match(node);
 	}
 
-	public static AddressingScheme handleMatchBaseIndexDisplacement(MatchBaseIndexDisplacement.Match match) {
+	public static AddressingScheme handleMatchBaseIndexDisplacement0(MatchBaseIndexDisplacement0.Match match) {
+		return new AddressingScheme(Optional.of(match.base()), Optional.of(match.index()), 0,
+			match.displacement().getTarval().asLong());
+	}
+
+	@FiAscii("""
+		base + index + displacement (variant 1)
+		                                     ┌────────────┐   ┌───────────┐
+		                                     │  base: *   │   │ index: *  │
+		                                     └──────┬─────┘   └──────┬────┘
+		                                            │                │
+		                                            │                │
+		                                            └───────┬────────┘
+		                                                    │
+		                                                    │
+		          ┌────────────────────────┐                │
+		          │  displacement: Const   │         ┌──────▼──────┐
+		          └────┬───────────────────┘         │ *add1: Add  │
+		               │                             └──────┬──────┘
+		               │                                    │
+		               │                                    │
+		               └─────────────────┬──────────────────┘
+		                                 │
+		                                 │
+		                                 │
+		                                 │
+		                         ┌───────▼─────┐           ┌────────────────┐
+		                         │ *add0: Add  │           │mem: * ; +memory│
+		                         └───────┬─────┘           └──────┬─────────┘
+		                                 │                        │
+		                                 └──────────┬─────────────┘
+		                                            │
+		                                  ┌─────────▼─────────┐
+		                                  │ terminator: Load  │
+		                                  └───────────────────┘
+		""")
+	public static Optional<MatchBaseIndexDisplacement1.Match> matchBaseIndexDisplacement1(Node node) {
+		return MatchBaseIndexDisplacement1.match(node);
+	}
+
+	public static AddressingScheme handleMatchBaseIndexDisplacement1(MatchBaseIndexDisplacement1.Match match) {
 		return new AddressingScheme(Optional.of(match.base()), Optional.of(match.index()), 0,
 			match.displacement().getTarval().asLong());
 	}
@@ -347,18 +471,17 @@ public class CodePreselectionMatcher implements CodePreselection {
 	 * Checks if all marked nodes are free from external dependants. This ensures that we are not going to remove
 	 * operations that other nodes still depend on.
 	 *
-	 * @param matchSupplier A supplied that will provide the methode with all nodes of the matched subtree.
+	 * @param match The match to check.
 	 *
 	 * @return {@code true} if this match is free from external dependants or {@code false} if it isn't.
 	 */
-	private static boolean isFreeFromExternalDependencies(Supplier<Set<Node>> matchSupplier) {
-		var match = matchSupplier.get();
-		for (var n : match) {
+	private static boolean isFreeFromExternalDependencies(BaseMatch match) {
+		for (var n : match.markedNodes()) {
 
 			// back edges for other nodes are only allowed inside match
 			for (BackEdges.Edge edge : BackEdges.getOuts(n)) {
 				var depender = edge.node;
-				if (!match.contains(depender)) {
+				if (!match.matchedNodes().contains(depender)) {
 					return false;
 				}
 			}
@@ -384,6 +507,16 @@ public class CodePreselectionMatcher implements CodePreselection {
 		}
 
 		return true;
+	}
+
+	private static Graph getGraphFromMatch(BaseMatch match) {
+		// cheesy way of getting graph
+		return match.matchedNodes()
+			.stream()
+			.findFirst()
+			.orElseThrow(() -> new IllegalStateException(
+				"tried to retrieve graph from match but match did not even contain any node"))
+			.getGraph();
 	}
 
 	private record MatchHandler<M extends BaseMatch>(
@@ -416,12 +549,27 @@ public class CodePreselectionMatcher implements CodePreselection {
 				}
 
 				// only marked nodes will be folded into addressing scheme, so we only need to check them
-				if (!isFreeFromExternalDependencies(match::markedNodes)) {
-					LOGGER.debug("rejecting match [%s] due to external dependencies: %s", name, match);
+				if (!isFreeFromExternalDependencies(match)) {
+
+					if (LOGGER.isDebugEnabled()) {
+						var graph = getGraphFromMatch(match);
+						LOGGER.debug("reject match [%s] in graph %s due to external dependencies: %s", name, graph,
+							match);
+					}
+
+					// match failed, abort
+					return Optional.empty();
 				}
 
 				// filter out match that can't be represented in x86
-				return isValidAddressingScheme(scheme) ? Optional.of(new Pair<>(scheme, match)) : Optional.empty();
+				if (isValidAddressingScheme(scheme)) {
+					if (LOGGER.isDebugEnabled()) {
+						var graph = getGraphFromMatch(match);
+						LOGGER.debug("found match [%s] in graph %s: %s", name, graph, match);
+					}
+					return Optional.of(new Pair<>(scheme, match));
+				}
+				return Optional.empty();
 			});
 		}
 	}
