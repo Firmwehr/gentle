@@ -218,7 +218,7 @@ public class GentleCompiler {
 				!CompilerArguments.get().noAdvancedCodeSelection()) {
 				codePreselection = new CodePreselectionMatcher(graph);
 			} else {
-				codePreselection = new CodePreselection.Dummy();
+				codePreselection = CodePreselection.DUMMY;
 			}
 
 			preselectionCount += codePreselection.replacedSubtrees();
@@ -234,7 +234,7 @@ public class GentleCompiler {
 
 		new ExternalLinker().link(assemblyFile, RuntimeAbi.CDECL);
 	}
-	
+
 	private static void generateWithFirmBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
 		throws IOException {
 		graphs.forEach(FirmJlsFixup::fix);
