@@ -22,6 +22,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoad;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoadEx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStore;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStoreEx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
@@ -469,14 +470,29 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Store node) {
+		IkeaBløck block = blocks.get((Block) node.getBlock());
+
+		var value = nodes.get(node.getValue());
+
+		var maybeScheme = preselection.scheme(node);
+		if (maybeScheme.isPresent()) {
+			var scheme = maybeScheme.get();
+
+			IkeaMovStoreEx mov = new IkeaMovStoreEx(value, node, BoxScheme.fromAddressingScheme(scheme, nodes::get));
+			nodes.put(node, mov);
+			block.nodes().add(mov);
+
+			return;
+		}
+
 		// skip node if code selection has replaced it with better x86 specific op
 		if (preselection.hasBeenReplaced(node)) {
 			return;
 		}
 
-		IkeaBløck block = blocks.get((Block) node.getBlock());
+
 		IkeaRegisterSize size = IkeaRegisterSize.forMode(node.getValue().getMode());
-		IkeaMovStore ikeaMovStore = new IkeaMovStore(nodes.get(node.getValue()), nodes.get(node.getPtr()), size, node);
+		IkeaMovStore ikeaMovStore = new IkeaMovStore(value, nodes.get(node.getPtr()), size, node);
 		nodes.put(node, ikeaMovStore);
 		block.nodes().add(ikeaMovStore);
 	}

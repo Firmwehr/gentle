@@ -9,6 +9,7 @@ import com.github.firmwehr.fiascii.generated.MatchBaseIndexDisplacement1;
 import com.github.firmwehr.fiascii.generated.MatchBaseIndexScale;
 import com.github.firmwehr.fiascii.generated.MatchBaseIndexScaleDisplacement0;
 import com.github.firmwehr.fiascii.generated.MatchBaseIndexScaleDisplacement1;
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.Pair;
 import firm.BackEdges;
@@ -131,8 +132,13 @@ public class CodePreselectionMatcher implements CodePreselection {
 		BackEdges.enable(graph);
 		graph.walk(new NodeVisitor.Default() {
 			@Override
-			public void defaultVisit(Node n) {
-				CodePreselectionMatcher.this.defaultVisit(n);
+			public void visit(Store n) {
+				CodePreselectionMatcher.this.visit(n);
+			}
+
+			@Override
+			public void visit(Load n) {
+				CodePreselectionMatcher.this.visit(n);
 			}
 		});
 		BackEdges.disable(graph);
@@ -167,15 +173,29 @@ public class CodePreselectionMatcher implements CodePreselection {
 		return total;
 	}
 
-	private void defaultVisit(Node n) {
 
+	private void visit(Store n) {
+		visitFoldable(n, n.getPred(1));
+	}
+
+	private void visit(Load n) {
+		visitFoldable(n, n.getPred(1));
+	}
+
+	/**
+	 * Performs preselection analysis on given terminator for the given subtree.
+	 *
+	 * @param terminator The receiving terminator that supports code folding.
+	 * @param location The location subtree of the given terminator. This is the node that address calculation is
+	 * 	depending on.
+	 */
+	private void visitFoldable(Node terminator, Node location) {
 		for (var handler : MATCH_HANDLERS) {
-
-			var pair = handler.analyse(n, replaced);
+			var pair = handler.analyse(terminator, location, replaced);
 			if (pair.isPresent()) {
 				var addr = pair.get().first();
 				var match = pair.get().second();
-				groupedNodes.put(n, addr);
+				groupedNodes.put(terminator, addr);
 				replaced.addAll(match.markedNodes());
 
 				//noinspection ConstantConditions
@@ -184,7 +204,6 @@ public class CodePreselectionMatcher implements CodePreselection {
 			}
 		}
 	}
-
 
 	@FiAscii("""
 		// Common char array indexing (effective scale of 0)
@@ -196,15 +215,9 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                 └──────┬─────────────┘
 		                        │
 		                        │
-		                ┌───────▼─────┐          ┌────────────────┐
-		                │  *add: Add  │          │mem: * ; +memory│
-		                └──────┬──────┘          └──────┬─────────┘
-		                       │                        │
-		                       └──────────┬─────────────┘
-		                                  │
-		                            ┌─────▼─────────────┐
-		                            │  terminator: *    │
-		                            └───────────────────┘
+		                ┌───────▼─────┐
+		                │  *add: Add  │
+		                └─────────────┘
 		""")
 	public static Optional<MatchBaseIndex.Match> matchBaseIndex(Node node) {
 		return MatchBaseIndex.match(node);
@@ -224,15 +237,9 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                 └──────┬─────────────┘
 		                        │
 		                        │
-		                ┌───────▼─────┐          ┌────────────────┐
-		                │  *add: Add  │          │mem: * ; +memory│
-		                └──────┬──────┘          └──────┬─────────┘
-		                       │                        │
-		                       └──────────┬─────────────┘
-		                                  │
-		                            ┌─────▼─────────────┐
-		                            │  terminator: *    │
-		                            └───────────────────┘
+		                ┌───────▼─────┐
+		                │  *add: Add  │
+		                └─────────────┘
 		""")
 	public static Optional<MatchBaseDisplacement.Match> matchBaseDisplacement(Node node) {
 		return MatchBaseDisplacement.match(node);
@@ -266,15 +273,9 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                                  │                                    ⣿⣿⣿⣿⣿⣷⣦⣤⣤⣤⣤⣄⣀⣀⣀⣀⣀⣠⣤⣤⣤⣾⣿⣿⣿
 		                                  │
 		                                  │
-		                          ┌───────▼─────┐           ┌────────────────┐
-		                          │ *add0: Add  │           │mem: * ; +memory│
-		                          └───────┬─────┘           └──────┬─────────┘
-		                                  │                        │
-		                                  └──────────┬─────────────┘
-		                                             │
-		                                   ┌─────────▼─────────┐
-		                                   │ terminator: *     │
-		                                   └───────────────────┘
+		                          ┌───────▼─────┐
+		                          │ *add0: Add  │
+		                          └─────────────┘
 			""")
 	public static Optional<MatchBaseIndexScaleDisplacement0.Match> matchBaseIndexScaleDisplacement0(Node node) {
 		return MatchBaseIndexScaleDisplacement0.match(node);
@@ -318,15 +319,9 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                 │                │
 		                 └───────┬────────┘
 		                         │
-		                 ┌───────▼─────┐           ┌────────────────┐
-		                 │ *add0: Add  │           │mem: * ; +memory│
-		                 └───────┬─────┘           └──────┬─────────┘
-		                         │                        │
-		                         └──────────┬─────────────┘
-		                                    │
-		                          ┌─────────▼─────────┐
-		                          │ terminator: *     │
-		                          └───────────────────┘
+		                 ┌───────▼─────┐
+		                 │ *add0: Add  │
+		                 └─────────────┘
 		    """)
 	public static Optional<MatchBaseIndexScaleDisplacement1.Match> matchBaseIndexScaleDisplacement1(Node node) {
 		var match = MatchBaseIndexScaleDisplacement1.match(node);
@@ -359,7 +354,6 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                                            │                │
 		                                            └───────┬────────┘
 		                                                    │
-		                                                    │
 		          ┌─────────────┐                           │
 		          │  index: *   │                    ┌──────▼──────┐
 		          └────┬────────┘                    │ *add1: Add  │
@@ -369,17 +363,9 @@ public class CodePreselectionMatcher implements CodePreselection {
 		               └─────────────────┬──────────────────┘
 		                                 │
 		                                 │
-		                                 │
-		                                 │
-		                         ┌───────▼─────┐           ┌────────────────┐
-		                         │ *add0: Add  │           │mem: * ; +memory│
-		                         └───────┬─────┘           └──────┬─────────┘
-		                                 │                        │
-		                                 └──────────┬─────────────┘
-		                                            │
-		                                  ┌─────────▼─────────┐
-		                                  │ terminator: *     │
-		                                  └───────────────────┘
+		                         ┌───────▼─────┐
+		                         │ *add0: Add  │
+		                         └─────────────┘
 		""")
 	public static Optional<MatchBaseIndexDisplacement0.Match> matchBaseIndexDisplacement0(Node node) {
 		return MatchBaseIndexDisplacement0.match(node);
@@ -411,15 +397,9 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                                 │
 		                                 │
 		                                 │
-		                         ┌───────▼─────┐           ┌────────────────┐
-		                         │ *add0: Add  │           │mem: * ; +memory│
-		                         └───────┬─────┘           └──────┬─────────┘
-		                                 │                        │
-		                                 └──────────┬─────────────┘
-		                                            │
-		                                  ┌─────────▼─────────┐
-		                                  │ terminator: *     │
-		                                  └───────────────────┘
+		                         ┌───────▼─────┐
+		                         │ *add0: Add  │
+		                         └─────────────┘
 		""")
 	public static Optional<MatchBaseIndexDisplacement1.Match> matchBaseIndexDisplacement1(Node node) {
 		return MatchBaseIndexDisplacement1.match(node);
@@ -450,15 +430,9 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                 └──────┬─────────────┘
 		                        │
 		                        │
-		                ┌───────▼─────┐          ┌────────────────┐
-		                │  *add: Add  │          │mem: * ; +memory│
-		                └──────┬──────┘          └──────┬─────────┘
-		                       │                        │
-		                       └──────────┬─────────────┘
-		                                  │
-		                            ┌─────▼─────────────┐
-		                            │ terminator: *     │
-		                            └───────────────────┘
+		                ┌───────▼─────┐
+		                │  *add: Add  │
+		                └─────────────┘
 		""")
 	public static Optional<MatchBaseIndexScale.Match> matchBaseIndexScale(Node node) {
 		return MatchBaseIndexScale.match(node);
@@ -474,15 +448,23 @@ public class CodePreselectionMatcher implements CodePreselection {
 	 * operations that other nodes still depend on.
 	 *
 	 * @param match The match to check.
+	 * @param terminator The terminating node of the match. The Terminator is always allowed to have incoming edges
+	 * 	into the match since it will be the one receiving the match.
 	 *
 	 * @return {@code true} if this match is free from external dependants or {@code false} if it isn't.
 	 */
-	private static boolean isFreeFromExternalDependencies(BaseMatch match) {
+	private static boolean isFreeFromExternalDependencies(BaseMatch match, Node terminator) {
 		for (var n : match.markedNodes()) {
 
 			// back edges for other nodes are only allowed inside match
 			for (BackEdges.Edge edge : BackEdges.getOuts(n)) {
 				var depender = edge.node;
+
+				// ignore incoming edges from terminator, since this is the whole porpose
+				if (depender.equals(terminator)) {
+					continue;
+				}
+
 				if (!match.matchedNodes().contains(depender)) {
 					return false;
 				}
@@ -500,7 +482,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		Objects.requireNonNull(scheme.index);
 
 		var scale = scheme.scale;
-		if (scale != 1 && scale != 2 && scale != 4 && scale != 8) {
+		if (scale != 0 && scale != 1 && scale != 2 && scale != 4 && scale != 8) {
 			return false;
 		}
 
@@ -516,7 +498,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		return match.matchedNodes()
 			.stream()
 			.findFirst()
-			.orElseThrow(() -> new IllegalStateException(
+			.orElseThrow(() -> new InternalCompilerException(
 				"tried to retrieve graph from match but match did not even contain any node"))
 			.getGraph();
 	}
@@ -530,6 +512,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		 * Checks for the configured match and calls the attached handler on success. Will also check if the match has
 		 * any marked nodes that have already been selected for replacement and thous can't be matched a second time.
 		 *
+		 * @param terminator The terminating node that will be receiving the match.
 		 * @param node The node to check for a match on.
 		 * @param replaced The current set of replaced nodes. Nodes that have been replaced can no longer be replaced
 		 * 	by a different op.
@@ -537,26 +520,10 @@ public class CodePreselectionMatcher implements CodePreselection {
 		 * @return A pair consisting of the found match and the addressing scheme or {@code none} if no such match was
 		 * 	found.
 		 */
-		public Optional<Pair<AddressingScheme, BaseMatch>> analyse(Node node, Set<Node> replaced) {
+		public Optional<Pair<AddressingScheme, BaseMatch>> analyse(Node terminator, Node node, Set<Node> replaced) {
 			var maybeMatch = matcher.apply(node);
 			return maybeMatch.flatMap(matcher -> {
 				var match = maybeMatch.get();
-
-				/* fiascii always anchors it's matches on the root node (node with no incoming edges in pattern)
-				 * for all patterns in this class, this is the terminating op which must either be a store or load
-				 *
-				 * we didn't enforce this in the pattern, so we don't have to generate duplicated patterns, which
-				 * would result in a lot of wasted time
-				 *
-				 * so do the check here in code
-				 */
-				if (!(node instanceof Load) && !(node instanceof Store)) {
-					if (LOGGER.isDebugEnabled()) {
-						var graph = getGraphFromMatch(match);
-						LOGGER.debug("match [%s] in graph %s did not end in load/store op: %s", name, graph, match);
-					}
-					return Optional.empty();
-				}
 
 				var scheme = handler.apply(match);
 
@@ -568,7 +535,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 				}
 
 				// only marked nodes will be folded into addressing scheme, so we only need to check them
-				if (!isFreeFromExternalDependencies(match)) {
+				if (!isFreeFromExternalDependencies(match, terminator)) {
 
 					if (LOGGER.isDebugEnabled()) {
 						var graph = getGraphFromMatch(match);

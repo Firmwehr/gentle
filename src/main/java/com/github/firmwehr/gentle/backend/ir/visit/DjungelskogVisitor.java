@@ -20,6 +20,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoad;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovLoadEx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStore;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStoreEx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
@@ -213,7 +214,7 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		if (scheme.index().isPresent()) {
 			result += readFromStackToTarget(scheme.index().get().box(), "%r9") + "\n";
 		}
-		
+
 		result += "mov%s %s, %%r10%s".formatted(oldSuffix, resolveAddressingScheme(scheme), newSuffix) + "\n";
 		result += storeFromTargetToStack(movLoadEx.box(), "%r10") + "\n";
 		return result;
@@ -241,6 +242,30 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		result += readFromStackToTarget(movStore.getValue().box(), "%r8") + "\n";
 		result += readFromStackToTarget(movStore.getAddress().box(), "%r9") + "\n";
 		result += "mov%s %%r8%s, (%%r9)".formatted(oldSuffix, newSuffix);
+
+		return result;
+	}
+
+	@Override
+	public String visit(IkeaMovStoreEx movStoreEx) {
+		String oldSuffix = movStoreEx.getValue().box().size().getOldRegisterSuffix();
+		String newSuffix = movStoreEx.getValue().box().size().getNewRegisterSuffix();
+
+		String result = "";
+
+		var scheme = movStoreEx.getScheme();
+		if (scheme.base().isPresent()) {
+			result += readFromStackToTarget(scheme.base().get().box(), "%r8") + "\n";
+		}
+
+		if (scheme.index().isPresent()) {
+			result += readFromStackToTarget(scheme.index().get().box(), "%r9") + "\n";
+		}
+
+		// loads value to store
+		result += readFromStackToTarget(movStoreEx.getValue().box(), "%r10") + "\n";
+
+		result += "mov%s %%r10%s, %s".formatted(oldSuffix, newSuffix, resolveAddressingScheme(scheme)) + "\n";
 
 		return result;
 	}
