@@ -28,9 +28,10 @@ public class CompilerArguments {
 		boolean removeUnused = (optimize || args.rmUnused()) && !args.noRmUnused();
 		boolean removePureFunctions = (optimize || args.rmPure()) && !args.noRmPure();
 		boolean removeUnusedGraphs = (optimize || args.rmGraphs()) && !args.noRmGraphs();
+		boolean tailCallOptimization = (optimize || args.tco()) && !args.noTco();
 
 		return new Optimizations(lego, constantFolding, advancedCodeSelection, arithmeticOpt, booleanOpt,
-			escapeAnalysis, globalValueNumbering, inlining, removeUnused, removePureFunctions,
-			removeUnusedGraphs);
+			escapeAnalysis, globalValueNumbering, inlining, removeUnused, removePureFunctions, removeUnusedGraphs,
+			tailCallOptimization);
 	}
 }

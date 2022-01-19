@@ -121,6 +121,12 @@ public interface CommandArguments {
 	@Option(names = "--no-rm-graphs", description = "don't remove unreachable graphs")
 	boolean noRmGraphs();
 
+	@Option(names = "--tco", description = "optimize tail calls")
+	boolean tco();
+
+	@Option(names = "--no-tco", description = "don't optimize tail calls")
+	boolean noTco();
+
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",
 		paramLabel = "FILE")
 	Path path();

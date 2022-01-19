@@ -11,6 +11,7 @@ public record Optimizations(
 	boolean inlining,
 	boolean removeUnused,
 	boolean removePureFunctions,
-	boolean removeUnusedGraphs
+	boolean removeUnusedGraphs,
+	boolean tailCallOptimization
 ) {
 }
