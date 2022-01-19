@@ -3,7 +3,6 @@ package com.github.firmwehr.gentle;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.codegen.CodeSelection;
 import com.github.firmwehr.gentle.backend.ir.visit.DjungelskogVisitor;
-import com.github.firmwehr.gentle.backend.ir.visit.MolkiVisitor;
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandDispatcher;
 import com.github.firmwehr.gentle.debug.DebugStore;
@@ -13,7 +12,6 @@ import com.github.firmwehr.gentle.lexer.Lexer;
 import com.github.firmwehr.gentle.lexer.LexerException;
 import com.github.firmwehr.gentle.linking.ExternalLinker;
 import com.github.firmwehr.gentle.linking.ExternalLinker.RuntimeAbi;
-import com.github.firmwehr.gentle.linking.MolkiProcessor;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.output.UserOutput;
 import com.github.firmwehr.gentle.parser.ParseException;
@@ -55,8 +53,6 @@ public class GentleCompiler {
 				.command(CommandArguments.CHECK, CommandArguments::check, GentleCompiler::checkCommand)
 				.command(CommandArguments.COMPILE_FIRM, CommandArguments::compileFirm,
 					p -> compileCommand(p, GentleCompiler::generateWithFirmBackend))
-				.command(CommandArguments.COMPILE_MOLKI, CommandArguments::compileMolki,
-					p -> compileCommand(p, GentleCompiler::generateWithMolkiBackend))
 				.defaultCommand(CommandArguments.COMPILE, CommandArguments::compile,
 					p -> compileCommand(p, GentleCompiler::generateWithGentleBackend))
 				.dispatch(args);
@@ -219,23 +215,6 @@ public class GentleCompiler {
 		}
 
 		new ExternalLinker().link(assemblyFile, RuntimeAbi.CDECL);
-	}
-
-	private static void generateWithMolkiBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
-		throws IOException {
-		LOGGER.info("handing over to gentle/molki backend...");
-
-		Files.deleteIfExists(assemblyFile);
-		for (Graph graph : firm.Program.getGraphs()) {
-			CodeSelection codeSelection = new CodeSelection(graph);
-			List<IkeaBløck> blocks = codeSelection.convertBlocks();
-			MolkiVisitor visitor = new MolkiVisitor();
-			String res = visitor.visit(graph, blocks);
-			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
-		}
-
-		Path finalAssemblyFile = new MolkiProcessor().molkiAssemble(assemblyFile);
-		new ExternalLinker().link(finalAssemblyFile, RuntimeAbi.CDECL);
 	}
 
 	private static void generateWithFirmBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
