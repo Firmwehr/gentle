@@ -20,8 +20,6 @@ public interface CommandArguments {
 	String CHECK = "--check";
 	String COMPILE = "--compile";
 	String COMPILE_FIRM = "--compile-firm";
-	String COMPILE_MOLKI = "--compile-molki";
-	String MOLKI_BINARY = "--molki-binary";
 	String FIRM_VERSION = "--firm-version";
 
 	@Option(names = ECHO, description = "output the file as is")
@@ -44,12 +42,6 @@ public interface CommandArguments {
 
 	@Option(names = COMPILE_FIRM, description = "generate a runnable a.out binary using the firm backend")
 	boolean compileFirm();
-
-	@Option(names = COMPILE_MOLKI, description = "generate a runnable a.out binary using our backend and molki")
-	boolean compileMolki();
-
-	@Option(names = MOLKI_BINARY, description = "path to molki binary", converter = ExistingFileConverter.class)
-	Optional<Path> molkiBinary();
 
 	@Option(names = FIRM_VERSION, description = "firm library version to use", converter = FirmVersionConverter.class)
 	Optional<Firm.FirmVersion> firmVersion();
