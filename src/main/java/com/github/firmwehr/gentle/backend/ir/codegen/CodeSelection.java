@@ -28,6 +28,8 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
@@ -57,6 +59,8 @@ import firm.nodes.NodeVisitor;
 import firm.nodes.Phi;
 import firm.nodes.Proj;
 import firm.nodes.Return;
+import firm.nodes.Shr;
+import firm.nodes.Shrs;
 import firm.nodes.Start;
 import firm.nodes.Store;
 import firm.nodes.Sub;
@@ -495,6 +499,32 @@ public class CodeSelection extends NodeVisitor.Default {
 		IkeaMovStore ikeaMovStore = new IkeaMovStore(value, nodes.get(node.getPtr()), size, node);
 		nodes.put(node, ikeaMovStore);
 		block.nodes().add(ikeaMovStore);
+	}
+
+	@Override
+	public void visit(Shr node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
+		IkeaBløck block = blocks.get((Block) node.getBlock());
+		IkeaShr ikeaShr = new IkeaShr(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+		nodes.put(node, ikeaShr);
+		block.nodes().add(ikeaShr);
+	}
+
+	@Override
+	public void visit(Shrs node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
+		IkeaBløck block = blocks.get((Block) node.getBlock());
+		IkeaShrs ikeaShrs = new IkeaShrs(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+		nodes.put(node, ikeaShrs);
+		block.nodes().add(ikeaShrs);
 	}
 
 	@Override

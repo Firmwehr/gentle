@@ -6,8 +6,10 @@ import com.github.firmwehr.fiascii.generated.AddZeroPattern;
 import com.github.firmwehr.fiascii.generated.AssociativeAddPattern;
 import com.github.firmwehr.fiascii.generated.AssociativeMulPattern;
 import com.github.firmwehr.fiascii.generated.DistributivePattern;
+import com.github.firmwehr.fiascii.generated.DivByConstPattern;
 import com.github.firmwehr.fiascii.generated.DivByNegOnePattern;
 import com.github.firmwehr.fiascii.generated.DivByOnePattern;
+import com.github.firmwehr.fiascii.generated.ModByConstPattern;
 import com.github.firmwehr.fiascii.generated.SubtractFromZeroPattern;
 import com.github.firmwehr.fiascii.generated.SubtractSamePattern;
 import com.github.firmwehr.fiascii.generated.SubtractZeroPattern;
@@ -16,8 +18,11 @@ import com.github.firmwehr.fiascii.generated.TimesOnePattern;
 import com.github.firmwehr.fiascii.generated.TimesZeroPattern;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
+import com.github.firmwehr.gentle.util.Maths;
 import firm.BackEdges;
 import firm.Graph;
+import firm.Mode;
+import firm.TargetValue;
 import firm.bindings.binding_irgopt;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
@@ -111,6 +116,142 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 
 		distributive(node).ifPresent(match -> exchange(match.add(),
 			graph.newMul(block, match.factor(), graph.newAdd(block, match.av(), match.bv()))));
+
+		divByConst(node).ifPresent(
+			match -> constructFastDiv(match).ifPresent(replacement -> replace(match.div(), match.mem(), replacement)));
+		modByConst(node).ifPresent(
+			match -> constructFastMod(match).ifPresent(replacement -> replace(match.mod(), match.mem(), replacement)));
+	}
+
+	private Optional<Node> constructFastMod(ModByConstPattern.Match match) {
+		int divisor = match.value().getTarval().asInt();
+		int absDivisor = Math.abs(divisor);
+		if (absDivisor == 1) { // x % ± 1 is always zero
+			return Optional.of(newConst(0, Mode.getIs()));
+		}
+		Node block = match.mod().getBlock();
+		Optional<Node> replacementOpt = constructFastModDivCommon(absDivisor, block, match.other());
+		if (replacementOpt.isEmpty()) {
+			return replacementOpt;
+		}
+		Node replacement = graph.newMul(block, replacementOpt.get(), newConst(absDivisor, Mode.getIs()));
+		replacement = graph.newSub(block, match.other(), replacement);
+		return Optional.of(replacement);
+	}
+
+	private Optional<Node> constructFastDiv(DivByConstPattern.Match match) {
+		int divisor = match.value().getTarval().asInt();
+		Node block = match.div().getBlock();
+		return constructFastModDivCommon(divisor, block, match.other());
+	}
+
+	private Optional<Node> constructFastModDivCommon(int divisor, Node block, Node dividend) {
+		boolean isNegative = divisor < 0;
+		int absDivisor = Math.abs(divisor);
+		int k = Maths.floorLog2(absDivisor);
+		if (1 << k == absDivisor) { // true for 2**k and Integer.MIN_VALUE, following works for all of them
+			// Hacker's Delight, 2nd Edition, Chapter 10-1
+			Node quotient = dividend;
+			if (k != 1) { // 1 - 1 == 0; n >>> 0 == n
+				quotient = graph.newShrs(block, quotient, newConst(k - 1, Mode.getIu()));  // shrsi t,n,k-1
+			}
+			quotient = graph.newShr(block, quotient, newConst(32 - k, Mode.getIu()));      // shri  t,t,32-k
+			quotient = graph.newAdd(block, dividend, quotient);                                   // add   t,n,t
+			quotient = graph.newShrs(block, quotient, newConst(k, Mode.getIu()));          // shrsi q,t,k
+			if (isNegative) {
+				// as the part above calculates other / 2**k, we need to negate the result
+				quotient = graph.newMinus(block, quotient);
+			}
+			return Optional.of(quotient);
+		} else if (absDivisor >= 2) {
+			// end boss, be careful
+			// Hacker's Delight, 2nd Edition, Chapter 10-4 - 10-6
+			// This implementation is very similar to the one found in the OpenJDK
+			// to avoid confusion about control flow
+			// https://github.com/openjdk/jdk/blob/35172cdaf38d83cd3ed57a5436bf985dde2d802b/src/hotspot/share/opto/divnode.cpp#L160
+			int N = 32;
+			// we always calculate the magic number for the absolute divisor
+			// as the case of -2**k is handled by the last Sub
+			MagicDiv magicDiv = magic(absDivisor);
+			// We could use Mulh nodes, but that requires us to have codegen for it too
+			// - and as x86 has no specific instruction, it's not really worth to go that way
+			Node magic =
+				newConst(magicDiv.magicConst(), Mode.getLs());         // we want the upper 32 bits of a 64 bit mul
+			Node dividendLong =
+				graph.newConv(block, dividend, Mode.getLs());   // so we need to convert the arguments first
+			Node mulHi = graph.newMul(block, dividendLong, magic);
+			if (magicDiv.magicConst() < 0) {
+				mulHi = graph.newShrs(block, mulHi, newConst(N, Mode.getIu()));
+				mulHi = graph.newConv(block, mulHi, Mode.getIs());
+				mulHi = graph.newAdd(block, dividend, mulHi);
+				if (magicDiv.shiftConst() != 0) {
+					mulHi = graph.newShrs(block, mulHi, newConst(magicDiv.shiftConst(), Mode.getIu()));
+				}
+			} else {
+				// we can combine the 32 bit shift with the magic shift for 64 bit operations
+				mulHi = graph.newShrs(block, mulHi, newConst(N + magicDiv.shiftConst(), Mode.getIu()));
+				mulHi = graph.newConv(block, mulHi, Mode.getIs());
+			}
+
+			Node addend0 = mulHi;
+			Node addend1 = graph.newShrs(block, dividend, newConst(N - 1, Mode.getIu()));
+			if (isNegative) {
+				Node tmp = addend0;
+				addend0 = addend1;
+				addend1 = tmp;
+			}
+
+			return Optional.of(graph.newSub(block, addend0, addend1));
+		} else {
+			return Optional.empty(); // e.g. div by zero, we just don't care about that
+		}
+	}
+
+	// Hacker's Delight, 2nd Edition, Figure 10-1, rewritten in Java
+	// using long for "unsigned" ints
+	private static MagicDiv magic(int d) {
+		long two31 = 0x80000000L;
+		int ad = Math.abs(d);
+		long t = two31 + (d >>> 31);
+		long anc = t - 1 - t % ad;
+		long q1 = two31 / anc;
+		long r1 = two31 - q1 * anc;
+		long q2 = two31 / ad;
+		long r2 = two31 - q2 * ad;
+		int p = 31;
+		long delta;
+		do {
+			p++;
+			q1 *= 2;
+			r1 *= 2;
+			if (r1 >= anc) {
+				q1++;
+				r1 -= anc;
+			}
+			q2 *= 2;
+			r2 *= 2;
+			if (r2 >= ad) {
+				q2++;
+				r2 -= ad;
+			}
+			delta = ad - r2;
+		} while (q1 < delta || (q1 == delta && r1 == 0));
+		long M = q2 + 1;
+		if (d < 0) {
+			M = -M;
+		}
+		return new MagicDiv((int) M, p - 32);
+	}
+
+	private record MagicDiv(
+		int magicConst,
+		int shiftConst
+	) {
+
+	}
+
+	private Node newConst(int i, Mode mode) {
+		return graph.newConst(new TargetValue(i, mode));
 	}
 
 	private void exchange(Node victim, Node murderer) {
@@ -331,5 +472,37 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		                 └─────────┘""")
 	public static Optional<DistributivePattern.Match> distributive(Node node) {
 		return DistributivePattern.match(node);
+	}
+
+	@FiAscii("""
+		┌─────────────────┐ ┌─────────┐
+		│mem: * ; +memory │ │other: * │
+		└─────────────┬───┘ └┬────────┘
+		              │      │  ┌─────────────┐
+		              │  ┌───┘  │value: Const │
+		              │  │      └─┬───────────┘
+		              │  │  ┌─────┘
+		              │  │  │
+		             ┌▼──▼──▼─┐
+		             │div: Div│
+		             └────────┘""")
+	public static Optional<DivByConstPattern.Match> divByConst(Node node) {
+		return DivByConstPattern.match(node);
+	}
+
+	@FiAscii("""
+		┌─────────────────┐ ┌─────────┐
+		│mem: * ; +memory │ │other: * │
+		└─────────────┬───┘ └┬────────┘
+		              │      │  ┌─────────────┐
+		              │  ┌───┘  │value: Const │
+		              │  │      └─┬───────────┘
+		              │  │  ┌─────┘
+		              │  │  │
+		             ┌▼──▼──▼─┐
+		             │mod: Mod│
+		             └────────┘""")
+	public static Optional<ModByConstPattern.Match> modByConst(Node node) {
+		return ModByConstPattern.match(node);
 	}
 }

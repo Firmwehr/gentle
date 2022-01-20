@@ -22,6 +22,8 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSet;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
 
 public interface IkeaVisitor<T> {
@@ -114,6 +116,14 @@ public interface IkeaVisitor<T> {
 
 	default T visit(IkeaSub sub) {
 		return defaultVisit(sub);
+	}
+
+	default T visit(IkeaShr shr) {
+		return defaultVisit(shr);
+	}
+
+	default T visit(IkeaShrs shrs) {
+		return defaultVisit(shrs);
 	}
 
 	default T visit(IkeaBløck block) {
