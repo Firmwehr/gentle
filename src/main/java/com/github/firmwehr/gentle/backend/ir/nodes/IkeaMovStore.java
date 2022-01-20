@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
+import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Node;
 import firm.nodes.Store;
@@ -64,4 +65,13 @@ public class IkeaMovStore implements IkeaNode {
 		return block;
 	}
 
+	@Override
+	public List<IkeaRegisterRequirement> inRequirements() {
+		return List.of(IkeaRegisterRequirement.gpRegister());
+	}
+
+	@Override
+	public List<IkeaRegisterRequirement> outRequirements() {
+		return List.of();
+	}
 }

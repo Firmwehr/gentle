@@ -7,6 +7,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCall;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCmp;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaConst;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaConv;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCopy;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaDiv;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJcc;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaJmp;
@@ -134,6 +135,10 @@ public interface IkeaVisitor<T> {
 
 	default T visit(IkeaReload ikeaReload) {
 		return defaultVisit(ikeaReload);
+	}
+
+	default T visit(IkeaCopy copy) {
+		return defaultVisit(copy);
 	}
 
 	default T visit(IkeaBløck block) {

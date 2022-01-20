@@ -437,7 +437,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 			var mode = node.getLoadMode();
 			IkeaMovLoadEx mov =
-				new IkeaMovLoadEx(nextRegister(mode), node, BoxScheme.fromAddressingScheme(scheme, nodes::get));
+				new IkeaMovLoadEx(nextRegister(mode), node, BoxScheme.fromAddressingScheme(scheme, nodes::get), block);
 			nodes.put(node, mov);
 			block.nodes().add(mov);
 
@@ -566,7 +566,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		if (maybeScheme.isPresent()) {
 			var scheme = maybeScheme.get();
 
-			IkeaMovStoreEx mov = new IkeaMovStoreEx(value, node, BoxScheme.fromAddressingScheme(scheme, nodes::get));
+			IkeaMovStoreEx mov =
+				new IkeaMovStoreEx(value, node, BoxScheme.fromAddressingScheme(scheme, nodes::get), block);
 			nodes.put(node, mov);
 			block.nodes().add(mov);
 

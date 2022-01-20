@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaImmediate;
+import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Node;
 
@@ -31,5 +32,15 @@ public record IkeaConst(
 	@Override
 	public IkeaBløck getBlock() {
 		return block;
+	}
+
+	@Override
+	public List<IkeaRegisterRequirement> inRequirements() {
+		return List.of();
+	}
+
+	@Override
+	public List<IkeaRegisterRequirement> outRequirements() {
+		return List.of();
 	}
 }

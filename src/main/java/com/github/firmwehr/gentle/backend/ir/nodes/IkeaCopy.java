@@ -9,20 +9,20 @@ import firm.nodes.Node;
 import java.util.Collections;
 import java.util.List;
 
-public class IkeaMovRegister implements IkeaNode {
-	private final IkeaBøx source;
-	private final IkeaBøx target;
+public class IkeaCopy implements IkeaNode {
+	private final IkeaBøx box;
+	private final IkeaNode source;
 	private final IkeaBløck block;
 
-	public IkeaMovRegister(IkeaBøx source, IkeaBøx target, IkeaBløck block) {
+	public IkeaCopy(IkeaBøx box, IkeaNode source, IkeaBløck block) {
+		this.box = box;
 		this.source = source;
-		this.target = target;
 		this.block = block;
 	}
 
 	@Override
 	public IkeaBøx box() {
-		return target;
+		return box;
 	}
 
 	@Override
@@ -30,7 +30,7 @@ public class IkeaMovRegister implements IkeaNode {
 		return Collections.emptyList();
 	}
 
-	public IkeaBøx getSource() {
+	public IkeaNode getSource() {
 		return source;
 	}
 

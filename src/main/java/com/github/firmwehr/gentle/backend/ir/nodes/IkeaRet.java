@@ -4,6 +4,8 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
+import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
+import com.github.firmwehr.gentle.backend.ir.register.X86Register;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Node;
 import firm.nodes.Return;
@@ -49,5 +51,18 @@ public class IkeaRet implements IkeaNode {
 	@Override
 	public IkeaBløck getBlock() {
 		return block;
+	}
+
+	@Override
+	public List<IkeaRegisterRequirement> inRequirements() {
+		if (getValue().isPresent()) {
+			return List.of(IkeaRegisterRequirement.singleRegister(X86Register.RAX));
+		}
+		return List.of();
+	}
+
+	@Override
+	public List<IkeaRegisterRequirement> outRequirements() {
+		return List.of();
 	}
 }
