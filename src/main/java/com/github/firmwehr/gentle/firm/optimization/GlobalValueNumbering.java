@@ -1,10 +1,13 @@
 package com.github.firmwehr.gentle.firm.optimization;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
+import com.github.firmwehr.gentle.firm.GentleBindings;
 import com.github.firmwehr.gentle.output.Logger;
 import com.google.common.collect.ArrayListMultimap;
+import firm.BackEdges;
 import firm.Graph;
 import firm.nodes.Address;
+import firm.nodes.Block;
 import firm.nodes.Cmp;
 import firm.nodes.Const;
 import firm.nodes.Div;
@@ -16,11 +19,14 @@ import firm.nodes.Phi;
 import firm.nodes.Proj;
 import firm.nodes.Store;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+
 import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 
 public class GlobalValueNumbering extends NodeVisitor.Default {
 
-	private static final Logger LOGGER = new Logger(GlobalValueNumbering.class, Logger.LogLevel.DEBUG);
+	private static final Logger LOGGER = new Logger(GlobalValueNumbering.class);
 
 	private final Graph graph;
 
@@ -40,86 +46,29 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 		return GraphOptimizationStep.<Graph, Boolean>builder()
 			.withDescription("GlobalValueNumbering")
 			.withOptimizationFunction(graph -> {
-				int runs = 0;
 
-				// gvn keeps state of laster iteration
+				// prior optimizations might have messed up dom information, we need to recalculate it
+				firm.bindings.binding_irdom.compute_doms(graph.ptr);
+
+				// node replacement and efficient change propagation requires back edges
+				BackEdges.enable(graph);
 				GlobalValueNumbering globalValueNumbering = new GlobalValueNumbering(graph);
-				while (true) {
 
-					globalValueNumbering.applyGlobalValueNumbering();
-
-					if (!globalValueNumbering.hasChanged) {
-						break;
-					} else if (LOGGER.isDebugEnabled() && runs > 1) {
-						dumpGraph(graph, "gvn-iteration");
-					}
-					runs++;
-				}
-
-				// first run will never change graph and is only for collecting data
-				boolean changed = runs > 1;
+				boolean changed = globalValueNumbering.applyGlobalValueNumbering();
 				if (changed) {
 					dumpGraph(graph, "gvn");
 				}
+
+				BackEdges.disable(graph);
 				return changed;
 			})
 			.build();
 	}
 
-	private void applyGlobalValueNumbering() {
-		hasChanged = false;
-
-		// TODO: optimize only walk over updated nodes after first iteration (can use lastUnions? (and skip index 0?))
-		// TODO probably requires back edges...
-		graph.walk(this);
-
-		// first run is only collecting data, so we always assume something can be changed
-		if (!consecutiveRun) {
-			hasChanged = true;
-			consecutiveRun = true;
-		}
-
-		for (var union : currentUnions.asMap().values()) {
-			if (union.size() > 1) {
-				LOGGER.debug("common nodes: %s", union);
-			}
-		}
-
-		// advance unions to next run
-		lastUnions = currentUnions;
-		currentUnions = ArrayListMultimap.create();
-	}
-
-	@Override
-	public void defaultVisit(Node n) {
-
-		/* big brain play of the century: we can rewire edges while we calculate the next iteration
-		 *
-		 * this only works if we compute the new hash after we have rewired the node
-		 */
-
-		// 1. rewire preds if common sub node has been found last time
-		var count = n.getPredCount();
-		for (int i = 0; i < count; i++) {
-
-			// get union leader for current target (might be same, if already linked to leader)
-			var old = n.getPred(i);
-			var oldHash = new NodeHashKey(old);
-
-			// rewire edge if not currently linked with union leader
-			var list = lastUnions.get(oldHash);
-			if (!list.isEmpty()) {
-				var next = list.get(0);
-				if (!old.equals(next) && old.getBlock().equals(next.getBlock())) {
-					hasChanged = true;
-					n.setPred(i, next);
-				}
-			}
-		}
-
-		// 2. calculate new hash (which will reflect new updated preds)
-		var newHash = new NodeHashKey(n);
-		currentUnions.put(newHash, n);
+	private boolean applyGlobalValueNumbering() {
+		var walker = new GlobalValueNumbering.NodeHashKey.GlobalValueNumberingWalker(graph);
+		walker.walkTheWalk();
+		return walker.hasModifiedGraph();
 	}
 
 	/**
@@ -193,6 +142,8 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 						return false;
 					}
 				}
+				case iro_Id -> throw new InternalCompilerException(
+					"encountered id node (should have been replaced by someone?)");
 				case iro_Load -> {
 					var n0 = (Load) node;
 					var n1 = (Load) thatNode;
@@ -258,6 +209,145 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 
 			return hash;
 		}
-	}
 
+		/**
+		 * This class uses the Firm backend to perform a depth first search in the dominator tree. During the
+		 * search, we
+		 * keep a list of available expressions (nodes) and each time we enter a new block, we check if we have
+		 * duplicated expressions. On exit, we remove the available expressions from the available expression list.
+		 * This
+		 * ensures that the available expression list will only contain such expressions that are currently
+		 * available to
+		 * the current block.
+		 */
+		private static class GlobalValueNumberingWalker {
+
+			// firm can't enumerate all nodes in block without shitting itself
+			private final ArrayListMultimap<Block, Node> blocks = ArrayListMultimap.create();
+			private final HashMap<NodeHashKey, Node> availableExpressions = new HashMap<>();
+
+			private final Graph graph;
+
+			private boolean hasModifiedGraph = false;
+
+			public GlobalValueNumberingWalker(Graph graph) {
+				this.graph = graph;
+			}
+
+			public boolean hasModifiedGraph() {
+				return hasModifiedGraph;
+			}
+
+			public void walkTheWalk() {
+				graph.walkTopological(new Default() {
+					@Override
+					public void defaultVisit(Node n) {
+
+						Block block = (Block) n.getBlock();
+						if (block != null) {
+							blocks.put(block, n);
+						}
+					}
+				});
+
+				GentleBindings.walkDominatorTree(graph, this::onEnter, this::onExit);
+			}
+
+			/**
+			 * Called when DFS enters block.
+			 *
+			 * @param block The block we just entered.
+			 */
+			private void onEnter(Block block) {
+
+				var nodes = blocks.get(block);
+
+				// stabalize local block
+				var lastAvailable = new HashMap<>(availableExpressions);
+				var currentAvailable = new HashMap<NodeHashKey, Node>();
+
+				boolean runAgain = true;
+				boolean firstRun = true;
+				while (runAgain) {
+					runAgain = false;
+
+					var it = nodes.iterator();
+					while (it.hasNext()) {
+						var node = it.next();
+						var hash = new NodeHashKey(node);
+
+						var existing = lastAvailable.get(hash);
+						if (existing != null && !existing.equals(node)) {
+
+							// capture depender and remove their hash from expression, since they are about to change
+							var dependers = new ArrayList<Node>();
+							for (BackEdges.Edge edge : BackEdges.getOuts(node)) {
+								var depender = edge.node;
+								if (!depender.getBlock().equals(block)) {
+									// node is part of LATER block, so we don't consider it here
+									continue;
+								}
+
+								var dependerHash = new NodeHashKey(depender);
+								currentAvailable.remove(dependerHash);
+								dependers.add(depender);
+							}
+
+							// exchange node (which also means it will be removed from block)
+							// TODO: exchange might leave Id node (shouldnt, since we have backedges enabled)
+							LOGGER.debug("replacing %s with %s in graph %s", node, existing, graph);
+							Graph.exchange(node, existing);
+							runAgain = true;
+							hasModifiedGraph = true;
+							it.remove();
+
+							// depender need to be updated
+							for (Node depender : dependers) {
+								var dependerHash = new NodeHashKey(depender);
+								currentAvailable.putIfAbsent(dependerHash, depender);
+							}
+
+						} else {
+							// node hasn't been replaced, take over to next iteration
+							currentAvailable.put(hash, node);
+						}
+
+					}
+					lastAvailable = currentAvailable;
+					lastAvailable.putAll(availableExpressions);
+					currentAvailable = new HashMap<>();
+
+					// dump graphs if we had actual changes (next statement will destroy this information)
+					if (runAgain) {
+						dumpGraph(block.getGraph(), "gvn");
+					}
+
+					// first run does have access to full block local node identities, so we always need a second run
+					if (firstRun) {
+						runAgain = true;
+						firstRun = false;
+					}
+				}
+
+				// local block stabilized, move on to next block
+				availableExpressions.putAll(currentAvailable);
+			}
+
+			/**
+			 * Called when DFS leaves block.
+			 *
+			 * @param block The block we just left.
+			 */
+			private void onExit(Block block) {
+				// remove all expressions from current block from available expressions
+				var nodes = blocks.get(block);
+				for (Node node : nodes) {
+					var hash = new NodeHashKey(node);
+
+					// every expression is unqie to first block it appeared (duplicates have been eradicated on enter)
+					availableExpressions.remove(hash);
+				}
+			}
+		}
+	}
 }
