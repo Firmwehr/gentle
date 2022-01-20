@@ -28,6 +28,8 @@ import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import com.github.firmwehr.gentle.source.Source;
 import firm.Backend;
 import firm.Graph;
+import firm.bindings.binding_irdump;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.ByteArrayOutputStream;
@@ -174,6 +176,26 @@ public class GentleCompiler {
 
 	private static void compileCommand(Path path, CompilerBackendHandler handler) {
 		try {
+			// trigger load of firm builder class to init firm backend (required by some methods below)
+			try {
+				Class.forName(FirmBuilder.class.getName());
+			} catch (ClassNotFoundException e) {
+				throw new InternalCompilerException("firm builder class is missing, what happened?");
+			}
+
+			// generate matching filename for input and call backend handler
+			String programBaseName = FilenameUtils.removeExtension(path.getFileName().toString());
+			String assemblyFilename = programBaseName + ".s";
+			Path assemblyFile = path.resolveSibling(assemblyFilename);
+
+			// dump vcg files in directory with programm base name, so they are easier to manage
+			if (CompilerArguments.get().dumpGraphs()) {
+				var dumpBaseDir = path.resolveSibling("vcg/" + programBaseName).toFile();
+				FileUtils.forceMkdir(dumpBaseDir);
+
+				binding_irdump.ir_set_dump_path(dumpBaseDir.getPath());
+			}
+
 			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
@@ -182,10 +204,6 @@ public class GentleCompiler {
 
 			DebugStore debugStore = new DebugStore(source);
 			List<Graph> graphs = new FirmBuilder().convert(program, debugStore);
-
-			// generate matching filename for input and call backend handler
-			String assemblyFilename = FilenameUtils.removeExtension(path.getFileName().toString()) + ".s";
-			Path assemblyFile = path.resolveSibling(assemblyFilename);
 			handler.handleGraphs(assemblyFile, graphs, debugStore);
 
 			System.exit(0);
