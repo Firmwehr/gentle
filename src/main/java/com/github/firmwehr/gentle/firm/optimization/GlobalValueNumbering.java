@@ -110,7 +110,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 			var list = lastUnions.get(oldHash);
 			if (!list.isEmpty()) {
 				var next = list.get(0);
-				if (!old.equals(next)) {
+				if (!old.equals(next) && old.getBlock().equals(next.getBlock())) {
 					hasChanged = true;
 					n.setPred(i, next);
 				}
