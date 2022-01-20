@@ -503,6 +503,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Shr node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaShr ikeaShr = new IkeaShr(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
 		nodes.put(node, ikeaShr);
@@ -511,6 +516,11 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Shrs node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaShrs ikeaShrs = new IkeaShrs(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
 		nodes.put(node, ikeaShrs);
