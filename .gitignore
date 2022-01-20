@@ -17,6 +17,7 @@ src/main/generated/
 /*.s
 /*.valid
 /*.mj
+/vcg/
 
 # OS Stuff
 *.DS_Store
