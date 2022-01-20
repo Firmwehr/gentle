@@ -30,13 +30,13 @@ public class Optimizer {
 		localOptimizations(Program.getGraphs());
 		while (true) {
 			Set<Graph> modified = new HashSet<>();
-			do {
+			while (true) {
 				Set<Graph> graphs = globalOptimizations();
 				if (graphs.isEmpty()) {
 					break; // break from do while loop, no more global optimizations in this round
 				}
 				modified.addAll(graphs);
-			} while (true);
+			}
 			if (!localOptimizations(modified)) {
 				return; // no more local changes, so nothing left to optimize
 			}
