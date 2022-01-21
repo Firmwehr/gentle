@@ -10,6 +10,7 @@ import firm.nodes.Address;
 import firm.nodes.Anchor;
 import firm.nodes.Block;
 import firm.nodes.Call;
+import firm.nodes.Jmp;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 import firm.nodes.Phi;
@@ -18,10 +19,9 @@ import firm.nodes.Return;
 import firm.nodes.Start;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public class TailCallOptimization extends NodeVisitor.Default {
@@ -46,53 +46,25 @@ public class TailCallOptimization extends NodeVisitor.Default {
 
 				Node jumpFromStart = graph.newJmp(graph.getStartBlock());
 				loopJumps.add(jumpFromStart);
+				Optional<Jmp> selfJmp = Optional.empty();
 
 				for (TailCall tailCall : tailCalls) {
-					Node jump = graph.newJmp(tailCall.ret().getBlock());
+					Jmp jump = (Jmp) graph.newJmp(tailCall.ret().getBlock());
 					loopJumps.add(jump);
+					if (tailCall.ret().getBlock().equals(graph.getStartBlock())) {
+						selfJmp = Optional.of(jump);
+					}
 				}
 
-				Node loopHeader = graph.newBlock(loopJumps.toArray(Node[]::new));
+				Block loopHeader = (Block) graph.newBlock(loopJumps.toArray(Node[]::new));
+				selfJmp.ifPresent((jump) -> jump.setBlock(loopHeader));
 				graph.keepAlive(loopHeader);
 
-				/* If the function does not branch, there are now two Jmps in the start block. We move the second one
-				to the loop header. */
-				for (int i = 1; i < loopJumps.size(); i++) {
-					if (loopJumps.get(i).getBlock().equals(graph.getStartBlock())) {
-						loopJumps.get(i).setBlock(loopHeader);
-					}
-				}
-
-				// TODO: Encapsulate in some method
-				Start start = graph.getStart();
-				Proj startMem = null;
-				List<Proj> startArgs = new ArrayList<>();
-
-				for (BackEdges.Edge edge : BackEdges.getOuts(start)) {
-					LOGGER.debug("%s", edge.node);
-					// Check for Anchor
-					if (edge.node instanceof Proj proj) {
-						switch (proj.getNum()) {
-							case 0:
-								startMem = (Proj) edge.node;
-								break;
-							case 2:
-								Util.outsStream(proj).forEach(node -> {
-									// Check for Anchor, ignore instance used for call
-									if (node instanceof Proj proj1 && !proj1.equals(proj)) {
-										startArgs.add(proj1);
-									}
-								});
-								break;
-						}
-					} else {
-						LOGGER.debug("Ignoring Start out node %s", edge.node);
-					}
-				}
+				GraphInputs inputs = getInputs(graph);
 
 				LOGGER.debugHeader("Moving code that depends on start node from start block to loop header...");
-				Set<Node> nodesToMove = new HashSet<>(successorsInBlock(startMem, graph.getStartBlock()));
-				for (Proj arg : startArgs) {
+				Set<Node> nodesToMove = new HashSet<>(successorsInBlock(inputs.mem(), graph.getStartBlock()));
+				for (Proj arg : inputs.arguments()) {
 					nodesToMove.addAll(successorsInBlock(arg, graph.getStartBlock()));
 				}
 
@@ -103,19 +75,15 @@ public class TailCallOptimization extends NodeVisitor.Default {
 
 				LOGGER.debugHeader("Creating phis for arguments and start mem...");
 
-				assert startMem != null;
-
-				Phi memPhi =
-					generatePhi(loopHeader, startMem, tailCalls.stream().map(tc -> tc.call().getPred(0)).toList());
+				generatePhi(loopHeader, inputs.mem(), tailCalls.stream().map(tc -> tc.call().getPred(0)).toList());
 				for (TailCall tc : tailCalls) {
 					graph.keepAlive(tc.call().getPred(0));
 				}
 
-				Map<Proj, Phi> argPhis = new HashMap<>();
-				for (Proj arg : startArgs) {
+				for (Proj arg : inputs.arguments()) {
 					LOGGER.debug("Generating Phi for argument %s %s", arg, arg.getNum());
-					argPhis.put(arg, generatePhi(loopHeader, arg,
-						tailCalls.stream().map(tc -> tc.call().getPred(arg.getNum() + 2)).toList()));
+					generatePhi(loopHeader, arg,
+						tailCalls.stream().map(tc -> tc.call().getPred(arg.getNum() + 2)).toList());
 				}
 
 				LOGGER.debugHeader("Deleting return nodes...");
@@ -129,6 +97,43 @@ public class TailCallOptimization extends NodeVisitor.Default {
 				return false;
 			})
 			.build();
+	}
+
+	private record GraphInputs(
+		Proj mem,
+		Proj bp,
+		List<Proj> arguments
+	) {
+	}
+
+	private static GraphInputs getInputs(Graph graph) {
+		Start start = graph.getStart();
+		Optional<Proj> mem = Optional.empty();
+		Optional<Proj> bp = Optional.empty();
+		List<Proj> arguments = new ArrayList<>();
+
+		for (Node node : Util.outsStream(start).toList()) {
+			// Check for Anchor
+			if (node instanceof Proj proj) {
+				switch (proj.getNum()) {
+					case 0 -> mem = Optional.of((Proj) node);
+					case 1 -> bp = Optional.of((Proj) node);
+					case 2 -> Util.outsStream(proj).forEach(argNode -> {
+						// Check for Anchor, ignore instance used for call
+						if (argNode instanceof Proj argProj) {
+							arguments.add(argProj);
+						}
+					});
+				}
+			} else {
+				LOGGER.debug("Ignoring Start out node %s", node);
+			}
+		}
+
+		assert mem.isPresent() && mem.get().getMode().equals(Mode.getM());
+		assert bp.isPresent() && bp.get().getMode().equals(Mode.getP());
+
+		return new GraphInputs(mem.get(), bp.get(), arguments);
 	}
 
 	// TODO: Fix awful implementation full of allocations
@@ -146,7 +151,7 @@ public class TailCallOptimization extends NodeVisitor.Default {
 
 	// Right now this generates redundant phis for arguments that are not modified in the recursive call.
 	// Let's hope someone cleans up after us :^)
-	private static Phi generatePhi(Node node, Proj argLike, List<Node> otherInputs) {
+	private static void generatePhi(Node node, Proj argLike, List<Node> otherInputs) {
 		List<Node> ins = new ArrayList<>();
 		ins.add(argLike);
 		ins.addAll(otherInputs);
@@ -157,7 +162,6 @@ public class TailCallOptimization extends NodeVisitor.Default {
 			}
 		}
 		LOGGER.debug("Created new phi: %s", phi);
-		return phi;
 	}
 
 	// TODO: Check edge cases, e.g. returning a local variable assigned in a block
