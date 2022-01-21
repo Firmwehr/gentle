@@ -59,20 +59,30 @@ public class PureFunctionOptimization {
 	}
 
 	private boolean isPure(Graph graph) {
-		return !hasLoops(graph) && !modifiesMemory(graph) && !callsImpureFunctions(graph);
+		// Possible impurities are:
+		// 1. Endless loops
+		// 2. Being in a call dependency loop (endless loop via recursion possible)
+		// 3. Calling other impure functions
+		// 4. Writing to memory
+		// 5. Exceptions (e. g. division by 0)
+		//
+		// 1, 3, 4 and 5 are checked here while 2 is checked implicitly because all functions start out as impure and
+		// are only set to pure if all their callees are already pure. This works because the functions are visited in
+		// postorder.
+		return !hasLoops(graph) && !hasSuspiciousNodes(graph);
 	}
 
 	private boolean hasLoops(Graph graph) {
-		Mut<Boolean> result = new Mut<>(false);
+		Mut<Boolean> hasLoops = new Mut<>(false);
+
 		Set<Block> visited = new HashSet<>();
 		graph.walkBlocksPostorder(block -> {
-			//System.out.println("Looking at " + block.toString());
 			for (Node pred : block.getPreds()) {
+				// If a predecessor is not visited yet, we're in a cycle. This works because we visit the blocks in
+				// postorder.
 				if (pred.getBlock() instanceof Block predBlock) {
-					//System.out.println("  Pred " + pred.toString() + " in " + predBlock.toString());
 					if (!visited.contains(predBlock)) {
-						//System.out.println("    Not visited yet, cycle detected");
-						result.set(true);
+						hasLoops.set(true);
 					}
 				} else {
 					throw new InternalCompilerException("block of node is actually not a block");
@@ -80,14 +90,13 @@ public class PureFunctionOptimization {
 			}
 			visited.add(block);
 		});
-		return result.get();
+
+		return hasLoops.get();
 	}
 
-	private boolean modifiesMemory(Graph graph) {
+	private boolean hasSuspiciousNodes(Graph graph) {
 		Mut<Boolean> result = new Mut<>(false);
 		graph.walk(new NodeVisitor.Default() {
-			// Calls are handled in #callsImpureFunctions
-
 			@Override
 			public void visit(Div node) {
 				result.set(true);
@@ -102,13 +111,7 @@ public class PureFunctionOptimization {
 			public void visit(Store node) {
 				result.set(true);
 			}
-		});
-		return result.get();
-	}
 
-	private boolean callsImpureFunctions(Graph graph) {
-		Mut<Boolean> result = new Mut<>(false);
-		graph.walk(new NodeVisitor.Default() {
 			@Override
 			public void visit(Call node) {
 				Entity entity = ((Address) node.getPtr()).getEntity();
