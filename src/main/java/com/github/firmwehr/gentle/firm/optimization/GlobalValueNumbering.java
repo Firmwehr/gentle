@@ -15,7 +15,6 @@ import firm.nodes.Mod;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 import firm.nodes.Phi;
-import firm.nodes.Proj;
 import firm.nodes.Store;
 
 import java.util.HashMap;
@@ -26,7 +25,7 @@ import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 
 public class GlobalValueNumbering extends NodeVisitor.Default {
 
-	private static final Logger LOGGER = new Logger(GlobalValueNumbering.class, Logger.LogLevel.DEBUG);
+	private static final Logger LOGGER = new Logger(GlobalValueNumbering.class);
 
 	private final Graph graph;
 
@@ -83,6 +82,11 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 			}
 			NodeHashKey that = (NodeHashKey) o;
 			var thatNode = that.node;
+
+			// check if firm considers them equal
+			if (node.equals(thatNode)) {
+				return true;
+			}
 
 			// check node op
 			if (node.getOpCode() != thatNode.getOpCode()) {
@@ -146,10 +150,6 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 						return false;
 					}
 				}
-				case iro_Jmp -> {
-					// jumps can not be merged (really bad things will happen, if you try it)
-					return node.equals(thatNode);
-				}
 				case iro_Member -> throw new InternalCompilerException(
 					"encountered member node (should have been lowered)");
 				case iro_Mod -> {
@@ -168,21 +168,9 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 						return false;
 					}
 				}
-				case iro_Proj -> {
-					var n0 = (Proj) node;
-					var n1 = (Proj) thatNode;
-					if (n0.getNum() != n1.getNum()) {
-						return false;
-					}
-				}
 				case iro_Sel -> throw new InternalCompilerException("encountered sel node (should have been lowered)");
 				case iro_Size -> throw new InternalCompilerException(
 					"encountered size node (do we haven have " + "these?)");
-				case iro_Start -> {
-					// there should only ever be one start node, but at the same time, it should never need to be
-					// compared
-					return false;
-				}
 				case iro_Store -> {
 					var n0 = (Store) node;
 					var n1 = (Store) thatNode;
@@ -191,6 +179,12 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 					}
 				}
 				case iro_Switch -> throw new InternalCompilerException("switch node is not supported");
+				case iro_Jmp, iro_Proj, iro_Start, iro_Cond -> {
+					/* some nodes should never be equal, unless firm itself considers them equal, but this way already
+					 * check a few lines above. if we reached this place, they are simply considered not equal
+					 */
+					return false;
+				}
 				default -> {/*no op*/}
 			}
 
