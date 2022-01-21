@@ -29,14 +29,6 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 
 	private final Graph graph;
 
-	// poor mans union find structure
-	private ArrayListMultimap<NodeHashKey, Node> lastUnions = ArrayListMultimap.create();
-	private ArrayListMultimap<NodeHashKey, Node> currentUnions = ArrayListMultimap.create();
-
-	private boolean hasChanged;
-
-	private boolean consecutiveRun;
-
 	public GlobalValueNumbering(Graph graph) {
 		this.graph = graph;
 	}
@@ -286,24 +278,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 					}
 
 					// check if we need to rewire outgoing edges
-					var rewired = false;
-					var predCount = node.getPredCount();
-					for (int i = 0; i < predCount; i++) {
-						var pred = node.getPred(i);
-
-						var existing = lastAvailable.get(new NodeHashKey(pred));
-
-						// check if edge needs rewiring
-						if (existing != null && !pred.equals(existing)) {
-							LOGGER.debug("rewire edge %s of %s from %s to %s in graph %s", i, node, pred, existing,
-								graph);
-
-							node.setPred(i, existing);
-							hasModifiedGraph = true;
-							runAgain = true;
-							rewired = true;
-						}
-					}
+					runAgain |= rewireNode(lastAvailable, node);
 
 					// rewire may create identical node with already available expression, but we deal with this later
 					currentAvailable.put(new NodeHashKey(node), node);
@@ -329,12 +304,37 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				}
 			}
 
-			// local block stabilized, move on to next block
+			// local block stabilized, update available expression
 			availableExpressions.putAll(currentAvailable);
 
-			/* following blocks may have dependencies on nodes that were replaced in current block
-			 * in order to properly redirect those,
-			 * */
+			// check if phi from previous blocks need to be rewired (happens if in-edge was replaced in current block)
+			for (var node : availableExpressions.values()) {
+				if (node instanceof Phi phi) {
+					rewireNode(availableExpressions, phi);
+				}
+			}
+
+
+		}
+
+		private boolean rewireNode(HashMap<NodeHashKey, Node> lastAvailable, Node node) {
+			boolean runAgain = false;
+			var predCount = node.getPredCount();
+			for (int i = 0; i < predCount; i++) {
+				var pred = node.getPred(i);
+
+				var existing = lastAvailable.get(new NodeHashKey(pred));
+
+				// check if edge needs rewiring
+				if (existing != null && !pred.equals(existing)) {
+					LOGGER.debug("rewire edge %s of %s from %s to %s in graph %s", i, node, pred, existing, graph);
+
+					node.setPred(i, existing);
+					hasModifiedGraph = true;
+					runAgain = true;
+				}
+			}
+			return runAgain;
 		}
 
 		/**

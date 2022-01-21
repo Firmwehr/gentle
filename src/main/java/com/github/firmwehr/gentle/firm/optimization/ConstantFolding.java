@@ -580,7 +580,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 				case Sub ignored -> TargetValue.getUnknown();
 				case Unknown ignored -> TargetValue.getUnknown();
 				// if you reached this, your graph is broken, please enter your total time spend debugging the problem
-				// Chris: 4 hours
+				// Chris: 5 hours
 				default -> throw new InternalCompilerException(
 					"Unknown node type, can not determine constant folding default value");
 			};
