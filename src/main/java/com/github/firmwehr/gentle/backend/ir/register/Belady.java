@@ -40,7 +40,12 @@ public class Belady {
 			processBlock(block);
 		}
 
-		// TODO: Fix block borders!
+		for (IkeaBløck block : graph.getAllBlocks()) {
+			processBlock(block);
+		}
+
+		// TODO: Insert spills and reloads, fix SSA
+		// TODO: Spill slot coalescing
 	}
 
 	private void processBlock(IkeaBløck block) {
