@@ -2,7 +2,6 @@ package com.github.firmwehr.gentle.firm.optimization;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.firm.optimization.callgraph.CallGraph;
-import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.GraphDumper;
 import com.github.firmwehr.gentle.util.Mut;
 import firm.BackEdges;
@@ -23,8 +22,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class PureFunctionOptimization {
-	private static final Logger LOGGER = new Logger(PureFunctionOptimization.class);
-
 	private final CallGraph callGraph;
 	private final Set<Entity> pureFunctions;
 
@@ -47,11 +44,6 @@ public class PureFunctionOptimization {
 				pureFunctions.add(graph.getEntity());
 			}
 		});
-
-		System.out.println("Pure functions:");
-		for (Entity pureFunction : pureFunctions) {
-			System.out.println("  " + pureFunction.getLdName());
-		}
 
 		Set<Graph> modified = new HashSet<>();
 		callGraph.walkPostorder(graph -> {
@@ -136,12 +128,11 @@ public class PureFunctionOptimization {
 			@Override
 			public void visit(Call node) {
 				Entity entity = ((Address) node.getPtr()).getEntity();
-				System.out.println("Call: " + entity.getLdName());
 				if (!pureFunctions.contains(entity)) {
 					return;
 				}
 				for (BackEdges.Edge out : BackEdges.getOuts(node)) {
-					System.out.println("  Out-Edge: " + out.node);
+					//noinspection StatementWithEmptyBody
 					if (out.node instanceof Proj proj && proj.getMode().equals(Mode.getM())) {
 						// All children of the call node are just memory projections
 						// We can safely remove the call since we know the function is pure
@@ -149,7 +140,6 @@ public class PureFunctionOptimization {
 						return;
 					}
 				}
-				System.out.println("  Removing...");
 				for (BackEdges.Edge out : BackEdges.getOuts(node)) {
 					out.node.setPred(out.pos, node.getMem());
 				}
