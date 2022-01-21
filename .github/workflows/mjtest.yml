@@ -22,7 +22,7 @@ jobs:
         run: ./build
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git -C mjtest/tests reset --hard origin/master"
-      - run: "./mjtest/mjt.py lexer syntax ast semantic ./run"
+      - run: "./mjtest/mjt.py lexer syntax ast semantic compile-firm-only compile-only compile-firm compile ./run"
 
   mjtest-firm:
     name: "Run firm compile"
