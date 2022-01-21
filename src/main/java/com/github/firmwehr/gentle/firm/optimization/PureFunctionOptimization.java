@@ -122,7 +122,6 @@ public class PureFunctionOptimization {
 					return;
 				}
 				for (BackEdges.Edge out : BackEdges.getOuts(node)) {
-					//noinspection StatementWithEmptyBody
 					if (out.node instanceof Proj proj && proj.getMode().equals(Mode.getM())) {
 						// All children of the call node are just memory projections
 						// We can safely remove the call since we know the function is pure
