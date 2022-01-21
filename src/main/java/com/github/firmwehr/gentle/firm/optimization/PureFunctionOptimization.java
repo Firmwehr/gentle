@@ -130,8 +130,10 @@ public class PureFunctionOptimization {
 						return;
 					}
 				}
-				for (BackEdges.Edge out : BackEdges.getOuts(node)) {
-					out.node.setPred(out.pos, node.getMem());
+				for (BackEdges.Edge memProj : BackEdges.getOuts(node)) {
+					for (BackEdges.Edge memUser : BackEdges.getOuts(memProj.node)) {
+						memUser.node.setPred(memUser.pos, node.getMem());
+					}
 				}
 				changed.set(true);
 			}
