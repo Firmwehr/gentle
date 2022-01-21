@@ -11,8 +11,6 @@ import firm.Mode;
 import firm.nodes.Address;
 import firm.nodes.Block;
 import firm.nodes.Call;
-import firm.nodes.Div;
-import firm.nodes.Mod;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 import firm.nodes.Proj;
@@ -64,10 +62,9 @@ public class PureFunctionOptimization {
 		// 2. Being in a call dependency loop (endless loop via recursion possible)
 		// 3. Calling other impure functions
 		// 4. Writing to memory
-		// 5. Exceptions (e. g. division by 0)
 		//
-		// 1, 3, 4 and 5 are checked here while 2 is checked implicitly because all functions start out as impure and
-		// are only set to pure if all their callees are already pure. This works because the functions are visited in
+		// 1, 3 and 4 are checked here while 2 is checked implicitly because all functions start out as impure and are
+		// only set to pure if all their callees are already pure. This works because the functions are visited in
 		// postorder.
 		return !hasLoops(graph) && !hasSuspiciousNodes(graph);
 	}
@@ -97,16 +94,6 @@ public class PureFunctionOptimization {
 	private boolean hasSuspiciousNodes(Graph graph) {
 		Mut<Boolean> result = new Mut<>(false);
 		graph.walk(new NodeVisitor.Default() {
-			@Override
-			public void visit(Div node) {
-				result.set(true);
-			}
-
-			@Override
-			public void visit(Mod node) {
-				result.set(true);
-			}
-
 			@Override
 			public void visit(Store node) {
 				result.set(true);
