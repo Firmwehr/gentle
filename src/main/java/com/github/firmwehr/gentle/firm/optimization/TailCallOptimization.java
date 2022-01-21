@@ -12,7 +12,6 @@ import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Jmp;
 import firm.nodes.Node;
-import firm.nodes.NodeVisitor;
 import firm.nodes.Phi;
 import firm.nodes.Proj;
 import firm.nodes.Return;
@@ -24,7 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public class TailCallOptimization extends NodeVisitor.Default {
+public class TailCallOptimization {
 	private static final Logger LOGGER = new Logger(TailCallOptimization.class, Logger.LogLevel.DEBUG);
 
 	public static GraphOptimizationStep<Graph, Boolean> tailCallOptimization() {
@@ -33,17 +32,20 @@ public class TailCallOptimization extends NodeVisitor.Default {
 			.withOptimizationFunction((graph) -> {
 				// Needed to get all nodes belonging to a block
 				BackEdges.enable(graph);
-				List<TailCall> tailCalls = findTailCalls(graph);
 
+				/*
+				Identify tail calls in this graph, e.g. f(i) { if i == 0 { return 1; } else { return f(i - 1); }.
+				If there are none, we can't do anything.
+				 */
+				List<TailCall> tailCalls = findTailCalls(graph);
 				if (tailCalls.isEmpty()) {
 					BackEdges.disable(graph);
 					return false;
 				}
 
-				LOGGER.debugHeader("Creating jumps to replace those tail calls...");
+				LOGGER.debugHeader("Creating a jump to replace each tail call...");
 
 				List<Node> loopJumps = new ArrayList<>();
-
 				Node jumpFromStart = graph.newJmp(graph.getStartBlock());
 				loopJumps.add(jumpFromStart);
 				Optional<Jmp> selfJmp = Optional.empty();
@@ -51,35 +53,44 @@ public class TailCallOptimization extends NodeVisitor.Default {
 				for (TailCall tailCall : tailCalls) {
 					Jmp jump = (Jmp) graph.newJmp(tailCall.ret().getBlock());
 					loopJumps.add(jump);
+					/*
+					The start block already contains a Jmp (jumpFromStart). However, since the loopHeader block
+					doesn't exist yet we will create the node anyway and update the block later (see next comment).
+					 */
 					if (tailCall.ret().getBlock().equals(graph.getStartBlock())) {
 						selfJmp = Optional.of(jump);
 					}
 				}
 
 				Block loopHeader = (Block) graph.newBlock(loopJumps.toArray(Node[]::new));
+				/*
+				If the loop header needs to jump into itself, update the target block.
+				 */
 				selfJmp.ifPresent((jump) -> jump.setBlock(loopHeader));
 				graph.keepAlive(loopHeader);
 
 				GraphInputs inputs = getInputs(graph);
 
+				/*
+				Code in the start block that depends on the input memory or arguments must be moved into the loop
+				header
+				where we will create some phis to use as inputs instead.
+				 */
 				LOGGER.debugHeader("Moving code that depends on start node from start block to loop header...");
 				Set<Node> nodesToMove = new HashSet<>(successorsInBlock(inputs.mem(), graph.getStartBlock()));
 				for (Proj arg : inputs.arguments()) {
 					nodesToMove.addAll(successorsInBlock(arg, graph.getStartBlock()));
 				}
-
 				for (Node nodeToMove : nodesToMove) {
 					LOGGER.debug("Moving %s to %s", nodeToMove, loopHeader);
 					nodeToMove.setBlock(loopHeader);
 				}
 
 				LOGGER.debugHeader("Creating phis for arguments and start mem...");
-
 				generatePhi(loopHeader, inputs.mem(), tailCalls.stream().map(tc -> tc.call().getPred(0)).toList());
 				for (TailCall tc : tailCalls) {
 					graph.keepAlive(tc.call().getPred(0));
 				}
-
 				for (Proj arg : inputs.arguments()) {
 					LOGGER.debug("Generating Phi for argument %s %s", arg, arg.getNum());
 					generatePhi(loopHeader, arg,
@@ -90,15 +101,17 @@ public class TailCallOptimization extends NodeVisitor.Default {
 				for (TailCall tc : tailCalls) {
 					Graph.exchange(tc.ret(), graph.newBad(tc.ret().getMode()));
 				}
-
 				binding_irgopt.remove_bads(graph.ptr);
 
 				BackEdges.disable(graph);
-				return false;
+				return true;
 			})
 			.build();
 	}
 
+	/**
+	 * Contains input memory, base pointer and arguments of a graph.
+	 */
 	private record GraphInputs(
 		Proj mem,
 		Proj bp,
