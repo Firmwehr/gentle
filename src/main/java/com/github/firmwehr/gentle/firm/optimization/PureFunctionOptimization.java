@@ -5,8 +5,10 @@ import com.github.firmwehr.gentle.firm.optimization.callgraph.CallGraph;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.GraphDumper;
 import com.github.firmwehr.gentle.util.Mut;
+import firm.BackEdges;
 import firm.Entity;
 import firm.Graph;
+import firm.Mode;
 import firm.nodes.Address;
 import firm.nodes.Block;
 import firm.nodes.Call;
@@ -14,6 +16,7 @@ import firm.nodes.Div;
 import firm.nodes.Mod;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
+import firm.nodes.Proj;
 import firm.nodes.Store;
 
 import java.util.HashSet;
@@ -45,13 +48,17 @@ public class PureFunctionOptimization {
 			}
 		});
 
-
-		Set<Graph> modified = new HashSet<>();
-
 		System.out.println("Pure functions:");
 		for (Entity pureFunction : pureFunctions) {
 			System.out.println("  " + pureFunction.getLdName());
 		}
+
+		Set<Graph> modified = new HashSet<>();
+		callGraph.walkPostorder(graph -> {
+			if (removeUnusedPureCalls(graph)) {
+				modified.add(graph);
+			}
+		});
 
 		for (Graph graph : modified) {
 			GraphDumper.dumpGraph(graph, "remove-pure");
@@ -92,19 +99,16 @@ public class PureFunctionOptimization {
 			@Override
 			public void visit(Div node) {
 				result.set(true);
-				super.visit(node);
 			}
 
 			@Override
 			public void visit(Mod node) {
 				result.set(true);
-				super.visit(node);
 			}
 
 			@Override
 			public void visit(Store node) {
 				result.set(true);
-				super.visit(node);
 			}
 		});
 		return result.get();
@@ -115,15 +119,44 @@ public class PureFunctionOptimization {
 		graph.walk(new NodeVisitor.Default() {
 			@Override
 			public void visit(Call node) {
-				Address address = (Address) node.getPtr();
-				Entity entity = address.getEntity();
+				Entity entity = ((Address) node.getPtr()).getEntity();
 				// The stdlib functions are not in pureFunctions, so they're automatically considered impure.
 				if (!pureFunctions.contains(entity)) {
 					result.set(true);
 				}
-				super.visit(node);
 			}
 		});
 		return result.get();
+	}
+
+	private boolean removeUnusedPureCalls(Graph graph) {
+		Mut<Boolean> changed = new Mut<>(false);
+		BackEdges.enable(graph);
+		graph.walk(new NodeVisitor.Default() {
+			@Override
+			public void visit(Call node) {
+				Entity entity = ((Address) node.getPtr()).getEntity();
+				System.out.println("Call: " + entity.getLdName());
+				if (!pureFunctions.contains(entity)) {
+					return;
+				}
+				for (BackEdges.Edge out : BackEdges.getOuts(node)) {
+					System.out.println("  Out-Edge: " + out.node);
+					if (out.node instanceof Proj proj && proj.getMode().equals(Mode.getM())) {
+						// All children of the call node are just memory projections
+						// We can safely remove the call since we know the function is pure
+					} else {
+						return;
+					}
+				}
+				System.out.println("  Removing...");
+				for (BackEdges.Edge out : BackEdges.getOuts(node)) {
+					out.node.setPred(out.pos, node.getMem());
+				}
+				changed.set(true);
+			}
+		});
+		BackEdges.disable(graph);
+		return changed.get();
 	}
 }
