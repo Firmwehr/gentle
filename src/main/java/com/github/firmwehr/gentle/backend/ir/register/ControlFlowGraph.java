@@ -6,7 +6,9 @@ import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
 import com.google.common.graph.Graph;
 import com.google.common.graph.GraphBuilder;
 import com.google.common.graph.MutableGraph;
+import com.google.common.graph.Traverser;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -59,6 +61,17 @@ public class ControlFlowGraph {
 			.filter(it -> graph.outDegree(it) == 0)
 			.findFirst()
 			.orElseThrow(() -> new InternalCompilerException("Control flow graph has no end node: " + graph));
+	}
+
+	public List<IkeaBløck> reversePostOrder() {
+		List<IkeaBløck> blocks = new ArrayList<>();
+		for (IkeaBløck block : Traverser.forGraph(graph).depthFirstPostOrder(getStart())) {
+			blocks.add(block);
+		}
+
+		Collections.reverse(blocks);
+
+		return blocks;
 	}
 
 	public static ControlFlowGraph forBlocks(List<IkeaBløck> blocks) {

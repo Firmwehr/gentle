@@ -41,4 +41,8 @@ public enum X86Register {
 	public static Set<X86Register> all() {
 		return EnumSet.allOf(X86Register.class);
 	}
+
+	public static int registerCount() {
+		return values().length;
+	}
 }
