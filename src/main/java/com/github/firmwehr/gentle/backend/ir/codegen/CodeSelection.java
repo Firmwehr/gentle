@@ -243,9 +243,8 @@ public class CodeSelection extends NodeVisitor.Default {
 			right = tmp;
 			wasInverted = true;
 		}
-		IkeaCmp ikeaCmp = new IkeaCmp(left, right, node, wasInverted);
 
-		return ikeaCmp;
+		return new IkeaCmp(left, right, node, wasInverted);
 	}
 
 	@Override
