@@ -5,6 +5,7 @@ import com.github.firmwehr.gentle.firm.GentleBindings;
 import com.github.firmwehr.gentle.output.Logger;
 import com.google.common.collect.ArrayListMultimap;
 import firm.Graph;
+import firm.bindings.binding_irnode;
 import firm.nodes.Address;
 import firm.nodes.Block;
 import firm.nodes.Cmp;
@@ -213,6 +214,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 		private final Set<Node> emergencyIntelligenceIncinerator = new HashSet<>();
 
 		private final Graph graph;
+		private final Set<Block> openBlocks = new HashSet<>();
 
 		private boolean hasModifiedGraph;
 
@@ -252,6 +254,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 		 * @param block The block we just entered.
 		 */
 		private void onEnter(Block block) {
+			openBlocks.add(block);
 
 			var nodes = blocks.get(block);
 
@@ -278,7 +281,10 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 					}
 
 					// check if we need to rewire outgoing edges
-					runAgain |= rewireNode(lastAvailable, node);
+					if (rewireNode(lastAvailable, node)) {
+						runAgain = true;
+						hasModifiedGraph = true;
+					}
 
 					// rewire may create identical node with already available expression, but we deal with this later
 					currentAvailable.put(new NodeHashKey(node), node);
@@ -310,7 +316,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 			// check if phi from previous blocks need to be rewired (happens if in-edge was replaced in current block)
 			for (var node : availableExpressions.values()) {
 				if (node instanceof Phi phi) {
-					rewireNode(availableExpressions, phi);
+					hasModifiedGraph |= rewireNode(availableExpressions, phi);
 				}
 			}
 
@@ -319,9 +325,19 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 
 		private boolean rewireNode(HashMap<NodeHashKey, Node> lastAvailable, Node node) {
 			boolean runAgain = false;
+			boolean isPhi = node.getOpCode() == binding_irnode.ir_opcode.iro_Phi;
 			var predCount = node.getPredCount();
 			for (int i = 0; i < predCount; i++) {
 				var pred = node.getPred(i);
+
+				// phis can access and find identities across non dominated blocks, which would rewire wrong nodes
+				// to prevent that, make sure we only touch preds that are currently accessible
+				if (isPhi) {
+					var predBlock = (Block) pred.getBlock();
+					if (!openBlocks.contains(predBlock)) {
+						continue;
+					}
+				}
 
 				var existing = lastAvailable.get(new NodeHashKey(pred));
 
@@ -330,7 +346,6 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 					LOGGER.debug("rewire edge %s of %s from %s to %s in graph %s", i, node, pred, existing, graph);
 
 					node.setPred(i, existing);
-					hasModifiedGraph = true;
 					runAgain = true;
 				}
 			}
@@ -343,6 +358,8 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 		 * @param block The block we just left.
 		 */
 		private void onExit(Block block) {
+			openBlocks.remove(block);
+
 			// remove all expressions from current block from available expressions
 			var nodes = blocks.get(block);
 			for (Node node : nodes) {
