@@ -4,7 +4,6 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.firm.GentleBindings;
 import com.github.firmwehr.gentle.output.Logger;
 import com.google.common.collect.ArrayListMultimap;
-import firm.BackEdges;
 import firm.Graph;
 import firm.nodes.Address;
 import firm.nodes.Block;
@@ -19,14 +18,15 @@ import firm.nodes.Phi;
 import firm.nodes.Proj;
 import firm.nodes.Store;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 
 import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 
 public class GlobalValueNumbering extends NodeVisitor.Default {
 
-	private static final Logger LOGGER = new Logger(GlobalValueNumbering.class);
+	private static final Logger LOGGER = new Logger(GlobalValueNumbering.class, Logger.LogLevel.DEBUG);
 
 	private final Graph graph;
 
@@ -50,23 +50,18 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				// prior optimizations might have messed up dom information, we need to recalculate it
 				firm.bindings.binding_irdom.compute_doms(graph.ptr);
 
-				// node replacement and efficient change propagation requires back edges
-				BackEdges.enable(graph);
 				GlobalValueNumbering globalValueNumbering = new GlobalValueNumbering(graph);
-
 				boolean changed = globalValueNumbering.applyGlobalValueNumbering();
 				if (changed) {
 					dumpGraph(graph, "gvn");
 				}
-
-				BackEdges.disable(graph);
 				return changed;
 			})
 			.build();
 	}
 
 	private boolean applyGlobalValueNumbering() {
-		var walker = new GlobalValueNumbering.NodeHashKey.GlobalValueNumberingWalker(graph);
+		var walker = new GlobalValueNumbering.GlobalValueNumberingWalker(graph);
 		walker.walkTheWalk();
 		return walker.hasModifiedGraph();
 	}
@@ -151,6 +146,10 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 						return false;
 					}
 				}
+				case iro_Jmp -> {
+					// jumps can not be merged (really bad things will happen, if you try it)
+					return node.equals(thatNode);
+				}
 				case iro_Member -> throw new InternalCompilerException(
 					"encountered member node (should have been lowered)");
 				case iro_Mod -> {
@@ -210,143 +209,153 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 			return hash;
 		}
 
+
+	}
+
+	/**
+	 * This class uses the Firm backend to perform a depth first search in the dominator tree. During the search, we
+	 * keep a list of available expressions (nodes) and each time we enter a new block, we check if we have duplicated
+	 * expressions. On exit, we remove the available expressions from the available expression list. This ensures that
+	 * the available expression list will only contain such expressions that are currently available to the current
+	 * block.
+	 */
+	private static class GlobalValueNumberingWalker {
+
+		// firm can't enumerate all nodes in block without shitting itself
+		private final ArrayListMultimap<Block, Node> blocks = ArrayListMultimap.create();
+		private final HashMap<NodeHashKey, Node> availableExpressions = new HashMap<>();
+		private final Set<Node> emergencyIntelligenceIncinerator = new HashSet<>();
+
+		private final Graph graph;
+
+		private boolean hasModifiedGraph;
+
+		public GlobalValueNumberingWalker(Graph graph) {
+			this.graph = graph;
+		}
+
+		public boolean hasModifiedGraph() {
+			return hasModifiedGraph;
+		}
+
+		public void walkTheWalk() {
+			graph.walkTopological(new Default() {
+				@Override
+				public void defaultVisit(Node n) {
+
+					Block block = (Block) n.getBlock();
+					if (block != null) {
+						blocks.put(block, n);
+					}
+				}
+			});
+
+			GentleBindings.walkDominatorTree(graph, this::onEnter, this::onExit);
+
+			// remove killed nodes (don't worry, they aren't sentient)
+			for (var node : emergencyIntelligenceIncinerator) {
+				LOGGER.debug("killing %s", node);
+				Graph.killNode(node);
+			}
+			firm.bindings.binding_irgopt.remove_bads(graph.ptr);
+		}
+
 		/**
-		 * This class uses the Firm backend to perform a depth first search in the dominator tree. During the
-		 * search, we
-		 * keep a list of available expressions (nodes) and each time we enter a new block, we check if we have
-		 * duplicated expressions. On exit, we remove the available expressions from the available expression list.
-		 * This
-		 * ensures that the available expression list will only contain such expressions that are currently
-		 * available to
-		 * the current block.
+		 * Called when DFS enters block.
+		 *
+		 * @param block The block we just entered.
 		 */
-		private static class GlobalValueNumberingWalker {
+		private void onEnter(Block block) {
 
-			// firm can't enumerate all nodes in block without shitting itself
-			private final ArrayListMultimap<Block, Node> blocks = ArrayListMultimap.create();
-			private final HashMap<NodeHashKey, Node> availableExpressions = new HashMap<>();
+			var nodes = blocks.get(block);
 
-			private final Graph graph;
+			// stabalize local block
+			var lastAvailable = new HashMap<>(availableExpressions);
+			var currentAvailable = new HashMap<NodeHashKey, Node>();
 
-			private boolean hasModifiedGraph = false;
+			boolean runAgain = true;
+			boolean firstRun = true;
+			while (runAgain) {
+				runAgain = false;
 
-			public GlobalValueNumberingWalker(Graph graph) {
-				this.graph = graph;
-			}
+				// if we clear it at the end of the loop, we can't carry over available nodes
+				currentAvailable.clear();
 
-			public boolean hasModifiedGraph() {
-				return hasModifiedGraph;
-			}
+				var replaced = new HashSet<Node>();
+				for (var node : nodes) {
 
-			public void walkTheWalk() {
-				graph.walkTopological(new Default() {
-					@Override
-					public void defaultVisit(Node n) {
-
-						Block block = (Block) n.getBlock();
-						if (block != null) {
-							blocks.put(block, n);
-						}
+					// if we have been replaced, we don't need to reroute inputs and don't carry over
+					var replacement = lastAvailable.get(new NodeHashKey(node));
+					if (replacement != null && !node.equals(replacement)) {
+						replaced.add(node);
+						continue;
 					}
-				});
 
-				GentleBindings.walkDominatorTree(graph, this::onEnter, this::onExit);
-			}
+					// check if we need to rewire outgoing edges
+					var rewired = false;
+					var predCount = node.getPredCount();
+					for (int i = 0; i < predCount; i++) {
+						var pred = node.getPred(i);
 
-			/**
-			 * Called when DFS enters block.
-			 *
-			 * @param block The block we just entered.
-			 */
-			private void onEnter(Block block) {
+						var existing = lastAvailable.get(new NodeHashKey(pred));
 
-				var nodes = blocks.get(block);
+						// check if edge needs rewiring
+						if (existing != null && !pred.equals(existing)) {
+							LOGGER.debug("rewire edge %s of %s from %s to %s in graph %s", i, node, pred, existing,
+								graph);
 
-				// stabalize local block
-				var lastAvailable = new HashMap<>(availableExpressions);
-				var currentAvailable = new HashMap<NodeHashKey, Node>();
-
-				boolean runAgain = true;
-				boolean firstRun = true;
-				while (runAgain) {
-					runAgain = false;
-
-					var it = nodes.iterator();
-					while (it.hasNext()) {
-						var node = it.next();
-						var hash = new NodeHashKey(node);
-
-						var existing = lastAvailable.get(hash);
-						if (existing != null && !existing.equals(node)) {
-
-							// capture depender and remove their hash from expression, since they are about to change
-							var dependers = new ArrayList<Node>();
-							for (BackEdges.Edge edge : BackEdges.getOuts(node)) {
-								var depender = edge.node;
-								if (!depender.getBlock().equals(block)) {
-									// node is part of LATER block, so we don't consider it here
-									continue;
-								}
-
-								var dependerHash = new NodeHashKey(depender);
-								currentAvailable.remove(dependerHash);
-								dependers.add(depender);
-							}
-
-							// exchange node (which also means it will be removed from block)
-							// TODO: exchange might leave Id node (shouldnt, since we have backedges enabled)
-							LOGGER.debug("replacing %s with %s in graph %s", node, existing, graph);
-							Graph.exchange(node, existing);
-							runAgain = true;
+							node.setPred(i, existing);
 							hasModifiedGraph = true;
-							it.remove();
-
-							// depender need to be updated
-							for (Node depender : dependers) {
-								var dependerHash = new NodeHashKey(depender);
-								currentAvailable.putIfAbsent(dependerHash, depender);
-							}
-
-						} else {
-							// node hasn't been replaced, take over to next iteration
-							currentAvailable.put(hash, node);
+							runAgain = true;
+							rewired = true;
 						}
-
-					}
-					lastAvailable = currentAvailable;
-					lastAvailable.putAll(availableExpressions);
-					currentAvailable = new HashMap<>();
-
-					// dump graphs if we had actual changes (next statement will destroy this information)
-					if (runAgain) {
-						dumpGraph(block.getGraph(), "gvn");
 					}
 
-					// first run does have access to full block local node identities, so we always need a second run
-					if (firstRun) {
-						runAgain = true;
-						firstRun = false;
-					}
+					// rewire may create identical node with already available expression, but we deal with this later
+					currentAvailable.put(new NodeHashKey(node), node);
 				}
 
-				// local block stabilized, move on to next block
-				availableExpressions.putAll(currentAvailable);
+				// remove nodes from block if they have been replaced and should no longer be considere
+				nodes.removeAll(replaced);
+				emergencyIntelligenceIncinerator.addAll(replaced);
+
+				// rewire may have created duplicates with available expression, so we always override them
+				lastAvailable = new HashMap<>(currentAvailable);
+				lastAvailable.putAll(availableExpressions);
+
+				// dump graphs if we had actual changes (next statement will destroy this information)
+				if (runAgain) {
+					dumpGraph(block.getGraph(), "gvn-iter");
+				}
+
+				// first run does have access to full block local node identities, so we always need a second run
+				if (firstRun) {
+					runAgain = true;
+					firstRun = false;
+				}
 			}
 
-			/**
-			 * Called when DFS leaves block.
-			 *
-			 * @param block The block we just left.
-			 */
-			private void onExit(Block block) {
-				// remove all expressions from current block from available expressions
-				var nodes = blocks.get(block);
-				for (Node node : nodes) {
-					var hash = new NodeHashKey(node);
+			// local block stabilized, move on to next block
+			availableExpressions.putAll(currentAvailable);
 
-					// every expression is unqie to first block it appeared (duplicates have been eradicated on enter)
-					availableExpressions.remove(hash);
-				}
+			/* following blocks may have dependencies on nodes that were replaced in current block
+			 * in order to properly redirect those,
+			 * */
+		}
+
+		/**
+		 * Called when DFS leaves block.
+		 *
+		 * @param block The block we just left.
+		 */
+		private void onExit(Block block) {
+			// remove all expressions from current block from available expressions
+			var nodes = blocks.get(block);
+			for (Node node : nodes) {
+				var hash = new NodeHashKey(node);
+
+				// every expression is unqie to first block it appeared (duplicates have been eradicated on enter)
+				availableExpressions.remove(hash);
 			}
 		}
 	}

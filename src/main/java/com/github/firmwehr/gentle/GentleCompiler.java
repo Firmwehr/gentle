@@ -48,7 +48,6 @@ public class GentleCompiler {
 	private static final Charset FILE_CHARSET = StandardCharsets.US_ASCII;
 
 	public static void main(String[] args) {
-		throw new Exception("this build is cursed, please don't run it");
 		LOGGER.info("Hello World, please be gentle UwU");
 
 		try {
