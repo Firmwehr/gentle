@@ -60,6 +60,10 @@ public class LifetimeAnalysis {
 		return Set.copyOf(liveness.get(block).liveOut());
 	}
 
+	public Set<IkeaNode> getLiveIn(IkeaBløck block, IkeaBløck parent) {
+		return Set.copyOf(liveness.get(block).liveIn().get(parent));
+	}
+
 	private record BlockLiveliness(
 		Set<IkeaNode> kill,
 		Map<IkeaBløck, Set<IkeaNode>> liveIn,

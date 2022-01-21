@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
+import com.github.firmwehr.gentle.backend.ir.register.RegisterInformation;
 import com.github.firmwehr.gentle.backend.ir.register.X86Register;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Node;
@@ -14,6 +15,12 @@ import java.util.stream.Collectors;
 
 public interface IkeaNode {
 
+	default RegisterInformation register() {
+		// FIXME: Properly implement it
+		return new RegisterInformation();
+	}
+
+	// TODO: Remove
 	IkeaBøx box();
 
 	List<IkeaNode> parents();
