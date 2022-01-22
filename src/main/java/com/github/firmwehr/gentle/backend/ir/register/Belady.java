@@ -9,12 +9,15 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSpill;
 import com.github.firmwehr.gentle.output.Logger;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class Belady {
 
@@ -86,6 +89,8 @@ public class Belady {
 	private void displace(
 		Collection<IkeaNode> newValues, Set<WorksetNode> currentWorkset, IkeaNode currentInstruction, boolean isUsage
 	) {
+		LOGGER.debug("Making room for %s after %s (usage: %s). Live: %s", newValues, currentInstruction, isUsage,
+			currentWorkset);
 		int additionalPressure = 1; // We do not use all registers (sp is not a good idea?)
 		Set<WorksetNode> toInsert = new HashSet<>();
 
@@ -170,7 +175,161 @@ public class Belady {
 		}
 
 		// TODO: More magic!
-		return new HashSet<>();
+		return magicStartWorkset(block);
+	}
+
+	private Set<WorksetNode> magicStartWorkset(IkeaBløck block) {
+		// Nodes we definitely want to keep if possible
+		Set<WorksetNode> starters = new HashSet<>();
+		// Nodes we would like to keep but can compromise on. They are used later on or in less nested loops, etc.
+		Set<WorksetNode> delayed = new HashSet<>();
+
+		// Decide whether to spill or keep Phi
+		for (IkeaNode phi : block.nodes().stream().filter(it -> it instanceof IkeaPhi).toList()) {
+			PredecessorAvailability availabiity = computePredecessorAvailability(block, phi);
+
+			WorksetNode worksetNode = identityCrisis(block, phi, availabiity);
+			switch (worksetNode.distance()) {
+				case LoopDelayed ignored -> delayed.add(worksetNode);
+				case Distance ignored -> starters.add(worksetNode);
+				case Infinity ignored -> addPhiSpill((IkeaPhi) phi, block);
+				case UnknownDist ignored -> throw new InternalCompilerException("Unknown use distance!");
+			}
+		}
+
+		List<IkeaNode> liveIn =
+			block.parents().stream().flatMap(it -> liveliness.getLiveIn(block, it.parent()).stream()).toList();
+		for (IkeaNode node : liveIn) {
+			PredecessorAvailability availability = computePredecessorAvailability(block, node);
+
+			WorksetNode worksetNode = identityCrisis(block, node, availability);
+			switch (worksetNode.distance()) {
+				case LoopDelayed ignored -> delayed.add(worksetNode);
+				case Distance ignored -> starters.add(worksetNode);
+				case Infinity ignored -> throw new InternalCompilerException("Why you dead?");
+				case UnknownDist ignored -> throw new InternalCompilerException("Unknown use distance!");
+			}
+		}
+
+		// TODO: Compute free slots based on loop pressure
+		int freeSlots = 0;
+
+		if (freeSlots > 0) {
+			int takenSlots = 0;
+			for (WorksetNode worksetNode : delayed.stream().sorted().toList()) {
+				if (takenSlots >= freeSlots) {
+					break;
+				}
+				if (!(worksetNode.node() instanceof IkeaPhi)) {
+					PredecessorAvailability availability = computePredecessorAvailability(block, worksetNode.node());
+					if (availability != PredecessorAvailability.LIVE_IN_ALL) {
+						LOGGER.debug("Delayed node %s was not live in all preds, skipping it", worksetNode);
+						// Do not unnecessarily reload stuff
+						continue;
+					}
+				}
+
+				LOGGER.debug("Taking delayed node %s", worksetNode);
+				starters.add(worksetNode);
+				takenSlots++;
+			}
+		}
+
+		for (WorksetNode worksetNode : delayed) {
+			if (worksetNode.node() instanceof IkeaPhi) {
+				// Spill the whole phi if we did not take it
+				addPhiSpill((IkeaPhi) worksetNode.node(), block);
+			}
+		}
+
+		Set<WorksetNode> startWorkset = starters.stream()
+			.sorted(Comparator.comparing(WorksetNode::distance))
+			.limit(X86Register.registerCount())
+			.collect(Collectors.toSet());
+
+		// Spill phis we did not take
+		for (WorksetNode starter : starters) {
+			if (startWorkset.contains(starter) || !(starter.node() instanceof IkeaPhi)) {
+				continue;
+			}
+			addPhiSpill((IkeaPhi) starter.node(), block);
+		}
+
+		// Mark nodes as spilled if they are spilled in a parent block. This ensures our fix block helper properly
+		// cleans it up and spills it in the other parents as well.
+		for (WorksetNode node : startWorkset) {
+			// The value is from our block. This is not possible for a normal starter we inherited from a parent.
+			// We are in the loop head and encountered a back edge to ourself. This does not count as spilled, we will
+			// clean that up when processing this block.
+			if (node.node().getBlock().equals(block)) {
+				node.setSpilled(false);
+				continue;
+			}
+
+			PredecessorAvailability availability = computePredecessorAvailability(block, node.node());
+			if (availability == PredecessorAvailability.MIXED ||
+				availability == PredecessorAvailability.SPILLED_IN_ALL) {
+				node.setSpilled(true);
+			}
+		}
+
+		return startWorkset;
+	}
+
+	private WorksetNode identityCrisis(IkeaBløck block, IkeaNode node, PredecessorAvailability availability) {
+		WorksetNode worksetNode = new WorksetNode(node);
+
+		// TODO: Compute
+		int nextUseTime = (Integer) null;
+		worksetNode.setDistance(new Distance(nextUseTime));
+
+		// We do not want to take you if you are spilled in every single predecessor
+		if (availability == PredecessorAvailability.SPILLED_IN_ALL) {
+			LOGGER.debug("Not taking %s as it is spilled in all preds", node);
+			worksetNode.setDistance(new Infinity());
+			return worksetNode;
+		}
+		// Sounds good to me :)
+		if (availability == PredecessorAvailability.LIVE_IN_ALL) {
+			LOGGER.debug("Taking %s as it is live in all preds", node);
+			return worksetNode;
+		}
+
+		boolean isFurtherNestedInLoopTree = false;
+		// It's even deeper!
+		if (isFurtherNestedInLoopTree) {
+			LOGGER.debug("Taking %s as it is deeper nested (%s vs %s)", node, 1, 1);
+			return worksetNode;
+		}
+
+		LOGGER.debug("Delaying node %s as it is less nested (%s vs %s)", node, 1, 1);
+		worksetNode.setDistance(new LoopDelayed());
+
+		return worksetNode;
+	}
+
+	private PredecessorAvailability computePredecessorAvailability(IkeaBløck block, IkeaNode node) {
+		PredecessorAvailability result = PredecessorAvailability.MIXED;
+
+		for (IkeaBløck inputBlock : controlFlow.inputBlocks(block)) {
+			IkeaNode nodeToCheck = node;
+			if (nodeToCheck instanceof IkeaPhi phi) {
+				nodeToCheck = phi.getParents().get(inputBlock);
+			}
+
+			Set<WorksetNode> parentEndWorkset = endWorksets.get(inputBlock);
+
+			if (parentEndWorkset == null || endWorksets.isEmpty()) {
+				return PredecessorAvailability.UNKNOWN;
+			}
+
+			PredecessorAvailability availability = parentEndWorkset.contains(nodeToCheck)
+				? PredecessorAvailability.LIVE_IN_ALL
+				: PredecessorAvailability.SPILLED_IN_ALL;
+			result = result.combineWith(availability);
+		}
+
+		return result;
 	}
 
 	/**
@@ -265,6 +424,13 @@ public class Belady {
 		addReload(node, parent.nodes().get(parent.nodes().size() - 1));
 	}
 
+	private void addPhiSpill(IkeaPhi phi, IkeaBløck block) {
+		// TODO: Remember for later usage in realizeSpillsAndReloads
+		for (var entry : phi.getParents().entrySet()) {
+			addSpillOnEdge(entry.getValue(), block, entry.getKey());
+		}
+	}
+
 	private void realizeSpillsAndReloads() {
 		// TODO: Spill whole phis first! Do not insert spilled phis in spill info but do insert their arguments
 
@@ -326,6 +492,26 @@ public class Belady {
 		IkeaPhi phi = (IkeaPhi) spillInfo.valueToSpill();
 		for (IkeaNode node : phi.getParents().values()) {
 			spill(spillInfos.get(node));
+		}
+	}
+
+	private enum PredecessorAvailability {
+		LIVE_IN_ALL,
+		SPILLED_IN_ALL,
+		MIXED,
+		UNKNOWN;
+
+		public PredecessorAvailability combineWith(PredecessorAvailability other) {
+			if (this == UNKNOWN || other == UNKNOWN) {
+				return UNKNOWN;
+			}
+			if (this == MIXED) {
+				return MIXED;
+			}
+			if (this == other) {
+				return this;
+			}
+			return MIXED;
 		}
 	}
 
@@ -399,9 +585,11 @@ public class Belady {
 	private static class WorksetNode {
 		private final IkeaNode node;
 		private boolean spilled;
+		private NodeDistance distance;
 
 		public WorksetNode(IkeaNode node) {
 			this.node = node;
+			this.distance = new UnknownDist();
 		}
 
 		public void setSpilled(boolean spilled) {
@@ -410,6 +598,14 @@ public class Belady {
 
 		public boolean spilled() {
 			return spilled;
+		}
+
+		public NodeDistance distance() {
+			return distance;
+		}
+
+		public void setDistance(NodeDistance distance) {
+			this.distance = distance;
 		}
 
 		public IkeaNode node() {
@@ -432,7 +628,49 @@ public class Belady {
 		public int hashCode() {
 			return Objects.hash(node);
 		}
+
+		@Override
+		public String toString() {
+			return "WorksetNode{" + "node=" + node + ", spilled=" + spilled + ", distance=" + distance + '}';
+		}
 	}
 
+	private sealed interface NodeDistance extends Comparable<NodeDistance>
+		permits Infinity, Distance, LoopDelayed, UnknownDist {
 
+		int asInt();
+
+		@Override
+		default int compareTo(Belady.NodeDistance o) {
+			return Integer.compare(asInt(), o.asInt());
+		}
+	}
+
+	private record Infinity() implements NodeDistance {
+		@Override
+		public int asInt() {
+			return Integer.MAX_VALUE;
+		}
+	}
+
+	private record LoopDelayed() implements NodeDistance {
+		@Override
+		public int asInt() {
+			return Integer.MAX_VALUE - 1;
+		}
+	}
+
+	private record Distance(int distance) implements NodeDistance {
+		@Override
+		public int asInt() {
+			return distance;
+		}
+	}
+
+	private record UnknownDist() implements NodeDistance {
+		@Override
+		public int asInt() {
+			return Integer.MAX_VALUE;
+		}
+	}
 }
