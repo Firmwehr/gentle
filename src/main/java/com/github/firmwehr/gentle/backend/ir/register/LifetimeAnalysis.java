@@ -26,9 +26,11 @@ public class LifetimeAnalysis {
 	public LifetimeAnalysis(ControlFlowGraph controlFlowGraph) {
 		this.controlFlowGraph = controlFlowGraph;
 		this.liveness = new HashMap<>();
+
+		recompute();
 	}
 
-	public void buildLifetimes() {
+	public void recompute() {
 		LOGGER.info("Building lifetimes");
 		Set<IkeaBløck> seen = new HashSet<>();
 

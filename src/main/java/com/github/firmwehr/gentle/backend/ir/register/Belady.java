@@ -4,6 +4,8 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaReload;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSpill;
 import com.github.firmwehr.gentle.output.Logger;
 
 import java.util.Collection;
@@ -24,11 +26,13 @@ public class Belady {
 	private final Dominance dominance;
 	private final ControlFlowGraph controlFlow;
 	private final LifetimeAnalysis liveliness;
+	private final Uses uses;
 
-	public Belady(Dominance dominance, ControlFlowGraph controlFlow, LifetimeAnalysis liveliness) {
+	public Belady(Dominance dominance, ControlFlowGraph controlFlow, LifetimeAnalysis liveliness, Uses uses) {
 		this.dominance = dominance;
 		this.controlFlow = controlFlow;
 		this.liveliness = liveliness;
+		this.uses = uses;
 
 		this.startWorksets = new HashMap<>();
 		this.endWorksets = new HashMap<>();
@@ -41,10 +45,13 @@ public class Belady {
 		}
 
 		for (IkeaBløck block : graph.getAllBlocks()) {
-			processBlock(block);
+			fixBlockBorder(block);
 		}
 
-		// TODO: Insert spills and reloads, fix SSA
+		// Also fixes SSA and invalidates liveliness, uses and dominance :awesome:
+		realizeSpillsAndReloads();
+
+		// TODO: Spill slot assignment
 		// TODO: Spill slot coalescing
 	}
 
@@ -86,12 +93,15 @@ public class Belady {
 		for (IkeaNode value : newValues) {
 			WorksetNode worksetValue = new WorksetNode(value);
 			// Needs a reload!
-			if (!currentWorkset.contains(worksetValue)) {
+			if (!currentWorkset.contains(worksetValue) && isUsage) {
 				// add a reload here!
 				LOGGER.debug("Adding reload for %s before %s", value, currentInstruction);
 				addReload(value, currentInstruction);
 				worksetValue.setSpilled(true);
 			} else {
+				if (!isUsage) {
+					throw new InternalCompilerException("Already knew a value I am introducing?");
+				}
 				// Remove so it is not accidentally selected for spilling
 				currentWorkset.remove(worksetValue);
 				LOGGER.debug("%s was already live before %s", value, currentInstruction);
@@ -125,8 +135,8 @@ public class Belady {
 	}
 
 	private void addReload(IkeaNode valueToReload, IkeaNode before) {
-		SpillInfo spillInfo = spillInfos.computeIfAbsent(before, SpillInfo::forNode);
-		spillInfo.reloadBefore().add(valueToReload);
+		SpillInfo spillInfo = spillInfos.computeIfAbsent(valueToReload, SpillInfo::forNode);
+		spillInfo.reloadBefore().add(before);
 	}
 
 	private void addSpill(IkeaNode valueToSpill, IkeaNode after) {
@@ -163,6 +173,13 @@ public class Belady {
 		return new HashSet<>();
 	}
 
+	/**
+	 * Our {@link #processBlock(IkeaBløck)} is block-local and might cause the start/end workset of blocks to not be
+	 * consistent with their parents. This can e.g. happen if you have multiple parents and some subset had to be
+	 * decided on.
+	 *
+	 * @param block the block to fix up
+	 */
 	private void fixBlockBorder(IkeaBløck block) {
 		Set<WorksetNode> startWorkset = startWorksets.get(block);
 
@@ -248,14 +265,135 @@ public class Belady {
 		addReload(node, parent.nodes().get(parent.nodes().size() - 1));
 	}
 
-	private record SpillInfo(
-		IkeaNode valueToSpill,
-		Set<IkeaNode> reloadBefore,
-		Set<IkeaNode> toSpillAfter
-	) {
+	private void realizeSpillsAndReloads() {
+		// TODO: Spill whole phis first! Do not insert spilled phis in spill info but do insert their arguments
+
+		// TODO: We could connect reloads with spills and spills with reloads. This might make detecting them easier
+		//  later on, but also forces us to fix SSA form twice
+
+		for (SpillInfo info : spillInfos.values()) {
+			// TODO: Calculate spill costs and maybe do rematerialization
+
+			spill(info);
+
+			for (IkeaNode reloadBefore : info.reloadBefore()) {
+				int insertionPoint = reloadBefore.getBlock().nodes().indexOf(reloadBefore) - 1;
+				IkeaReload reload = new IkeaReload(null, reloadBefore.getBlock(), info.valueToSpill());
+				reloadBefore.getBlock().nodes().add(insertionPoint, reload);
+			}
+
+			if (!info.reloadBefore().isEmpty()) {
+				// Dominance and uses are *invalid* after this point but that's okay, our spilled values are
+				// independent
+				new SsaReconstruction(dominance, uses).ssaReconstruction(Set.of(info.valueToSpill()));
+			}
+		}
+
+		// We need to fix up uses, dominance, liveliness and so forth
+		dominance.recompute();
+		uses.recompute();
+		liveliness.recompute();
+	}
+
+	private void spill(SpillInfo spillInfo) {
+		// No need to spill things twice
+		if (spillInfo.spilled) {
+			return;
+		}
+		spillInfo.setSpilled(true);
+
+		if (spillInfo.isPhi()) {
+			spillPhi(spillInfo);
+		} else {
+			spillNode(spillInfo);
+		}
+	}
+
+	private void spillNode(SpillInfo spillInfo) {
+		for (IkeaNode spillAfter : spillInfo.toSpillAfter()) {
+			IkeaSpill spill = new IkeaSpill(null, spillAfter.getBlock(), spillInfo.valueToSpill());
+
+			int insertPoint = spillAfter.getBlock().nodes().indexOf(spillAfter) + 1;
+			spillAfter.getBlock().nodes().add(insertPoint, spill);
+		}
+	}
+
+	private void spillPhi(SpillInfo spillInfo) {
+		// TODO: We don't need any replacement (memory) Phi here as we never reorder or optimize the order afterwards,
+		//  right? If spill slots are unique that should work. A spill might happen in a block far above us but that
+		//  should be fine as long as we use the same spillslot for it.
+
+		IkeaPhi phi = (IkeaPhi) spillInfo.valueToSpill();
+		for (IkeaNode node : phi.getParents().values()) {
+			spill(spillInfos.get(node));
+		}
+	}
+
+	private static final class SpillInfo {
+		private boolean spilled;
+		private final IkeaNode valueToSpill;
+		private final Set<IkeaNode> reloadBefore;
+		private final Set<IkeaNode> toSpillAfter;
+
+		private SpillInfo(IkeaNode valueToSpill, Set<IkeaNode> reloadBefore, Set<IkeaNode> toSpillAfter) {
+			this.valueToSpill = valueToSpill;
+			this.reloadBefore = reloadBefore;
+			this.toSpillAfter = toSpillAfter;
+		}
+
+		public boolean isPhi() {
+			return valueToSpill instanceof IkeaPhi;
+		}
+
 		public static SpillInfo forNode(IkeaNode node) {
 			return new SpillInfo(node, new HashSet<>(), new HashSet<>());
 		}
+
+		public boolean spilled() {
+			return spilled;
+		}
+
+		public void setSpilled(boolean spilled) {
+			this.spilled = spilled;
+		}
+
+		public IkeaNode valueToSpill() {
+			return valueToSpill;
+		}
+
+		public Set<IkeaNode> reloadBefore() {
+			return reloadBefore;
+		}
+
+		public Set<IkeaNode> toSpillAfter() {
+			return toSpillAfter;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == this) {
+				return true;
+			}
+			if (obj == null || obj.getClass() != this.getClass()) {
+				return false;
+			}
+			var that = (SpillInfo) obj;
+			return Objects.equals(this.valueToSpill, that.valueToSpill) &&
+				Objects.equals(this.reloadBefore, that.reloadBefore) &&
+				Objects.equals(this.toSpillAfter, that.toSpillAfter);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(valueToSpill, reloadBefore, toSpillAfter);
+		}
+
+		@Override
+		public String toString() {
+			return "SpillInfo[" + "valueToSpill=" + valueToSpill + ", " + "reloadBefore=" + reloadBefore + ", " +
+				"toSpillAfter=" + toSpillAfter + ']';
+		}
+
 	}
 
 	private static class WorksetNode {

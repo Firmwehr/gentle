@@ -11,9 +11,18 @@ import java.util.Set;
 public class Uses {
 
 	private final MutableGraph<IkeaNode> usesGraph;
+	private final ControlFlowGraph controlFlow;
 
 	public Uses(ControlFlowGraph controlFlow) {
+		this.controlFlow = controlFlow;
 		this.usesGraph = GraphBuilder.directed().allowsSelfLoops(true).build();
+
+		recompute();
+	}
+
+	public void recompute() {
+		usesGraph.edges().clear();
+		usesGraph.nodes().clear();
 
 		for (IkeaBløck block : controlFlow.getAllBlocks()) {
 			for (IkeaNode node : block.nodes()) {

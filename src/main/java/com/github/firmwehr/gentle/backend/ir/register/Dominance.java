@@ -37,12 +37,16 @@ public class Dominance {
 		this.dominatorTree = GraphBuilder.directed().allowsSelfLoops(true).build();
 		this.dominanceFrontier = GraphBuilder.directed().allowsSelfLoops(true).build();
 
-		computeDominance();
-		computeDominanceFrontier();
+		recompute();
 	}
 
 	public static Dominance forCfg(ControlFlowGraph graph) {
 		return new Dominance(graph);
+	}
+
+	public void recompute() {
+		computeDominance();
+		computeDominanceFrontier();
 	}
 
 	private void computeDominance() {
