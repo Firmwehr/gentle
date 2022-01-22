@@ -57,14 +57,17 @@ import firm.bindings.binding_ircons;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cond;
+import firm.nodes.Const;
 import firm.nodes.Div;
 import firm.nodes.Load;
 import firm.nodes.Mod;
 import firm.nodes.Node;
 import firm.nodes.Store;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -87,6 +90,13 @@ public class FirmGraphBuilder {
 	private final EntityHelper entityHelper;
 	private final DebugStore debugStore;
 
+	private final Map<ConstNodeKey, Const> constCache = new HashMap<>();
+
+	/**
+	 * Wrapper around Const nods to perform identity checks
+	 */
+	private record ConstNodeKey(int tarval, Mode mode){}
+
 	public FirmGraphBuilder(DebugStore debugStore) {
 		this.debugStore = debugStore;
 		this.typeHelper = new TypeHelper();
@@ -100,6 +110,23 @@ public class FirmGraphBuilder {
 		}
 	}
 
+	/**
+	 * This method wraps around the {@link Construction#newConst(int, Mode)} call to perform Const node caching. While saving
+	 * ressources, it's primary purpose is to reduce the cost of global value numbering in later stages. There are
+	 * still
+	 * cases in which new Const nodes are created and one should not really on pointer comparisons, when dealing with
+	 * Const nodes.
+	 *
+	 * @param construction The construction instance in which the new Const node is to be created.
+	 * @param value The value of the constant.
+	 * @param mode The constant mode.
+	 *
+	 * @return A newly created Const node or an already created one from an earlier call.
+	 */
+	private Node newConst(Construction construction, int value, Mode mode) {
+		return constCache.computeIfAbsent(new ConstNodeKey(value, mode), k -> (Const) construction.newConst(value, mode));
+	}
+
 	private void processClass(SClassDeclaration declaration) {
 		for (SMethod method : declaration.methods().getAll()) {
 			processMethod(method);
@@ -110,6 +137,9 @@ public class FirmGraphBuilder {
 		SlotTable slotTable = SlotTable.forMethod(method);
 
 		Entity entity = this.entityHelper.computeMethodEntity(method);
+
+		// wipe const node cache, since nodes are only valid in their own graph
+		constCache.clear();
 
 		Graph currentGraph = new Graph(entity, slotTable.size());
 		Construction construction = new Construction(currentGraph);
@@ -286,7 +316,7 @@ public class FirmGraphBuilder {
 	private void booleanToJump(Context context, Node node, JumpTarget jumpTarget, SExpression source) {
 		Preconditions.checkArgument(node.getMode().isInt(), "Expected boolean literal (Bu), got " + node);
 
-		Node right = context.construction().newConst(0, Mode.getBu());
+		Node right = newConst(context.construction(), 0, Mode.getBu());
 		JumpTarget invertedTarget = new JumpTarget(jumpTarget.falseBlock(), jumpTarget.trueBlock());
 
 		processRelation(context, node, right, Relation.Equal, invertedTarget, source);
@@ -391,7 +421,8 @@ public class FirmGraphBuilder {
 		construction.setCurrentBlock(afterBlock);
 		afterBlock.mature();
 		Node phi = construction.newPhi(
-			new Node[]{construction.newConst(0, Mode.getBu()), construction.newConst(1, Mode.getBu())}, Mode.getBu());
+			new Node[]{newConst(construction, 0, Mode.getBu()), newConst(construction, 1, Mode.getBu())},
+			Mode.getBu());
 
 		debugStore.putMetadata(afterBlock, forCondToBoolBlock(source, CondToBoolBlockType.AFTER));
 		debugStore.putMetadata(trueBlock, forCondToBoolBlock(source, CondToBoolBlockType.TRUE));
@@ -453,7 +484,7 @@ public class FirmGraphBuilder {
 		Node indexNode = processValueExpression(context, expr.index());
 
 		Type innerType = typeHelper.getType(expr.type());
-		Node typeSizeNode = construction.newConst(innerType.getSize(), Mode.getLs());
+		Node typeSizeNode = newConst(construction, innerType.getSize(), Mode.getLs());
 		Node offsetNode = construction.newMul(construction.newConv(indexNode, Mode.getLs()), typeSizeNode);
 		Node addressAdd = construction.newAdd(arrayNode, offsetNode);
 		Node addressConv = construction.newConv(addressAdd, Mode.getP());
@@ -514,7 +545,7 @@ public class FirmGraphBuilder {
 	}
 
 	private Node processBooleanValue(Context context, SBooleanValueExpression expr) {
-		Node resultConst = context.construction().newConst(expr.value() ? 1 : 0, Mode.getBu());
+		Node resultConst = newConst(context.construction(), expr.value() ? 1 : 0, Mode.getBu());
 
 		debugStore.putMetadata(resultConst, forElement(expr));
 
@@ -540,7 +571,7 @@ public class FirmGraphBuilder {
 	}
 
 	private Node processIntegerValue(Context context, SIntegerValueExpression expr) {
-		Node result = context.construction().newConst(expr.value(), Mode.getIs());
+		Node result = newConst(context.construction(), expr.value(), Mode.getIs());
 
 		debugStore.putMetadata(result, forElement(expr));
 
@@ -611,14 +642,14 @@ public class FirmGraphBuilder {
 		Construction construction = context.construction();
 		ClassType type = typeHelper.getClassType(expr.classDecl());
 
-		return allocateMemory(construction, type.getSize(), construction.newConst(1, Mode.getLu()), expr);
+		return allocateMemory(construction, type.getSize(), newConst(construction, 1, Mode.getLu()), expr);
 	}
 
 	private Node allocateMemory(Construction construction, int typeSize, Node memberCount, SExpression source) {
 		Entity allocateEntity = entityHelper.getEntity(StdLibEntity.ALLOCATE);
 		Node allocateAddress = construction.newAddress(allocateEntity);
 
-		Node typeSizeConst = construction.newConst(typeSize, Mode.getLu());
+		Node typeSizeConst = newConst(construction, typeSize, Mode.getLu());
 		Node[] arguments = {memberCount, typeSizeConst};
 		// Arguments need to be evaluated first so memory chain is built correctly
 		Node call =
@@ -638,7 +669,7 @@ public class FirmGraphBuilder {
 	}
 
 	private Node processNull(Context context, SNullExpression nullExpression) {
-		Node result = context.construction().newConst(0, Mode.getP());
+		Node result = newConst(context.construction(), 0, Mode.getP());
 
 		debugStore.putMetadata(result, forElement(nullExpression));
 
@@ -732,7 +763,7 @@ public class FirmGraphBuilder {
 			case LOGICAL_NOT -> {
 				// !b => (b == false)
 				Node innerExpr = processValueExpression(context, expr.expression());
-				Node constFalse = construction.newConst(0, Mode.getBu());
+				Node constFalse = newConst(construction, 0, Mode.getBu());
 				yield condToBool(context,
 					target -> processRelation(context, innerExpr, constFalse, Relation.Equal, target, expr), expr);
 			}
