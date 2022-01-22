@@ -49,6 +49,7 @@ public final class CallGraph {
 
 	private static void buildNode(MutableNetwork<Entity, Call> network, Graph graph) {
 		Entity entity = graph.getEntity();
+		network.addNode(entity);
 		graph.walk(new NodeVisitor.Default() {
 			@Override
 			public void visit(Call node) {
@@ -81,6 +82,7 @@ public final class CallGraph {
 			if (entitiesToUpdate.contains(node)) {
 				buildNode(updated, node.getGraph());
 			} else {
+				updated.addNode(node);
 				// re-insert outgoing edges of this node, as we don't want to update it
 				for (Call call : calledMethods.outEdges(node)) {
 					updated.addEdge(node, ((Address) call.getPtr()).getEntity(), call);
@@ -140,6 +142,13 @@ public final class CallGraph {
 	}
 
 	/**
+	 * Returns the calls inside this graph
+	 */
+	public Set<Call> callSitesIn(Graph graph) {
+		return calledMethods.outEdges(graph.getEntity());
+	}
+
+	/**
 	 * Each graph is only visited after all callees were visited, except for graphs forming a cycle.
 	 * <p>
 	 * For a cycle with exact one caller, e.g. {@code c -> a -> b -> a}, {@code b} will be visited before {@code a}.
@@ -178,6 +187,10 @@ public final class CallGraph {
 	@Override
 	public String toString() {
 		return "CallGraph";
+	}
+
+	public void debug() {
+		System.out.println(calledMethods);
 	}
 
 	public enum Effect {

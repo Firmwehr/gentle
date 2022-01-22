@@ -4,10 +4,15 @@ package com.github.firmwehr.gentle.firm.optimization;
 import com.github.firmwehr.gentle.firm.optimization.callgraph.CallGraph;
 import firm.Graph;
 import firm.Program;
+import firm.bindings.binding_irprog;
+import firm.nodes.Address;
+import firm.nodes.Call;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Queue;
 import java.util.Set;
 
 public class Optimizer {
@@ -51,7 +56,35 @@ public class Optimizer {
 			modifiedCollect.addAll(modified);
 			callGraph = callGraph.updated(modified);
 		}
+		callGraph.debug();
+		deleteUnused(callGraph, modifiedCollect);
 		return modifiedCollect;
+	}
+
+	private void deleteUnused(CallGraph callGraph, Set<Graph> modifiedCollect) {
+		Set<Graph> used = new HashSet<>();
+		Queue<Graph> workList = new ArrayDeque<>();
+		Graph main = new Graph(binding_irprog.get_irp_main_irg());
+		used.add(main); // main is never called but always used
+		workList.add(main);
+		while (!workList.isEmpty()) {
+			Graph next = workList.remove();
+			for (Call call : callGraph.callSitesIn(next)) {
+				Graph graph = ((Address) call.getPtr()).getEntity().getGraph();
+				if (graph != null && used.add(graph)) {
+					workList.add(graph);
+				}
+			}
+		}
+		System.out.println(modifiedCollect);
+		for (Graph graph : Program.getGraphs()) {
+			if (!used.contains(graph)) {
+				// the graph should not be passed to any other optimizations after it was freed
+				modifiedCollect.remove(graph);
+				System.out.println("freeing " + graph);
+				graph.free();
+			}
+		}
 	}
 
 	private boolean localOptimizations(Iterable<Graph> graphs) {
