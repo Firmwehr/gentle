@@ -67,6 +67,9 @@ public interface CommandArguments {
 	@Option(names = "--no-escape-analysis", description = "keep allocations for objects that do not escape")
 	boolean noEscapeAnalysis();
 
+	@Option(names = "--no-remove-pure-functions", description = "keep pure function calls")
+	boolean noRemovePureFunctions();
+
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",
 		paramLabel = "FILE")
 	Path path();

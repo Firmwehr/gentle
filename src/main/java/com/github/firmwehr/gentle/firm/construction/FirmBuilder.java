@@ -7,6 +7,7 @@ import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.firm.optimization.EscapeAnalysisOptimization;
 import com.github.firmwehr.gentle.firm.optimization.FirmGraphCleanup;
 import com.github.firmwehr.gentle.firm.optimization.Optimizer;
+import com.github.firmwehr.gentle.firm.optimization.PureFunctionOptimization;
 import com.github.firmwehr.gentle.firm.optimization.UnusedParameterOptimization;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
@@ -103,6 +104,9 @@ public class FirmBuilder {
 			}
 			if (!CompilerArguments.get().noRemoveUnused()) {
 				builder.addCallGraphStep(UnusedParameterOptimization.unusedParameterOptimization());
+			}
+			if (!CompilerArguments.get().noRemovePureFunctions()) {
+				builder.addCallGraphStep(PureFunctionOptimization.pureFunctionOptimization());
 			}
 		} else {
 			LOGGER.info("optimization level set to 0, all optional optimization will be disabled");
