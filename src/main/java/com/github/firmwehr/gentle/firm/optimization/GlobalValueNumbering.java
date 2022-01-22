@@ -5,7 +5,8 @@ import com.github.firmwehr.gentle.firm.GentleBindings;
 import com.github.firmwehr.gentle.output.Logger;
 import com.google.common.collect.ArrayListMultimap;
 import firm.Graph;
-import firm.bindings.binding_irnode;
+import firm.bindings.binding_irdom;
+import firm.bindings.binding_irgopt;
 import firm.nodes.Address;
 import firm.nodes.Block;
 import firm.nodes.Cmp;
@@ -40,7 +41,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 			.withOptimizationFunction(graph -> {
 
 				// prior optimizations might have messed up dom information, we need to recalculate it
-				firm.bindings.binding_irdom.compute_doms(graph.ptr);
+				binding_irdom.compute_doms(graph.ptr);
 
 				GlobalValueNumbering globalValueNumbering = new GlobalValueNumbering(graph);
 				boolean changed = globalValueNumbering.applyGlobalValueNumbering();
@@ -244,7 +245,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				LOGGER.debug("killing %s", node);
 				Graph.killNode(node);
 			}
-			firm.bindings.binding_irgopt.remove_bads(graph.ptr);
+			binding_irgopt.remove_bads(graph.ptr);
 		}
 
 		/**
@@ -257,7 +258,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 
 			var nodes = blocks.get(block);
 
-			// stabalize local block
+			// stabilize local block
 			var lastAvailable = new HashMap<>(availableExpressions);
 			var currentAvailable = new HashMap<NodeHashKey, Node>();
 
@@ -302,7 +303,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 					dumpGraph(block.getGraph(), "gvn-iter");
 				}
 
-				// first run does have access to full block local node identities, so we always need a second run
+				// first run does NOT have access to full block local node identities, so we always need a second run
 				if (firstRun) {
 					runAgain = true;
 					firstRun = false;
@@ -312,21 +313,20 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 			// local block stabilized, update available expression
 			availableExpressions.putAll(currentAvailable);
 
-			// TODO: this can lead to two phi nodes becoming identities but can't easily be fixed, either rerun or
-			// TODO: restart gvn for current path from root
+			// TODO: this can lead to two phi nodes becoming identities but can't easily be fixed, by either rerun or
+			// TODO: restart gvn for current path from root but will entail revisiting already closed paths below
+			// TODO: merge point of then-become phi identities
 			// check if phi from previous blocks need to be rewired (happens if in-edge was replaced in current block)
 			for (var node : availableExpressions.values()) {
 				if (node instanceof Phi phi) {
 					hasModifiedGraph |= rewireNode(availableExpressions, phi);
 				}
 			}
-
-
 		}
 
 		private boolean rewireNode(HashMap<NodeHashKey, Node> lastAvailable, Node node) {
 			boolean runAgain = false;
-			boolean isPhi = node.getOpCode() == binding_irnode.ir_opcode.iro_Phi;
+			boolean isPhi = node instanceof Phi;
 			var predCount = node.getPredCount();
 			for (int i = 0; i < predCount; i++) {
 				var pred = node.getPred(i);
@@ -366,7 +366,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 			for (Node node : nodes) {
 				var hash = new NodeHashKey(node);
 
-				// every expression is unqie to first block it appeared (duplicates have been eradicated on enter)
+				// every expression is unique to first block it appeared (duplicates have been eradicated on enter)
 				availableExpressions.remove(hash);
 			}
 		}
