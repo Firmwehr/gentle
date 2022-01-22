@@ -369,6 +369,14 @@ public class MethodInliningOptimization {
 
 		static CostCalculator calculate(Graph graph) {
 			CostCalculator calculator = new CostCalculator(graph);
+			// if the End block does not only have Return preds, we rather not inline that method
+			// as it might be an infinite loop => not worth
+			for (Node pred : graph.getEnd().getPreds()) {
+				if (!(pred instanceof Return)) {
+					calculator.cost = Double.POSITIVE_INFINITY;
+					return calculator;
+				}
+			}
 			graph.walk(calculator);
 			return calculator;
 		}
@@ -409,10 +417,13 @@ public class MethodInliningOptimization {
 		}
 	}
 
+	// TODO move into GentleBindings once merged
+
 	static {
 		Native.register(Firm.VERSION.getFileName());
 	}
 
 	public static native double get_block_execfreq(Pointer ptr);
+
 	public static native void ir_estimate_execfreq(Pointer ptr);
 }
