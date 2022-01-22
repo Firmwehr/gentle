@@ -95,7 +95,11 @@ public class FirmGraphBuilder {
 	/**
 	 * Wrapper around Const nods to perform identity checks
 	 */
-	private record ConstNodeKey(int tarval, Mode mode){}
+	private record ConstNodeKey(
+		int tarval,
+		Mode mode
+	) {
+	}
 
 	public FirmGraphBuilder(DebugStore debugStore) {
 		this.debugStore = debugStore;
@@ -111,11 +115,10 @@ public class FirmGraphBuilder {
 	}
 
 	/**
-	 * This method wraps around the {@link Construction#newConst(int, Mode)} call to perform Const node caching. While saving
-	 * ressources, it's primary purpose is to reduce the cost of global value numbering in later stages. There are
-	 * still
-	 * cases in which new Const nodes are created and one should not really on pointer comparisons, when dealing with
-	 * Const nodes.
+	 * This method wraps around the {@link Construction#newConst(int, Mode)} call to perform Const node caching. While
+	 * saving ressources, it's primary purpose is to reduce the cost of global value numbering in later stages. There
+	 * are still cases in which new Const nodes are created and one should not really on pointer comparisons, when
+	 * dealing with Const nodes.
 	 *
 	 * @param construction The construction instance in which the new Const node is to be created.
 	 * @param value The value of the constant.
@@ -124,7 +127,8 @@ public class FirmGraphBuilder {
 	 * @return A newly created Const node or an already created one from an earlier call.
 	 */
 	private Node newConst(Construction construction, int value, Mode mode) {
-		return constCache.computeIfAbsent(new ConstNodeKey(value, mode), k -> (Const) construction.newConst(value, mode));
+		return constCache.computeIfAbsent(new ConstNodeKey(value, mode),
+			k -> (Const) construction.newConst(value, mode));
 	}
 
 	private void processClass(SClassDeclaration declaration) {

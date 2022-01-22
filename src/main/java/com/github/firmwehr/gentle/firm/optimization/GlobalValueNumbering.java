@@ -313,6 +313,8 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 			// local block stabilized, update available expression
 			availableExpressions.putAll(currentAvailable);
 
+			// TODO: this can lead to two phi nodes becoming identities but can't easily be fixed, either rerun or
+			// TODO: restart gvn for current path from root
 			// check if phi from previous blocks need to be rewired (happens if in-edge was replaced in current block)
 			for (var node : availableExpressions.values()) {
 				if (node instanceof Phi phi) {
