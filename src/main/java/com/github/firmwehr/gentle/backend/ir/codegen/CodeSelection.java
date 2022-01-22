@@ -228,11 +228,10 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	@Override
 	public void visit(Cmp node) {
-		// skip node if code selection has replaced it with better x86 specific op
-		if (preselection.hasBeenReplaced(node)) {
-			return;
-		}
+		// x86 uses special registers for conditional jump, so cmp result needs to be preceeding conditional jump
+	}
 
+	private IkeaCmp visitFromCond(Cmp node) {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaNode left = nodes.get(node.getLeft());
 		IkeaNode right = nodes.get(node.getRight());
@@ -244,9 +243,8 @@ public class CodeSelection extends NodeVisitor.Default {
 			right = tmp;
 			wasInverted = true;
 		}
-		IkeaCmp ikeaCmp = new IkeaCmp(left, right, node, wasInverted);
-		nodes.put(node, ikeaCmp);
-		block.nodes().add(ikeaCmp);
+
+		return new IkeaCmp(left, right, node, wasInverted);
 	}
 
 	@Override
@@ -267,7 +265,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		Block falseBlock = (Block) falseEdge.node;
 
 		Relation relation = ((Cmp) node.getSelector()).getRelation();
-		IkeaCmp cmp = (IkeaCmp) this.nodes.get(node.getSelector());
+
+		IkeaCmp cmp = visitFromCond((Cmp) node.getSelector());
 
 		if (cmp.wasInverted()) {
 			relation = relation.inversed();
@@ -275,6 +274,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		IkeaJcc ikeaJcc = new IkeaJcc(blocks.get(trueBlock), blocks.get(falseBlock), node, relation, cmp);
 		this.nodes.put(node, ikeaJcc);
+		block.nodes().add(cmp);
 		block.nodes().add(ikeaJcc);
 	}
 
@@ -522,7 +522,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaShrs ikeaShrs = new IkeaShrs(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+		IkeaShrs ikeaShrs =
+			new IkeaShrs(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
 		nodes.put(node, ikeaShrs);
 		block.nodes().add(ikeaShrs);
 	}

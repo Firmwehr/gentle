@@ -64,6 +64,9 @@ public interface CommandArguments {
 	@Option(names = "--no-remove-unused", description = "keep call arguments even if they are not used in the method")
 	boolean noRemoveUnused();
 
+	@Option(names = "--no-gvn", description = "disables global value numbering")
+	boolean noGlobalValueNumbering();
+
 	@Option(names = "--no-escape-analysis", description = "keep allocations for objects that do not escape")
 	boolean noEscapeAnalysis();
 

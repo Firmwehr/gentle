@@ -57,14 +57,17 @@ import firm.bindings.binding_ircons;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cond;
+import firm.nodes.Const;
 import firm.nodes.Div;
 import firm.nodes.Load;
 import firm.nodes.Mod;
 import firm.nodes.Node;
 import firm.nodes.Store;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -99,6 +102,7 @@ public class FirmGraphBuilder {
 			processClass(declaration);
 		}
 	}
+
 
 	private void processClass(SClassDeclaration declaration) {
 		for (SMethod method : declaration.methods().getAll()) {
@@ -286,7 +290,7 @@ public class FirmGraphBuilder {
 	private void booleanToJump(Context context, Node node, JumpTarget jumpTarget, SExpression source) {
 		Preconditions.checkArgument(node.getMode().isInt(), "Expected boolean literal (Bu), got " + node);
 
-		Node right = context.construction().newConst(0, Mode.getBu());
+		Node right = context.newConst(0, Mode.getBu());
 		JumpTarget invertedTarget = new JumpTarget(jumpTarget.falseBlock(), jumpTarget.trueBlock());
 
 		processRelation(context, node, right, Relation.Equal, invertedTarget, source);
@@ -514,7 +518,7 @@ public class FirmGraphBuilder {
 	}
 
 	private Node processBooleanValue(Context context, SBooleanValueExpression expr) {
-		Node resultConst = context.construction().newConst(expr.value() ? 1 : 0, Mode.getBu());
+		Node resultConst = context.newConst(expr.value() ? 1 : 0, Mode.getBu());
 
 		debugStore.putMetadata(resultConst, forElement(expr));
 
@@ -540,7 +544,7 @@ public class FirmGraphBuilder {
 	}
 
 	private Node processIntegerValue(Context context, SIntegerValueExpression expr) {
-		Node result = context.construction().newConst(expr.value(), Mode.getIs());
+		Node result = context.newConst(expr.value(), Mode.getIs());
 
 		debugStore.putMetadata(result, forElement(expr));
 
@@ -638,7 +642,7 @@ public class FirmGraphBuilder {
 	}
 
 	private Node processNull(Context context, SNullExpression nullExpression) {
-		Node result = context.construction().newConst(0, Mode.getP());
+		Node result = context.newConst(0, Mode.getP());
 
 		debugStore.putMetadata(result, forElement(nullExpression));
 
@@ -753,11 +757,28 @@ public class FirmGraphBuilder {
 		Construction construction,
 		SlotTable slotTable,
 		Set<Block> returningBlocks,
-		SMethod currentMethod
+		SMethod currentMethod,
+		Map<ConstNodeKey, Const> constCache
 	) {
 
 		public Context(Construction construction, SlotTable slotTable, SMethod method) {
-			this(construction, slotTable, new HashSet<>(), method);
+			this(construction, slotTable, new HashSet<>(), method, new HashMap<>());
+		}
+
+		/**
+		 * This method wraps around the {@link Construction#newConst(int, Mode)} call to perform Const node caching.
+		 * While saving ressources, it's primary purpose is to reduce the cost of global value numbering in later
+		 * stages. There are still cases in which new Const nodes are created and one should not really on pointer
+		 * comparisons, when dealing with Const nodes.
+		 *
+		 * @param value The value of the constant.
+		 * @param mode The constant mode.
+		 *
+		 * @return A newly created Const node or an already created one from an earlier call.
+		 */
+		private Node newConst(int value, Mode mode) {
+			return constCache.computeIfAbsent(new ConstNodeKey(value, mode),
+				k -> (Const) construction.newConst(value, mode));
 		}
 
 		public void setReturns(Block block) {
@@ -767,6 +788,15 @@ public class FirmGraphBuilder {
 		public boolean isReturning(Block block) {
 			return returningBlocks.contains(block);
 		}
+	}
+
+	/**
+	 * Wrapper around Const nodes to perform identity checks
+	 */
+	private record ConstNodeKey(
+		int tarval,
+		Mode mode
+	) {
 	}
 
 	private record JumpTarget(
