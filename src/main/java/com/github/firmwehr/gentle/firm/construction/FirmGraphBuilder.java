@@ -93,7 +93,7 @@ public class FirmGraphBuilder {
 	private final Map<ConstNodeKey, Const> constCache = new HashMap<>();
 
 	/**
-	 * Wrapper around Const nods to perform identity checks
+	 * Wrapper around Const nodes to perform identity checks
 	 */
 	private record ConstNodeKey(
 		int tarval,

@@ -153,7 +153,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 					}
 				}
 				case iro_Offset -> throw new InternalCompilerException(
-					"encountered offset node (do we haven have these?)");
+					"encountered offset node (do we even have these?)");
 				case iro_Phi -> {
 					var n0 = (Phi) node;
 					var n1 = (Phi) thatNode;
@@ -162,8 +162,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 					}
 				}
 				case iro_Sel -> throw new InternalCompilerException("encountered sel node (should have been lowered)");
-				case iro_Size -> throw new InternalCompilerException(
-					"encountered size node (do we haven have " + "these?)");
+				case iro_Size -> throw new InternalCompilerException("encountered size node (do we even have these?)");
 				case iro_Store -> {
 					var n0 = (Store) node;
 					var n1 = (Store) thatNode;
