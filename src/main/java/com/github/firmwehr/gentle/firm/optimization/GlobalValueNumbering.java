@@ -19,6 +19,7 @@ import firm.nodes.NodeVisitor;
 import firm.nodes.Phi;
 import firm.nodes.Store;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -267,6 +268,11 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 
 			GentleBindings.walkDominatorTree(graph, this::onEnter, this::onExit);
 
+			// during traversal, some replacements may haven been replaced themself, we need to resolve these chains
+			for (var start : new ArrayList<>(replacements.keySet())) {
+				squashChain(replacements, start);
+			}
+
 			// rewire all phi nodes that are abount to loose their pred
 			for (var phi : phis) {
 
@@ -284,14 +290,36 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				}
 			}
 
-			// at this point, we may have rewired phi nodes which in turn are now duplicates, but we can't fix that
-
 			// remove killed nodes (don't worry, they aren't sentient)
 			for (var node : replacements.keySet()) {
 				LOGGER.debug("killing %s", node);
 				Graph.killNode(node);
 			}
 			binding_irgopt.remove_bads(graph.ptr);
+		}
+
+		/**
+		 * Recursive magic in replacment map. Traverse and squash chains of replacements, until each replacement points
+		 * to the final surviving node.
+		 *
+		 * @param replacement The replacement map to be squashed.
+		 * @param start Start node of chain to be squashed.
+		 *
+		 * @return The true replacment target of the given start node.
+		 */
+		private static <T> T squashChain(Map<T, T> replacement, T start) {
+			var target = replacement.get(start);
+
+			// check if current target has itself a target, which would require squashing
+			if (replacement.containsKey(target)) {
+				// squash chain and return true terminating target
+				var trueTarget = squashChain(replacement, target);
+				replacement.put(start, trueTarget);
+				return trueTarget;
+			} else {
+				// target has no successors, is true target
+				return target;
+			}
 		}
 
 		/**
@@ -316,7 +344,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				// if we clear it at the end of the loop, we can't carry over available nodes
 				currentAvailable.clear();
 
-				var replaced = new HashSet<Node>();
+				var replaced = new ArrayList<Node>();
 				for (var node : nodes) {
 
 					// if we have been replaced, we don't need to reroute inputs and don't carry over
