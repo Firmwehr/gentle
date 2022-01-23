@@ -25,6 +25,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShl;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
@@ -321,6 +322,20 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		result += "idiv %rbx\n";
 		result += storeFromTargetToStack(div.getBoxQuotient(), "%rax") + "\n";
 		result += storeFromTargetToStack(div.getBoxMod(), "%rdx") + "\n";
+		return result;
+	}
+
+	@Override
+	public String visit(IkeaShl shl) {
+		// TODO for whoever touches this again:
+		// for immediate values of 1,2,3 it might be faster to rewrite
+		// the shifts to lea instructions
+		String result = "";
+		result += readFromStackToTarget(shl.getLeft().box(), "%r8") + "\n";
+		int shift = ((IkeaImmediate) shl.getRight().box()).immediate().asInt();
+		result += "shl%s $%s, %%r8%s".formatted(shl.box().size().getOldRegisterSuffix(), shift,
+			getRegisterSuffix(shl.box())) + "\n";
+		result += storeFromTargetToStack(shl.box(), "%r8") + "\n";
 		return result;
 	}
 
