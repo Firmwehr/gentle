@@ -172,7 +172,6 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		ControlFlowGraph controlFlowGraph = ControlFlowGraph.forBlocks(orderedBlocks);
 		LifetimeAnalysis analysis = new LifetimeAnalysis(controlFlowGraph);
-		analysis.buildLifetimes();
 
 		Dominance dominance = Dominance.forCfg(controlFlowGraph);
 
@@ -185,7 +184,7 @@ public class CodeSelection extends NodeVisitor.Default {
 				.stream()
 				.flatMap(it -> it.nodes().stream())
 				.filter(it -> it instanceof IkeaArgNode)
-				.filter(it -> ((IkeaArgNode) it).getUnderlyingFirmNodes().get(0).getMode().isInt())
+				.filter(it -> it.getUnderlyingFirmNodes().get(0).getMode().isInt())
 				.findFirst()
 				.get();
 			IkeaNode phi = blocks.values()
@@ -606,7 +605,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaShr ikeaShr = new IkeaShr(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+		IkeaShr ikeaShr =
+			new IkeaShr(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node, block);
 		nodes.put(node, ikeaShr);
 		block.nodes().add(ikeaShr);
 	}
@@ -620,7 +620,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaShrs ikeaShrs =
-			new IkeaShrs(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+			new IkeaShrs(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node, block);
 		nodes.put(node, ikeaShrs);
 		block.nodes().add(ikeaShrs);
 	}
