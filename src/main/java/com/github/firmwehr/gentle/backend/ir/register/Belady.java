@@ -10,6 +10,7 @@ import com.github.firmwehr.gentle.firm.model.LoopTree;
 import com.github.firmwehr.gentle.output.Logger;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,6 +18,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -94,6 +96,9 @@ public class Belady {
 	private void displace(
 		Collection<IkeaNode> newValues, Set<WorksetNode> currentWorkset, IkeaNode currentInstruction, boolean isUsage
 	) {
+		// TODO: This does not respect clobbers. How do we want to model them? We'd need to make room for one
+		//  additional value per clobbered register
+
 		LOGGER.debug("Making room for %s after %s (usage: %s). Live: %s", newValues, currentInstruction, isUsage,
 			currentWorkset);
 		int additionalPressure = 1; // We do not use all registers (sp is not a good idea?)
@@ -128,9 +133,28 @@ public class Belady {
 		if (neededSpills > 0) {
 			LOGGER.debug("Need to make room for %s values", neededSpills);
 
-			// Dumb heuristic for now, just spill a few random ones
+			for (WorksetNode node : currentWorkset) {
+				// If we add a value defined by the instruction, we do not want to include that node, though it should
+				// not be a use anyways.
+				Optional<Integer> distance =
+					uses.nextUse(liveliness, loopTree, node.node(), currentInstruction, !isUsage)
+						.map(Uses.NextUse::distance);
+				if (distance.isPresent()) {
+					node.setDistance(new Distance(distance.get()));
+				} else {
+					// No use found...?
+					node.setDistance(new Infinity());
+				}
+			}
+
+			List<WorksetNode> sortedNodes = currentWorkset.stream().sorted(Collections.reverseOrder()).toList();
+
+			LOGGER.debug("Workset for spill: ");
+			LOGGER.debug("  %s",
+				sortedNodes.stream().map(it -> it.node() + ": " + it.distance()).collect(Collectors.joining(", ")));
+
 			for (int i = 0; i < neededSpills; i++) {
-				WorksetNode victim = currentWorkset.iterator().next();
+				WorksetNode victim = sortedNodes.get(i);
 				IkeaNode victimNode = victim.node();
 				currentWorkset.remove(victim);
 				LOGGER.debug("Spilling %s before %s", victim, currentInstruction);
@@ -179,7 +203,6 @@ public class Belady {
 			return new HashSet<>(endWorksets.get(block.parents().get(0).parent()));
 		}
 
-		// TODO: More magic!
 		return magicStartWorkset(block);
 	}
 
@@ -216,8 +239,10 @@ public class Belady {
 			}
 		}
 
-		// TODO: Compute free slots based on loop pressure
-		int freeSlots = 0;
+		int loopPressure = liveliness.getLoopPressure(loopTree, loopTree.getBlockElement(block.origin()));
+		int freeSlots = X86Register.registerCount() - starters.size();
+		int freePressureSlots = X86Register.registerCount() - (loopPressure - delayed.size());
+		freeSlots = Math.min(freeSlots, freePressureSlots);
 
 		if (freeSlots > 0) {
 			int takenSlots = 0;
@@ -284,8 +309,14 @@ public class Belady {
 	private WorksetNode identityCrisis(IkeaBløck block, IkeaNode node, PredecessorAvailability availability) {
 		WorksetNode worksetNode = new WorksetNode(node);
 
-		// TODO: Compute
-		int nextUseTime = (Integer) null;
+		Optional<Uses.NextUse> nextUse = uses.nextUse(liveliness, loopTree, node, block.nodes().get(0), false);
+		// No use found? What exactly caused this?
+		if (nextUse.isEmpty()) {
+			LOGGER.debug("No use found for %s from block %s", node, block);
+			worksetNode.setDistance(new Infinity());
+			return worksetNode;
+		}
+		int nextUseTime = nextUse.get().distance();
 		worksetNode.setDistance(new Distance(nextUseTime));
 
 		// We do not want to take you if you are spilled in every single predecessor
@@ -301,7 +332,7 @@ public class Belady {
 		}
 
 		int blockLoopDepth = loopTree.getBlockElement(block.origin()).depth();
-		int candidateLoopDepth = loopTree.getBlockElement(node.getBlock().origin()).depth();
+		int candidateLoopDepth = nextUse.get().outermostLoopDepth();
 		boolean isFurtherNestedInLoopTree = candidateLoopDepth > blockLoopDepth;
 		// It's even deeper!
 		if (isFurtherNestedInLoopTree) {
@@ -330,9 +361,14 @@ public class Belady {
 				return PredecessorAvailability.UNKNOWN;
 			}
 
-			PredecessorAvailability availability = parentEndWorkset.contains(nodeToCheck)
-				? PredecessorAvailability.LIVE_IN_ALL
-				: PredecessorAvailability.SPILLED_IN_ALL;
+			// If we find it is live, we mark it as LIVE_IN_ALL and then let the combine function figure out the rest
+			PredecessorAvailability availability = PredecessorAvailability.SPILLED_IN_ALL;
+			for (WorksetNode worksetNode : parentEndWorkset) {
+				if (worksetNode.node().equals(nodeToCheck)) {
+					availability = PredecessorAvailability.LIVE_IN_ALL;
+					break;
+				}
+			}
 			result = result.combineWith(availability);
 		}
 
@@ -470,7 +506,7 @@ public class Belady {
 
 	private void spill(SpillInfo spillInfo) {
 		// No need to spill things twice
-		if (spillInfo.spilled) {
+		if (spillInfo.spilled()) {
 			return;
 		}
 		spillInfo.setSpilled(true);

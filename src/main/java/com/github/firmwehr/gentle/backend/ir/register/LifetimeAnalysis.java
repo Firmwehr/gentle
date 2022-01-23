@@ -6,7 +6,10 @@ import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaConst;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
+import com.github.firmwehr.gentle.firm.model.LoopTree;
 import com.github.firmwehr.gentle.output.Logger;
+import com.google.common.collect.Lists;
+import firm.nodes.Block;
 
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -64,6 +67,44 @@ public class LifetimeAnalysis {
 
 	public Set<IkeaNode> getLiveIn(IkeaBløck block, IkeaBløck parent) {
 		return Set.copyOf(liveness.get(block).liveIn().get(parent));
+	}
+
+	public int getLoopPressure(LoopTree loopTree, LoopTree.LoopElement loopElement) {
+		Map<Block, IkeaBløck> blockMap = new HashMap<>();
+		for (IkeaBløck block : controlFlowGraph.getAllBlocks()) {
+			blockMap.put(block.origin(), block);
+		}
+
+		return getLoopPressure(loopTree, loopElement, blockMap);
+	}
+
+	private int getLoopPressure(LoopTree loopTree, LoopTree.LoopElement loopElement, Map<Block, IkeaBløck> blockMap) {
+		int pressure = 0;
+		for (LoopTree.LoopElement child : loopTree.getChildren(loopElement)) {
+			int childPressure = switch (child) {
+				case LoopTree.LoopElementLoop ignored -> getLoopPressure(loopTree, child);
+				case LoopTree.LoopElementNode node -> getBlockPressure(blockMap.get((Block) node.firmNode()));
+			};
+
+			pressure = Math.max(childPressure, pressure);
+		}
+
+		return pressure;
+	}
+
+	private int getBlockPressure(IkeaBløck block) {
+		Set<IkeaNode> live = getLiveOut(block);
+		int maxLive = live.size();
+
+		for (IkeaNode node : Lists.reverse(block.nodes())) {
+			// TODO: Clobbers!
+			live.remove(node);
+			live.addAll(node.parents());
+
+			maxLive = Math.max(maxLive, live.size());
+		}
+
+		return maxLive;
 	}
 
 	private record BlockLiveliness(
