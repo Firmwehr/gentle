@@ -43,12 +43,19 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				// prior optimizations might have messed up dom information, we need to recalculate it
 				binding_irdom.compute_doms(graph.ptr);
 
-				GlobalValueNumbering globalValueNumbering = new GlobalValueNumbering(graph);
-				boolean changed = globalValueNumbering.applyGlobalValueNumbering();
-				if (changed) {
-					dumpGraph(graph, "gvn");
+				boolean modifiedGraph = false;
+				while (true) {
+					GlobalValueNumbering globalValueNumbering = new GlobalValueNumbering(graph);
+					boolean changed = globalValueNumbering.applyGlobalValueNumbering();
+
+					if (changed) {
+						modifiedGraph = true;
+						dumpGraph(graph, "gvn");
+					} else {
+						break;
+					}
 				}
-				return changed;
+				return modifiedGraph;
 			})
 			.build();
 	}
@@ -205,13 +212,34 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 	 * expressions. On exit, we remove the available expressions from the available expression list. This ensures that
 	 * the available expression list will only contain such expressions that are currently available to the current
 	 * block.
+	 * <p>
+	 * For phi nodes, the rules are more complex. They don't follow dominance restrictions and are able to reference
+	 * blocks outside of the current dominator tree path. Therefore, the above scheme may eliminate nodes that are
+	 * still
+	 * referenced by a phi node without us knowing. To solve this issue, we keep track of every replacement we did and
+	 * rewire all phi nodes at the end.
 	 */
 	private static class GlobalValueNumberingWalker {
 
-		// firm can't enumerate all nodes in block without shitting itself
+		/**
+		 * Keeps track of surviving phi nodes.
+		 */
+		private final HashSet<Phi> phis = new HashSet<>();
+
+		/**
+		 * Maps replaced notes to their replacement.
+		 */
+		private final HashMap<Node, Node> replacements = new HashMap<>();
+
+		/**
+		 * Precomputed (and updated) for accessing nodes of blocks without complex graph traversal mid-exe.cution
+		 */
 		private final ArrayListMultimap<Block, Node> blocks = ArrayListMultimap.create();
+
+		/**
+		 * Tracks current available expressions for current subtree.
+		 */
 		private final HashMap<NodeHashKey, Node> availableExpressions = new HashMap<>();
-		private final Set<Node> emergencyIntelligenceIncinerator = new HashSet<>();
 
 		private final Graph graph;
 		private final Set<Block> openBlocks = new HashSet<>();
@@ -240,8 +268,27 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 
 			GentleBindings.walkDominatorTree(graph, this::onEnter, this::onExit);
 
+			// rewire all phi nodes that are abount to loose their pred
+			for (var phi : phis) {
+
+				// can't use rewire method, since we are not performing equality checks at this point
+				// since we have no block information anymore
+				int predCount = phi.getPredCount();
+				for (int i = 0; i < predCount; i++) {
+					var pred = phi.getPred(i);
+
+					var replacement = replacements.get(pred);
+					if (replacement != null) {
+						phi.setPred(i, replacement);
+						hasModifiedGraph = true;
+					}
+				}
+			}
+
+			// at this point, we may have rewired phi nodes which in turn are now duplicates, but we can't fix that
+
 			// remove killed nodes (don't worry, they aren't sentient)
-			for (var node : emergencyIntelligenceIncinerator) {
+			for (var node : replacements.keySet()) {
 				LOGGER.debug("killing %s", node);
 				Graph.killNode(node);
 			}
@@ -276,6 +323,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 					// if we have been replaced, we don't need to reroute inputs and don't carry over
 					var replacement = lastAvailable.get(new NodeHashKey(node));
 					if (replacement != null && !node.equals(replacement)) {
+						replacements.put(node, replacement);
 						replaced.add(node);
 						continue;
 					}
@@ -292,7 +340,6 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 
 				// remove nodes from block if they have been replaced and should no longer be considere
 				nodes.removeAll(replaced);
-				emergencyIntelligenceIncinerator.addAll(replaced);
 
 				// rewire may have created duplicates with available expression, so we always override them
 				lastAvailable = new HashMap<>(currentAvailable);
@@ -300,7 +347,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 
 				// dump graphs if we had actual changes (next statement will destroy this information)
 				if (runAgain) {
-					dumpGraph(block.getGraph(), "gvn-iter");
+					dumpGraph(graph, "gvn-iter-block" + block.getNr());
 				}
 
 				// first run does NOT have access to full block local node identities, so we always need a second run
@@ -310,18 +357,15 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				}
 			}
 
-			// local block stabilized, update available expression
-			availableExpressions.putAll(currentAvailable);
-
-			// TODO: this can lead to two phi nodes becoming identities but can't easily be fixed, by either rerun or
-			// TODO: restart gvn for current path from root but will entail revisiting already closed paths below
-			// TODO: merge point of then-become phi identities
-			// check if phi from previous blocks need to be rewired (happens if in-edge was replaced in current block)
+			// extract surviving phi nodes, we might need to update them later
 			for (var node : availableExpressions.values()) {
 				if (node instanceof Phi phi) {
-					hasModifiedGraph |= rewireNode(availableExpressions, phi);
+					phis.add(phi);
 				}
 			}
+
+			// local block stabilized, update available expression
+			availableExpressions.putAll(currentAvailable);
 		}
 
 		private boolean rewireNode(HashMap<NodeHashKey, Node> lastAvailable, Node node) {
