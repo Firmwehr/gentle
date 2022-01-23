@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
+import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Node;
 
@@ -75,6 +76,16 @@ public class IkeaDiv implements IkeaNode {
 	@Override
 	public IkeaBløck getBlock() {
 		return block;
+	}
+
+	@Override
+	public List<IkeaRegisterRequirement> inRequirements() {
+		return null;
+	}
+
+	@Override
+	public List<IkeaRegisterRequirement> outRequirements() {
+		return null;
 	}
 
 	public enum Result {
