@@ -62,7 +62,6 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		.addStep(ArithmeticOptimization::associativeMul, (match, graph, block) -> {
 			// we don't care about left/right here, just set both again *somewhere*
 			Node newInner = graph.newMul(block, match.a(), match.b());
-			LOGGER.warn("exchange for %s", match);
 			return exchange(match.outer(), graph.newMul(block, newInner, match.c()));
 		})
 		.addStep(ArithmeticOptimization::distributive, (match, graph, block) -> exchange(match.add(),
@@ -124,12 +123,15 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 	}
 
 	private void applyArithmeticOptimization() {
-		graph.walkTopological(this);
+		// We want to walk the normal walk. Starting at the end and walking up the pred chain allows us to
+		// match larger patterns first. This is relevant as e.g. associativeMul should simplify multiplication before
+		// the strength reduction converts only *parts* of it to shifts
+		graph.walk(this);
 	}
 
 	@Override
 	public void defaultVisit(Node node) {
-		hasChanged = OPTIMIZATIONS.optimize(node, node.getGraph(), node.getBlock());
+		hasChanged |= OPTIMIZATIONS.optimize(node, node.getGraph(), node.getBlock());
 	}
 
 	private static Optional<Node> constructFastMod(ModByConstPattern.Match match, Graph graph) {
@@ -262,7 +264,6 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		if (match.constVal().getTarval().isNegative()) {
 			replaced = graph.newMinus(block, replaced);
 		}
-		LOGGER.warn("exchange times const %s", match);
 		return exchange(match.mul(), replaced);
 	}
 
@@ -474,9 +475,7 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		         └────────────┘
 		""")
 	public static Optional<AssociativeMulPattern.Match> associativeMul(Node node) {
-		Optional<AssociativeMulPattern.Match> match = AssociativeMulPattern.match(node);
-		LOGGER.warn("Is present: %s %s", node, match);
-		return match;
+		return AssociativeMulPattern.match(node);
 	}
 
 	@FiAscii("""
