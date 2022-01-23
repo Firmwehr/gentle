@@ -54,6 +54,7 @@ import firm.Mode;
 import firm.Relation;
 import firm.Type;
 import firm.bindings.binding_ircons;
+import firm.nodes.Address;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cond;
@@ -394,8 +395,9 @@ public class FirmGraphBuilder {
 
 		construction.setCurrentBlock(afterBlock);
 		afterBlock.mature();
-		Node phi = construction.newPhi(
-			new Node[]{construction.newConst(0, Mode.getBu()), construction.newConst(1, Mode.getBu())}, Mode.getBu());
+		Node phi = construction.newPhi(new Node[]{context.newConst(0, Mode.getBu()), context.newConst(1,
+				Mode.getBu())},
+			Mode.getBu());
 
 		debugStore.putMetadata(afterBlock, forCondToBoolBlock(source, CondToBoolBlockType.AFTER));
 		debugStore.putMetadata(trueBlock, forCondToBoolBlock(source, CondToBoolBlockType.TRUE));
@@ -457,7 +459,7 @@ public class FirmGraphBuilder {
 		Node indexNode = processValueExpression(context, expr.index());
 
 		Type innerType = typeHelper.getType(expr.type());
-		Node typeSizeNode = construction.newConst(innerType.getSize(), Mode.getLs());
+		Node typeSizeNode = context.newConst(innerType.getSize(), Mode.getLs());
 		Node offsetNode = construction.newMul(construction.newConv(indexNode, Mode.getLs()), typeSizeNode);
 		Node addressAdd = construction.newAdd(arrayNode, offsetNode);
 		Node addressConv = construction.newConv(addressAdd, Mode.getP());
@@ -576,7 +578,7 @@ public class FirmGraphBuilder {
 		}
 		SMethod method = expr.method();
 		Entity methodEntity = entityHelper.computeMethodEntity(method);
-		Node address = construction.newAddress(methodEntity);
+		Node address = context.newAddress(methodEntity);
 		// Arguments need to be evaluated first so memory chain is built correctly
 		Node call = construction.newCall(construction.getCurrentMem(), address, fArguments, methodEntity.getType());
 		Node resultsProj = construction.newProj(call, Mode.getT(), Call.pnTResult);
@@ -608,21 +610,24 @@ public class FirmGraphBuilder {
 
 		Node memberCount = construction.newConv(processValueExpression(context, expr.size()), Mode.getLu());
 
-		return allocateMemory(construction, typeSize, memberCount, expr);
+		return allocateMemory(context, typeSize, memberCount, expr);
 	}
 
 	private Node processNewObject(Context context, SNewObjectExpression expr) {
-		Construction construction = context.construction();
 		ClassType type = typeHelper.getClassType(expr.classDecl());
 
-		return allocateMemory(construction, type.getSize(), construction.newConst(1, Mode.getLu()), expr);
+		return allocateMemory(context, type.getSize(), context.newConst(1, Mode.getLu()), expr);
 	}
 
-	private Node allocateMemory(Construction construction, int typeSize, Node memberCount, SExpression source) {
-		Entity allocateEntity = entityHelper.getEntity(StdLibEntity.ALLOCATE);
-		Node allocateAddress = construction.newAddress(allocateEntity);
+	private Node allocateMemory(
+		Context context, int typeSize, Node memberCount, SExpression source
+	) {
+		Construction construction = context.construction();
 
-		Node typeSizeConst = construction.newConst(typeSize, Mode.getLu());
+		Entity allocateEntity = entityHelper.getEntity(StdLibEntity.ALLOCATE);
+		Node allocateAddress = context.newAddress(allocateEntity);
+
+		Node typeSizeConst = context.newConst(typeSize, Mode.getLu());
 		Node[] arguments = {memberCount, typeSizeConst};
 		// Arguments need to be evaluated first so memory chain is built correctly
 		Node call =
@@ -652,7 +657,7 @@ public class FirmGraphBuilder {
 	private Node processSystemInRead(Context context) {
 		Construction construction = context.construction();
 		Entity getCharEntity = entityHelper.getEntity(StdLibEntity.GETCHAR);
-		Node getCharAddress = construction.newAddress(getCharEntity);
+		Node getCharAddress = context.newAddress(getCharEntity);
 		// Arguments need to be evaluated first so memory chain is built correctly
 		var call =
 			construction.newCall(construction.getCurrentMem(), getCharAddress, new Node[]{}, getCharEntity.getType());
@@ -664,7 +669,7 @@ public class FirmGraphBuilder {
 	private Node processSystemOutFlush(Context context) {
 		Construction construction = context.construction();
 		Entity flushEntity = entityHelper.getEntity(StdLibEntity.FLUSH);
-		Node flushAddress = construction.newAddress(flushEntity);
+		Node flushAddress = context.newAddress(flushEntity);
 		// Arguments need to be evaluated first so memory chain is built correctly
 		var call = construction.newCall(construction.getCurrentMem(), flushAddress, new Node[0],
 			flushEntity.getType());
@@ -687,7 +692,7 @@ public class FirmGraphBuilder {
 
 		Construction construction = context.construction();
 		Entity putCharEntity = entityHelper.getEntity(entity);
-		Node putCharAddress = construction.newAddress(putCharEntity);
+		Node putCharAddress = context.newAddress(putCharEntity);
 
 		Node argumentNode = processValueExpression(context, argument);
 
@@ -736,7 +741,7 @@ public class FirmGraphBuilder {
 			case LOGICAL_NOT -> {
 				// !b => (b == false)
 				Node innerExpr = processValueExpression(context, expr.expression());
-				Node constFalse = construction.newConst(0, Mode.getBu());
+				Node constFalse = context.newConst(0, Mode.getBu());
 				yield condToBool(context,
 					target -> processRelation(context, innerExpr, constFalse, Relation.Equal, target, expr), expr);
 			}
@@ -758,11 +763,12 @@ public class FirmGraphBuilder {
 		SlotTable slotTable,
 		Set<Block> returningBlocks,
 		SMethod currentMethod,
-		Map<ConstNodeKey, Const> constCache
+		Map<ConstNodeKey, Const> constCache,
+		Map<Entity, Address> addressCache
 	) {
 
 		public Context(Construction construction, SlotTable slotTable, SMethod method) {
-			this(construction, slotTable, new HashSet<>(), method, new HashMap<>());
+			this(construction, slotTable, new HashSet<>(), method, new HashMap<>(), new HashMap<>());
 		}
 
 		/**
@@ -779,6 +785,13 @@ public class FirmGraphBuilder {
 		private Node newConst(int value, Mode mode) {
 			return constCache.computeIfAbsent(new ConstNodeKey(value, mode),
 				k -> (Const) construction.newConst(value, mode));
+		}
+
+		/**
+		 * @see #newConst(int, Mode)
+		 */
+		private Node newAddress(Entity entity) {
+			return addressCache.computeIfAbsent(entity, k -> (Address) construction.newAddress(k));
 		}
 
 		public void setReturns(Block block) {
