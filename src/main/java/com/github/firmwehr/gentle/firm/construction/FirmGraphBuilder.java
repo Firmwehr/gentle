@@ -395,8 +395,9 @@ public class FirmGraphBuilder {
 
 		construction.setCurrentBlock(afterBlock);
 		afterBlock.mature();
-		Node phi = construction.newPhi(
-			new Node[]{construction.newConst(0, Mode.getBu()), construction.newConst(1, Mode.getBu())}, Mode.getBu());
+		Node phi = construction.newPhi(new Node[]{context.newConst(0, Mode.getBu()), context.newConst(1,
+				Mode.getBu())},
+			Mode.getBu());
 
 		debugStore.putMetadata(afterBlock, forCondToBoolBlock(source, CondToBoolBlockType.AFTER));
 		debugStore.putMetadata(trueBlock, forCondToBoolBlock(source, CondToBoolBlockType.TRUE));
@@ -458,7 +459,7 @@ public class FirmGraphBuilder {
 		Node indexNode = processValueExpression(context, expr.index());
 
 		Type innerType = typeHelper.getType(expr.type());
-		Node typeSizeNode = construction.newConst(innerType.getSize(), Mode.getLs());
+		Node typeSizeNode = context.newConst(innerType.getSize(), Mode.getLs());
 		Node offsetNode = construction.newMul(construction.newConv(indexNode, Mode.getLs()), typeSizeNode);
 		Node addressAdd = construction.newAdd(arrayNode, offsetNode);
 		Node addressConv = construction.newConv(addressAdd, Mode.getP());
@@ -609,23 +610,24 @@ public class FirmGraphBuilder {
 
 		Node memberCount = construction.newConv(processValueExpression(context, expr.size()), Mode.getLu());
 
-		return allocateMemory(context, construction, typeSize, memberCount, expr);
+		return allocateMemory(context, typeSize, memberCount, expr);
 	}
 
 	private Node processNewObject(Context context, SNewObjectExpression expr) {
-		Construction construction = context.construction();
 		ClassType type = typeHelper.getClassType(expr.classDecl());
 
-		return allocateMemory(context, construction, type.getSize(), construction.newConst(1, Mode.getLu()), expr);
+		return allocateMemory(context, type.getSize(), context.newConst(1, Mode.getLu()), expr);
 	}
 
 	private Node allocateMemory(
-		Context context, Construction construction, int typeSize, Node memberCount, SExpression source
+		Context context, int typeSize, Node memberCount, SExpression source
 	) {
+		Construction construction = context.construction();
+
 		Entity allocateEntity = entityHelper.getEntity(StdLibEntity.ALLOCATE);
 		Node allocateAddress = context.newAddress(allocateEntity);
 
-		Node typeSizeConst = construction.newConst(typeSize, Mode.getLu());
+		Node typeSizeConst = context.newConst(typeSize, Mode.getLu());
 		Node[] arguments = {memberCount, typeSizeConst};
 		// Arguments need to be evaluated first so memory chain is built correctly
 		Node call =
@@ -739,7 +741,7 @@ public class FirmGraphBuilder {
 			case LOGICAL_NOT -> {
 				// !b => (b == false)
 				Node innerExpr = processValueExpression(context, expr.expression());
-				Node constFalse = construction.newConst(0, Mode.getBu());
+				Node constFalse = context.newConst(0, Mode.getBu());
 				yield condToBool(context,
 					target -> processRelation(context, innerExpr, constFalse, Relation.Equal, target, expr), expr);
 			}
