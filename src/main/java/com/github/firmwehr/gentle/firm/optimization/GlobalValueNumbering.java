@@ -21,6 +21,7 @@ import firm.nodes.Store;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
@@ -202,8 +203,6 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 
 			return hash;
 		}
-
-
 	}
 
 	/**
@@ -224,12 +223,12 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 		/**
 		 * Keeps track of surviving phi nodes.
 		 */
-		private final HashSet<Phi> phis = new HashSet<>();
+		private final Set<Phi> phis = new HashSet<>();
 
 		/**
 		 * Maps replaced notes to their replacement.
 		 */
-		private final HashMap<Node, Node> replacements = new HashMap<>();
+		private final Map<Node, Node> replacements = new HashMap<>();
 
 		/**
 		 * Precomputed (and updated) for accessing nodes of blocks without complex graph traversal mid-exe.cution
@@ -239,7 +238,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 		/**
 		 * Tracks current available expressions for current subtree.
 		 */
-		private final HashMap<NodeHashKey, Node> availableExpressions = new HashMap<>();
+		private final Map<NodeHashKey, Node> availableExpressions = new HashMap<>();
 
 		private final Graph graph;
 		private final Set<Block> openBlocks = new HashSet<>();

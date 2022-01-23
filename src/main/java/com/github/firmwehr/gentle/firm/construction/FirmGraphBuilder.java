@@ -54,6 +54,7 @@ import firm.Mode;
 import firm.Relation;
 import firm.Type;
 import firm.bindings.binding_ircons;
+import firm.nodes.Address;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cond;
@@ -576,7 +577,7 @@ public class FirmGraphBuilder {
 		}
 		SMethod method = expr.method();
 		Entity methodEntity = entityHelper.computeMethodEntity(method);
-		Node address = construction.newAddress(methodEntity);
+		Node address = context.newAddress(methodEntity);
 		// Arguments need to be evaluated first so memory chain is built correctly
 		Node call = construction.newCall(construction.getCurrentMem(), address, fArguments, methodEntity.getType());
 		Node resultsProj = construction.newProj(call, Mode.getT(), Call.pnTResult);
@@ -608,19 +609,21 @@ public class FirmGraphBuilder {
 
 		Node memberCount = construction.newConv(processValueExpression(context, expr.size()), Mode.getLu());
 
-		return allocateMemory(construction, typeSize, memberCount, expr);
+		return allocateMemory(context, construction, typeSize, memberCount, expr);
 	}
 
 	private Node processNewObject(Context context, SNewObjectExpression expr) {
 		Construction construction = context.construction();
 		ClassType type = typeHelper.getClassType(expr.classDecl());
 
-		return allocateMemory(construction, type.getSize(), construction.newConst(1, Mode.getLu()), expr);
+		return allocateMemory(context, construction, type.getSize(), construction.newConst(1, Mode.getLu()), expr);
 	}
 
-	private Node allocateMemory(Construction construction, int typeSize, Node memberCount, SExpression source) {
+	private Node allocateMemory(
+		Context context, Construction construction, int typeSize, Node memberCount, SExpression source
+	) {
 		Entity allocateEntity = entityHelper.getEntity(StdLibEntity.ALLOCATE);
-		Node allocateAddress = construction.newAddress(allocateEntity);
+		Node allocateAddress = context.newAddress(allocateEntity);
 
 		Node typeSizeConst = construction.newConst(typeSize, Mode.getLu());
 		Node[] arguments = {memberCount, typeSizeConst};
@@ -652,7 +655,7 @@ public class FirmGraphBuilder {
 	private Node processSystemInRead(Context context) {
 		Construction construction = context.construction();
 		Entity getCharEntity = entityHelper.getEntity(StdLibEntity.GETCHAR);
-		Node getCharAddress = construction.newAddress(getCharEntity);
+		Node getCharAddress = context.newAddress(getCharEntity);
 		// Arguments need to be evaluated first so memory chain is built correctly
 		var call =
 			construction.newCall(construction.getCurrentMem(), getCharAddress, new Node[]{}, getCharEntity.getType());
@@ -664,7 +667,7 @@ public class FirmGraphBuilder {
 	private Node processSystemOutFlush(Context context) {
 		Construction construction = context.construction();
 		Entity flushEntity = entityHelper.getEntity(StdLibEntity.FLUSH);
-		Node flushAddress = construction.newAddress(flushEntity);
+		Node flushAddress = context.newAddress(flushEntity);
 		// Arguments need to be evaluated first so memory chain is built correctly
 		var call = construction.newCall(construction.getCurrentMem(), flushAddress, new Node[0],
 			flushEntity.getType());
@@ -687,7 +690,7 @@ public class FirmGraphBuilder {
 
 		Construction construction = context.construction();
 		Entity putCharEntity = entityHelper.getEntity(entity);
-		Node putCharAddress = construction.newAddress(putCharEntity);
+		Node putCharAddress = context.newAddress(putCharEntity);
 
 		Node argumentNode = processValueExpression(context, argument);
 
@@ -758,11 +761,12 @@ public class FirmGraphBuilder {
 		SlotTable slotTable,
 		Set<Block> returningBlocks,
 		SMethod currentMethod,
-		Map<ConstNodeKey, Const> constCache
+		Map<ConstNodeKey, Const> constCache,
+		Map<Entity, Address> addressCache
 	) {
 
 		public Context(Construction construction, SlotTable slotTable, SMethod method) {
-			this(construction, slotTable, new HashSet<>(), method, new HashMap<>());
+			this(construction, slotTable, new HashSet<>(), method, new HashMap<>(), new HashMap<>());
 		}
 
 		/**
@@ -779,6 +783,13 @@ public class FirmGraphBuilder {
 		private Node newConst(int value, Mode mode) {
 			return constCache.computeIfAbsent(new ConstNodeKey(value, mode),
 				k -> (Const) construction.newConst(value, mode));
+		}
+
+		/**
+		 * @see #newConst(int, Mode)
+		 */
+		private Node newAddress(Entity entity) {
+			return addressCache.computeIfAbsent(entity, k -> (Address) construction.newAddress(k));
 		}
 
 		public void setReturns(Block block) {
