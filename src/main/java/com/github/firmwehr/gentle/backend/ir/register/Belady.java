@@ -6,6 +6,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaReload;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSpill;
+import com.github.firmwehr.gentle.firm.model.LoopTree;
 import com.github.firmwehr.gentle.output.Logger;
 
 import java.util.Collection;
@@ -30,12 +31,16 @@ public class Belady {
 	private final ControlFlowGraph controlFlow;
 	private final LifetimeAnalysis liveliness;
 	private final Uses uses;
+	private final LoopTree loopTree;
 
-	public Belady(Dominance dominance, ControlFlowGraph controlFlow, LifetimeAnalysis liveliness, Uses uses) {
+	public Belady(
+		Dominance dominance, ControlFlowGraph controlFlow, LifetimeAnalysis liveliness, Uses uses, LoopTree loopTree
+	) {
 		this.dominance = dominance;
 		this.controlFlow = controlFlow;
 		this.liveliness = liveliness;
 		this.uses = uses;
+		this.loopTree = loopTree;
 
 		this.startWorksets = new HashMap<>();
 		this.endWorksets = new HashMap<>();
@@ -295,14 +300,16 @@ public class Belady {
 			return worksetNode;
 		}
 
-		boolean isFurtherNestedInLoopTree = false;
+		int blockLoopDepth = loopTree.getBlockElement(block.origin()).depth();
+		int candidateLoopDepth = loopTree.getBlockElement(node.getBlock().origin()).depth();
+		boolean isFurtherNestedInLoopTree = candidateLoopDepth > blockLoopDepth;
 		// It's even deeper!
 		if (isFurtherNestedInLoopTree) {
-			LOGGER.debug("Taking %s as it is deeper nested (%s vs %s)", node, 1, 1);
+			LOGGER.debug("Taking %s as it is deeper nested (%s vs %s)", node, blockLoopDepth, candidateLoopDepth);
 			return worksetNode;
 		}
 
-		LOGGER.debug("Delaying node %s as it is less nested (%s vs %s)", node, 1, 1);
+		LOGGER.debug("Delaying node %s as it is less nested (%s vs %s)", node, blockLoopDepth, candidateLoopDepth);
 		worksetNode.setDistance(new LoopDelayed());
 
 		return worksetNode;

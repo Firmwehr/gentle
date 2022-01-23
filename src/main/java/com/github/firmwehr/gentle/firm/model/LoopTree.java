@@ -5,8 +5,11 @@ import com.github.firmwehr.gentle.firm.GentleBindings;
 import com.google.common.graph.GraphBuilder;
 import com.google.common.graph.MutableGraph;
 import firm.Graph;
+import firm.nodes.Block;
 import firm.nodes.Node;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -15,10 +18,12 @@ import java.util.stream.Collectors;
 public class LoopTree {
 	private final MutableGraph<LoopElement> tree;
 	private final LoopElementLoop root;
+	private final Map<Node, LoopElement> nodeLoopElementMap;
 
 	private LoopTree(FirmIrLoop root) {
 		this.root = new LoopElementLoop(0, root);
 		this.tree = GraphBuilder.directed().allowsSelfLoops(false).build();
+		this.nodeLoopElementMap = new HashMap<>();
 
 		buildRecursive(this.root);
 	}
@@ -41,7 +46,9 @@ public class LoopTree {
 
 				buildRecursive(childLoop);
 			} else if (element instanceof Node child) {
-				tree.putEdge(root, new LoopElementNode(root.depth() + 1, child));
+				LoopElementNode nodeElement = new LoopElementNode(root.depth() + 1, child);
+				nodeLoopElementMap.put(child, nodeElement);
+				tree.putEdge(root, nodeElement);
 			} else {
 				throw new InternalCompilerException("Unknown loop element " + element);
 			}
@@ -50,6 +57,10 @@ public class LoopTree {
 
 	public LoopElementLoop getRoot() {
 		return root;
+	}
+
+	public LoopElement getBlockElement(Block firmBlock) {
+		return nodeLoopElementMap.get(firmBlock);
 	}
 
 	/**
