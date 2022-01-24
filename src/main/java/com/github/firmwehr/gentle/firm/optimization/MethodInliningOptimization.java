@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.firm.optimization;
 
+import com.github.firmwehr.gentle.firm.GentleBindings;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.firm.optimization.callgraph.CallGraph;
 import com.github.firmwehr.gentle.output.Logger;
@@ -214,7 +215,7 @@ public class MethodInliningOptimization {
 	}
 
 	private List<InlineCandidate> findInlineCandidates(Graph graph, Map<Graph, Double> candidates) {
-		ir_estimate_execfreq(graph.ptr);
+		GentleBindings.ir_estimate_execfreq(graph.ptr);
 		BackEdges.disable(graph);
 		List<InlineCandidate> result = new ArrayList<>();
 		Set<Call> calls = callGraph.callSitesIn(graph);
@@ -249,7 +250,7 @@ public class MethodInliningOptimization {
 				benefit += halvedCost / (paramCount * 4);
 			}
 		}
-		return benefit * get_block_execfreq(call.ptr);
+		return benefit * GentleBindings.get_block_execfreq(call.ptr);
 	}
 
 	record InlineCandidate(
@@ -416,14 +417,4 @@ public class MethodInliningOptimization {
 			};
 		}
 	}
-
-	// TODO move into GentleBindings once merged
-
-	static {
-		Native.register(Firm.VERSION.getFileName());
-	}
-
-	public static native double get_block_execfreq(Pointer ptr);
-
-	public static native void ir_estimate_execfreq(Pointer ptr);
 }
