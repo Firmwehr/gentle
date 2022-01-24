@@ -97,11 +97,11 @@ public class LifetimeAnalysis {
 		int maxLive = live.size();
 
 		for (IkeaNode node : Lists.reverse(block.nodes())) {
-			// TODO: Clobbers!
 			live.remove(node);
 			live.addAll(node.parents());
 
-			maxLive = Math.max(maxLive, live.size());
+			// TODO: Is this clobber handling enough?
+			maxLive = Math.max(maxLive, live.size() + node.clobbered().size());
 		}
 
 		return maxLive;

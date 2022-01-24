@@ -96,9 +96,6 @@ public class Belady {
 	private void displace(
 		Collection<IkeaNode> newValues, Set<WorksetNode> currentWorkset, IkeaNode currentInstruction, boolean isUsage
 	) {
-		// TODO: This does not respect clobbers. How do we want to model them? We'd need to make room for one
-		//  additional value per clobbered register
-
 		LOGGER.debug("Making room for %s after %s (usage: %s). Live: %s", newValues, currentInstruction, isUsage,
 			currentWorkset);
 		int additionalPressure = 1; // We do not use all registers (sp is not a good idea?)
@@ -120,6 +117,11 @@ public class Belady {
 				// Remove so it is not accidentally selected for spilling
 				currentWorkset.remove(worksetValue);
 				LOGGER.debug("%s was already live before %s", value, currentInstruction);
+			}
+			// TODO: Is this clobber handling good enough?
+			additionalPressure += value.clobbered().size();
+			if (!value.clobbered().isEmpty()) {
+				LOGGER.debug("Increased %s pressure by %s clobbers", value, value.clobbered().size());
 			}
 			toInsert.add(worksetValue);
 		}
@@ -160,7 +162,12 @@ public class Belady {
 				LOGGER.debug("Spilling %s before %s", victim, currentInstruction);
 				IkeaNode victimParent =
 					victimNode.getBlock().nodes().get(victimNode.getBlock().nodes().indexOf(victimNode) - 1);
-				// TODO: Check if dead or already spilled
+
+				if (victim.spilled() || victim.distance() instanceof Infinity) {
+					LOGGER.debug("Skipping spill for %s due to distance/spilled status", victim);
+					continue;
+				}
+				LOGGER.debug("Spilling %s after encountering %s", victim, currentInstruction);
 				addSpill(victimNode, victimParent);
 			}
 		}
@@ -468,14 +475,14 @@ public class Belady {
 	}
 
 	private void addPhiSpill(IkeaPhi phi, IkeaBløck block) {
-		// TODO: Remember for later usage in realizeSpillsAndReloads
 		for (var entry : phi.getParents().entrySet()) {
 			addSpillOnEdge(entry.getValue(), block, entry.getKey());
 		}
 	}
 
 	private void realizeSpillsAndReloads() {
-		// TODO: Spill whole phis first! Do not insert spilled phis in spill info but do insert their arguments
+		// TODO: We have spilled some whole phis but we do not really care, do we? We spilled the arguments as well
+		// and do not really need anything else?
 
 		// TODO: We could connect reloads with spills and spills with reloads. This might make detecting them easier
 		//  later on, but also forces us to fix SSA form twice
