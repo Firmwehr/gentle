@@ -13,6 +13,7 @@ import com.github.firmwehr.fiascii.generated.ModByConstPattern;
 import com.github.firmwehr.fiascii.generated.SubtractFromZeroPattern;
 import com.github.firmwehr.fiascii.generated.SubtractSamePattern;
 import com.github.firmwehr.fiascii.generated.SubtractZeroPattern;
+import com.github.firmwehr.fiascii.generated.TimesConstPattern;
 import com.github.firmwehr.fiascii.generated.TimesNegOnePattern;
 import com.github.firmwehr.fiascii.generated.TimesOnePattern;
 import com.github.firmwehr.fiascii.generated.TimesZeroPattern;
@@ -34,6 +35,51 @@ import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 public class ArithmeticOptimization extends NodeVisitor.Default {
 
 	private static final Logger LOGGER = new Logger(ArithmeticOptimization.class);
+
+	private static final OptimizationList OPTIMIZATIONS = OptimizationList.builder()
+		.addStep(ArithmeticOptimization::timesOne, (match, graph, block) -> exchange(match.mul(), match.other()))
+		.addStep(ArithmeticOptimization::timesZero,
+			(match, graph, block) -> exchange(match.mul(), newConst(graph, 0, match.mul().getMode())))
+		.addStep(ArithmeticOptimization::timesNegOne,
+			(match, graph, block) -> exchange(match.mul(), graph.newMinus(block, match.other())))
+		.addStep(ArithmeticOptimization::divByNegOne,
+			(match, graph, block) -> replace(match.div(), match.div().getMem(), graph.newMinus(block, match.other())))
+		.addStep(ArithmeticOptimization::divByOne,
+			(match, graph, block) -> replace(match.div(), match.mem(), match.other()))
+		.addStep(ArithmeticOptimization::addWithZero, (match, graph, block) -> exchange(match.add(), match.any()))
+		.addStep(ArithmeticOptimization::subtractSame,
+			(match, graph, block) -> exchange(match.sub(), graph.newConst(0, match.sub().getMode())))
+		.addStep(ArithmeticOptimization::subtractFromZero,
+			(match, graph, block) -> exchange(match.sub(), graph.newMinus(block, match.rhs())))
+		.addStep(ArithmeticOptimization::subtractZero, (match, graph, block) -> exchange(match.sub(), match.lhs()))
+		.addStep(ArithmeticOptimization::addMinus,
+			(match, graph, block) -> exchange(match.add(), graph.newSub(block, match.other(), match.value())))
+		.addStep(ArithmeticOptimization::associativeAdd, (match, graph, block) -> {
+			// we don't care about left/right here, just set both again *somewhere*
+			Node newInner = graph.newAdd(block, match.a(), match.b());
+			return exchange(match.outer(), graph.newAdd(block, newInner, match.c()));
+		})
+		.addStep(ArithmeticOptimization::associativeMul, (match, graph, block) -> {
+			// we don't care about left/right here, just set both again *somewhere*
+			Node newInner = graph.newMul(block, match.a(), match.b());
+			return exchange(match.outer(), graph.newMul(block, newInner, match.c()));
+		})
+		.addStep(ArithmeticOptimization::distributive, (match, graph, block) -> exchange(match.add(),
+			graph.newMul(block, match.factor(), graph.newAdd(block, match.av(), match.bv()))))
+		.addStep( //
+			ArithmeticOptimization::divByConst, //
+			(match, graph, block) -> constructFastDiv(match, graph) //
+				.map(replacement -> replace(match.div(), match.mem(), replacement)) //
+				.orElse(false) //
+		)
+		.addStep( //
+			ArithmeticOptimization::modByConst, //
+			(match, graph, block) -> constructFastMod(match, graph) //
+				.map(replacement -> replace(match.mod(), match.mem(), replacement)) //
+				.orElse(false) //
+		)
+		.addStep(ArithmeticOptimization::timesConst, ArithmeticOptimization::acceptTimesConst)
+		.build();
 
 	private boolean hasChanged;
 	private final Graph graph;
@@ -77,75 +123,40 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 	}
 
 	private void applyArithmeticOptimization() {
-		graph.walkTopological(this);
+		// We want to walk the normal walk. Starting at the end and walking up the pred chain allows us to
+		// match larger patterns first. This is relevant as e.g. associativeMul should simplify multiplication before
+		// the strength reduction converts only *parts* of it to shifts
+		graph.walk(this);
 	}
 
 	@Override
 	public void defaultVisit(Node node) {
-		Graph graph = node.getGraph();
-		Node block = node.getBlock();
-
-		// TODO (maybe): 2 * a => a << 2
-		timesOne(node).ifPresent(match -> exchange(match.mul(), match.other()));
-		timesZero(node).ifPresent(match -> exchange(match.mul(), graph.newConst(0, match.mul().getMode())));
-		timesNegOne(node).ifPresent(match -> exchange(match.mul(), graph.newMinus(block, match.other())));
-
-		divByNegOne(node).ifPresent(
-			match -> replace(match.div(), match.div().getMem(), graph.newMinus(block, match.other())));
-		divByOne(node).ifPresent(match -> replace(match.div(), match.mem(), match.other()));
-
-		addWithZero(node).ifPresent(match -> exchange(match.add(), match.any()));
-
-		subtractSame(node).ifPresent(match -> exchange(match.sub(), graph.newConst(0, match.sub().getMode())));
-		subtractFromZero(node).ifPresent(match -> exchange(match.sub(), graph.newMinus(block, match.rhs())));
-		subtractZero(node).ifPresent(match -> exchange(match.sub(), match.lhs()));
-
-		addMinus(node).ifPresent(match -> exchange(match.add(), graph.newSub(block, match.other(), match.value())));
-
-		associativeAdd(node).ifPresent(match -> {
-			// we don't care about left/right here, just set both again *somewhere*
-			Node newInner = graph.newAdd(block, match.a(), match.b());
-			exchange(match.outer(), graph.newAdd(block, newInner, match.c()));
-		});
-
-		associativeMul(node).ifPresent(match -> {
-			// we don't care about left/right here, just set both again *somewhere*
-			Node newInner = graph.newMul(block, match.a(), match.b());
-			exchange(match.outer(), graph.newMul(block, newInner, match.c()));
-		});
-
-		distributive(node).ifPresent(match -> exchange(match.add(),
-			graph.newMul(block, match.factor(), graph.newAdd(block, match.av(), match.bv()))));
-
-		divByConst(node).ifPresent(
-			match -> constructFastDiv(match).ifPresent(replacement -> replace(match.div(), match.mem(), replacement)));
-		modByConst(node).ifPresent(
-			match -> constructFastMod(match).ifPresent(replacement -> replace(match.mod(), match.mem(), replacement)));
+		hasChanged |= OPTIMIZATIONS.optimize(node, node.getGraph(), node.getBlock());
 	}
 
-	private Optional<Node> constructFastMod(ModByConstPattern.Match match) {
+	private static Optional<Node> constructFastMod(ModByConstPattern.Match match, Graph graph) {
 		int divisor = match.value().getTarval().asInt();
 		int absDivisor = Math.abs(divisor);
 		if (absDivisor == 1) { // x % ± 1 is always zero
-			return Optional.of(newConst(0, Mode.getIs()));
+			return Optional.of(newConst(graph, 0, Mode.getIs()));
 		}
 		Node block = match.mod().getBlock();
-		Optional<Node> replacementOpt = constructFastModDivCommon(absDivisor, block, match.other());
+		Optional<Node> replacementOpt = constructFastModDivCommon(absDivisor, block, match.other(), graph);
 		if (replacementOpt.isEmpty()) {
 			return replacementOpt;
 		}
-		Node replacement = graph.newMul(block, replacementOpt.get(), newConst(absDivisor, Mode.getIs()));
+		Node replacement = graph.newMul(block, replacementOpt.get(), newConst(graph, absDivisor, Mode.getIs()));
 		replacement = graph.newSub(block, match.other(), replacement);
 		return Optional.of(replacement);
 	}
 
-	private Optional<Node> constructFastDiv(DivByConstPattern.Match match) {
+	private static Optional<Node> constructFastDiv(DivByConstPattern.Match match, Graph graph) {
 		int divisor = match.value().getTarval().asInt();
 		Node block = match.div().getBlock();
-		return constructFastModDivCommon(divisor, block, match.other());
+		return constructFastModDivCommon(divisor, block, match.other(), graph);
 	}
 
-	private Optional<Node> constructFastModDivCommon(int divisor, Node block, Node dividend) {
+	private static Optional<Node> constructFastModDivCommon(int divisor, Node block, Node dividend, Graph graph) {
 		boolean isNegative = divisor < 0;
 		int absDivisor = Math.abs(divisor);
 		int k = Maths.floorLog2(absDivisor);
@@ -153,11 +164,11 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 			// Hacker's Delight, 2nd Edition, Chapter 10-1
 			Node quotient = dividend;
 			if (k != 1) { // 1 - 1 == 0; n >>> 0 == n
-				quotient = graph.newShrs(block, quotient, newConst(k - 1, Mode.getIu()));  // shrsi t,n,k-1
+				quotient = graph.newShrs(block, quotient, newConst(graph, k - 1, Mode.getIu()));  // shrsi t,n,k-1
 			}
-			quotient = graph.newShr(block, quotient, newConst(32 - k, Mode.getIu()));      // shri  t,t,32-k
+			quotient = graph.newShr(block, quotient, newConst(graph, 32 - k, Mode.getIu()));      // shri  t,t,32-k
 			quotient = graph.newAdd(block, dividend, quotient);                                   // add   t,n,t
-			quotient = graph.newShrs(block, quotient, newConst(k, Mode.getIu()));          // shrsi q,t,k
+			quotient = graph.newShrs(block, quotient, newConst(graph, k, Mode.getIu()));          // shrsi q,t,k
 			if (isNegative) {
 				// as the part above calculates other / 2**k, we need to negate the result
 				quotient = graph.newMinus(block, quotient);
@@ -175,26 +186,26 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 			MagicDiv magicDiv = magic(absDivisor);
 			// We could use Mulh nodes, but that requires us to have codegen for it too
 			// - and as x86 has no specific instruction, it's not really worth to go that way
-			Node magic =
-				newConst(magicDiv.magicConst(), Mode.getLs());         // we want the upper 32 bits of a 64 bit mul
+			Node magic = newConst(graph, magicDiv.magicConst(),
+				Mode.getLs());         // we want the upper 32 bits of a 64 bit mul
 			Node dividendLong =
 				graph.newConv(block, dividend, Mode.getLs());   // so we need to convert the arguments first
 			Node mulHi = graph.newMul(block, dividendLong, magic);
 			if (magicDiv.magicConst() < 0) {
-				mulHi = graph.newShrs(block, mulHi, newConst(N, Mode.getIu()));
+				mulHi = graph.newShrs(block, mulHi, newConst(graph, N, Mode.getIu()));
 				mulHi = graph.newConv(block, mulHi, Mode.getIs());
 				mulHi = graph.newAdd(block, dividend, mulHi);
 				if (magicDiv.shiftConst() != 0) {
-					mulHi = graph.newShrs(block, mulHi, newConst(magicDiv.shiftConst(), Mode.getIu()));
+					mulHi = graph.newShrs(block, mulHi, newConst(graph, magicDiv.shiftConst(), Mode.getIu()));
 				}
 			} else {
 				// we can combine the 32 bit shift with the magic shift for 64 bit operations
-				mulHi = graph.newShrs(block, mulHi, newConst(N + magicDiv.shiftConst(), Mode.getIu()));
+				mulHi = graph.newShrs(block, mulHi, newConst(graph, N + magicDiv.shiftConst(), Mode.getIu()));
 				mulHi = graph.newConv(block, mulHi, Mode.getIs());
 			}
 
 			Node addend0 = mulHi;
-			Node addend1 = graph.newShrs(block, dividend, newConst(N - 1, Mode.getIu()));
+			Node addend1 = graph.newShrs(block, dividend, newConst(graph, -1, Mode.getIu()));
 			if (isNegative) {
 				Node tmp = addend0;
 				addend0 = addend1;
@@ -243,6 +254,19 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		return new MagicDiv((int) M, p - 32);
 	}
 
+	private static boolean acceptTimesConst(TimesConstPattern.Match match, Graph graph, Node block) {
+		int absVal = Math.abs(match.constVal().getTarval().asInt());
+		int log2 = Maths.floorLog2(absVal);
+		if ((1 << log2) != absVal) {
+			return false;
+		}
+		Node replaced = graph.newShl(block, match.other(), newConst(graph, log2, Mode.getIu()));
+		if (match.constVal().getTarval().isNegative()) {
+			replaced = graph.newMinus(block, replaced);
+		}
+		return exchange(match.mul(), replaced);
+	}
+
 	private record MagicDiv(
 		int magicConst,
 		int shiftConst
@@ -250,18 +274,18 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 
 	}
 
-	private Node newConst(int i, Mode mode) {
+	private static Node newConst(Graph graph, int i, Mode mode) {
 		return graph.newConst(new TargetValue(i, mode));
 	}
 
-	private void exchange(Node victim, Node murderer) {
+	private static boolean exchange(Node victim, Node murderer) {
 		Util.exchange(victim, murderer);
-		hasChanged = true;
+		return true;
 	}
 
-	private void replace(Node node, Node previousMemory, Node replacement) {
+	private static boolean replace(Node node, Node previousMemory, Node replacement) {
 		Util.replace(node, previousMemory, replacement);
-		hasChanged = true;
+		return true;
 	}
 
 	@FiAscii("""
@@ -504,5 +528,19 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		             └────────┘""")
 	public static Optional<ModByConstPattern.Match> modByConst(Node node) {
 		return ModByConstPattern.match(node);
+	}
+
+	@FiAscii("""
+		┌────────────────┐  ┌─────────┐
+		│constVal: Const │  │other: * │
+		└─────┬──────────┘  └────┬────┘
+		      │                  │
+		      └──────┬───────────┘
+		             │
+		         ┌───▼────┐
+		         │mul: Mul│
+		         └────────┘""")
+	public static Optional<TimesConstPattern.Match> timesConst(Node node) {
+		return TimesConstPattern.match(node);
 	}
 }
