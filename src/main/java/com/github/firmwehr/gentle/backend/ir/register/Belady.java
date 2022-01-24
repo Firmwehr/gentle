@@ -50,6 +50,7 @@ public class Belady {
 	}
 
 	public void spill(ControlFlowGraph graph) {
+		// TODO: Ignore nodes without output requirements (e.g. a jump or cmp)
 		for (IkeaBløck block : graph.reversePostOrder()) {
 			processBlock(block);
 		}
@@ -478,6 +479,9 @@ public class Belady {
 	}
 
 	private void addPhiSpill(IkeaPhi phi, IkeaBløck block) {
+		// TODO: This might be one too low? We'd like to put that as the first instr in the block
+		addSpill(phi, block.nodes().get(0));
+
 		for (var entry : phi.getParents().entrySet()) {
 			addSpillOnEdge(entry.getValue(), block, entry.getKey());
 		}

@@ -20,6 +20,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStoreEx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPerm;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaReload;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
@@ -28,6 +29,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShl;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSpill;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSpill;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
 
 public interface IkeaVisitor<T> {
@@ -144,6 +146,10 @@ public interface IkeaVisitor<T> {
 
 	default T visit(IkeaSpill ikeaSpill) {
 		return defaultVisit(ikeaSpill);
+	}
+
+	default T visit(IkeaPerm ikeaPerm) {
+		return defaultVisit(ikeaPerm);
 	}
 
 	default T visit(IkeaBløck block) {

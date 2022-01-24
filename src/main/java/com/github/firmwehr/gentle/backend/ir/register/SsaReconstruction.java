@@ -5,6 +5,7 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaVirtualRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPerm;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaReload;
 
@@ -64,8 +65,17 @@ public class SsaReconstruction {
 				if (brokenVariables.contains(node)) {
 					return node;
 				}
+				// reloads are definitions of the value
 				if (node instanceof IkeaReload reload && brokenVariables.contains(reload.getOriginalDef())) {
 					return node;
+				}
+				// Perms are also definitions of this value
+				if (node instanceof IkeaPerm perm) {
+					for (IkeaNode permArg : perm.parents()) {
+						if (brokenVariables.contains(permArg)) {
+							return node;
+						}
+					}
 				}
 			}
 

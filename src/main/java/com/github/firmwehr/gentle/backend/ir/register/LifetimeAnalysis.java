@@ -107,6 +107,17 @@ public class LifetimeAnalysis {
 		return maxLive;
 	}
 
+	public Set<IkeaNode> getLiveBefore(IkeaNode before) {
+		Set<IkeaNode> live = getLiveOut(before.getBlock());
+
+		for (IkeaNode node : Lists.reverse(before.getBlock().nodes())) {
+			live.remove(node);
+			live.addAll(node.parents());
+		}
+
+		return live;
+	}
+
 	private record BlockLiveliness(
 		Set<IkeaNode> kill,
 		Map<IkeaBløck, Set<IkeaNode>> liveIn,
