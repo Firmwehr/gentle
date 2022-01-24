@@ -164,13 +164,6 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				}
 				case iro_Offset -> throw new InternalCompilerException(
 					"encountered offset node (do we even have these?)");
-				case iro_Phi -> {
-					var n0 = (Phi) node;
-					var n1 = (Phi) thatNode;
-					if (n0.getLoop() != n1.getLoop()) {
-						return false;
-					}
-				}
 				case iro_Sel -> throw new InternalCompilerException("encountered sel node (should have been lowered)");
 				case iro_Size -> throw new InternalCompilerException("encountered size node (do we even have these?)");
 				case iro_Store -> {
@@ -181,7 +174,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 					}
 				}
 				case iro_Switch -> throw new InternalCompilerException("switch node is not supported");
-				case iro_Jmp, iro_Proj, iro_Start, iro_Cond -> {
+				case iro_Jmp, iro_Proj, iro_Start, iro_Cond, iro_Phi -> {
 					/* some nodes should never be equal, unless firm itself considers them equal, but this way already
 					 * check a few lines above. if we reached this place, they are simply considered not equal
 					 */
