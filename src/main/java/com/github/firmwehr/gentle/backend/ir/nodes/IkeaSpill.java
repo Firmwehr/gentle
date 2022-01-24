@@ -12,6 +12,7 @@ public class IkeaSpill implements IkeaNode {
 	private IkeaBøx box;
 	private final IkeaBløck bløck;
 	private final IkeaNode originalDef;
+	private int spillSlot;
 
 	public IkeaSpill(IkeaBøx box, IkeaBløck bløck, IkeaNode originalDef) {
 		this.box = box;
@@ -56,5 +57,13 @@ public class IkeaSpill implements IkeaNode {
 	@Override
 	public List<IkeaRegisterRequirement> outRequirements() {
 		return List.of(IkeaRegisterRequirement.gpRegister());
+	}
+
+	public int getSpillSlot() {
+		return spillSlot;
+	}
+
+	public void setSpillSlot(int spillSlot) {
+		this.spillSlot = spillSlot;
 	}
 }

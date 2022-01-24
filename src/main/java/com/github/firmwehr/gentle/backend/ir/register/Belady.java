@@ -61,8 +61,11 @@ public class Belady {
 		// Also fixes SSA and invalidates liveliness, uses and dominance :awesome:
 		realizeSpillsAndReloads();
 
-		// TODO: Spill slot assignment
-		// TODO: Spill slot coalescing
+		assignSpillSlots();
+		// TODO: Spill slot coalescing. We might be able to put multiple different values in the same spill slot (e.g.
+		//  for spilled phis) which would eliminate moves. I am not certain we can actually express this in our
+		//  garbage backend though, as we'd need a way to determine whether a value is live that treats reloads as
+		//  live too!
 	}
 
 	private void processBlock(IkeaBløck block) {
@@ -542,6 +545,21 @@ public class Belady {
 		IkeaPhi phi = (IkeaPhi) spillInfo.valueToSpill();
 		for (IkeaNode node : phi.getParents().values()) {
 			spill(spillInfos.get(node));
+		}
+	}
+
+	private void assignSpillSlots() {
+		Map<IkeaNode, Integer> slotIndices = new HashMap<>();
+		for (IkeaBløck block : controlFlow.getAllBlocks()) {
+			for (IkeaNode node : block.nodes()) {
+				if (node instanceof IkeaReload reload) {
+					int index = slotIndices.computeIfAbsent(node, ignored -> slotIndices.size());
+					reload.setSpillSlot(index);
+				} else if (node instanceof IkeaSpill spill) {
+					int index = slotIndices.computeIfAbsent(node, ignored -> slotIndices.size());
+					spill.setSpillSlot(index);
+				}
+			}
 		}
 	}
 
