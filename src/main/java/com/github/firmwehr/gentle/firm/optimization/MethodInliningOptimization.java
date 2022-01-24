@@ -9,9 +9,9 @@ import com.github.firmwehr.gentle.util.Pair;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import firm.BackEdges;
-import firm.Firm;
 import firm.Graph;
 import firm.Mode;
+import firm.bindings.binding_irgraph;
 import firm.bindings.binding_irnode;
 import firm.bindings.binding_irop;
 import firm.nodes.Address;
@@ -57,8 +57,6 @@ public class MethodInliningOptimization {
 		Map<Graph, Double> inlineCandidates = new HashMap<>();
 		Set<Graph> changed = new HashSet<>();
 		callGraph.walkPostorder(graph -> {
-			LOGGER.debug("scanning %s", graph.getEntity().getLdName());
-			LOGGER.debug("args %s", graph.getArgs());
 			double selfCost = CostCalculator.calculate(graph).cost();
 			if (selfCost <= CALLER_INLINE_COST_THRESHOLD) {
 				List<InlineCandidate> localCandidates = findInlineCandidates(graph, inlineCandidates);
@@ -67,6 +65,8 @@ public class MethodInliningOptimization {
 					changed.add(graph);
 					selfCost = CostCalculator.calculate(graph).cost();
 					GraphDumper.dumpGraph(graph, "method-inlined");
+					graph.confirmProperties(
+						binding_irgraph.ir_graph_properties_t.IR_GRAPH_PROPERTIES_NONE);
 				}
 			} else {
 				LOGGER.debug("skipping because of self cost");
@@ -103,14 +103,12 @@ public class MethodInliningOptimization {
 		List<Return> returns = new ArrayList<>();
 		List<Pair<Node, Integer>> delayed = new ArrayList<>();
 		toInline.walkBlocksPostorder(old -> {
-			LOGGER.debug("visiting %s", old);
 			if (old.getGraph().getStartBlock().equals(old)) {
 				// call.getBlock() is newly created block
 				calleeToCallerCopied.put(old, call.getBlock());
 				return;
 			}
 			Node copyBlock = old.copyInto(graph);
-			LOGGER.debug("copying %s to %s", old, copyBlock);
 			calleeToCallerCopied.put(old, copyBlock);
 			for (int i = 0; i < old.getPredCount(); i++) {
 				// set the new pred
@@ -122,8 +120,6 @@ public class MethodInliningOptimization {
 			@Override
 			public void visit(Proj node) {
 				if (node.getPred().equals(toInline.getArgs())) {
-					LOGGER.debug("insert argument %s %s with pred %s", node, node.getNum(),
-						call.getPred(2 + node.getNum()));
 					calleeToCallerCopied.put(node, call.getPred(2 + node.getNum()));
 				} else if (node.getMode().equals(Mode.getM()) && node.getPred().equals(toInline.getStart())) {
 					// memory Proj from start
@@ -176,13 +172,10 @@ public class MethodInliningOptimization {
 
 			@Override
 			public void defaultVisit(Node old) {
-				LOGGER.debug("visiting %s (block: %s)", old, old.getBlock());
 				Node copy = old.copyInto(graph);
 				if (belongsToStart(copy)) {
-					LOGGER.debug("set start block for %s", copy);
 					copy.setBlock(graph.getStartBlock());
 				} else {
-					LOGGER.debug("set normal block for %s", copy);
 					copy.setBlock(calleeToCallerCopied.get(old.getBlock()));
 				}
 				calleeToCallerCopied.put(old, copy);
@@ -200,18 +193,15 @@ public class MethodInliningOptimization {
 		for (Pair<Node, Integer> pair : delayed) {
 			Node newNode = calleeToCallerCopied.get(pair.first());
 			Node newPred = calleeToCallerCopied.get(pair.first().getPred(pair.second()));
-			LOGGER.debug("new pred %s, pair %s, old pred %s", newPred, pair, pair.first().getPred(pair.second()));
 			newNode.setPred(pair.second(), newPred);
 		}
 		toInline.walkBlocksPostorder(old -> {
 			Node newBlock = calleeToCallerCopied.get(old);
 			for (int i = 0; i < old.getPredCount(); i++) {
-				LOGGER.debug("set pred for %s at %s with old pred %s", newBlock, i, old.getPred(i));
 				newBlock.setPred(i, calleeToCallerCopied.get(old.getPred(i)));
 			}
 		});
 		LOGGER.info("inlined %s into %s", toInline, graph);
-		LOGGER.debug("enabled = %s", BackEdges.enabled(graph));
 	}
 
 	private List<InlineCandidate> findInlineCandidates(Graph graph, Map<Graph, Double> candidates) {
@@ -224,12 +214,10 @@ public class MethodInliningOptimization {
 			if (called != null) { // is null for runtime calls
 				double cost = candidates.getOrDefault(called, Double.MAX_VALUE);
 				if (cost >= Double.MAX_VALUE) {
-					LOGGER.debug("no cost available for %s?", called.getEntity().getLdName());
+					LOGGER.debug("no cost available for %s", called.getEntity().getLdName());
 					continue; // skip this call, cannot be inlined
 				}
-				LOGGER.debug("pre cost: %s", cost);
 				cost -= benefit(call, cost / 2);
-				LOGGER.debug("after cost: %s (-%s)", cost, benefit(call, cost / 2));
 				result.add(new InlineCandidate(call, called, cost));
 			}
 		}
@@ -302,7 +290,6 @@ public class MethodInliningOptimization {
 		} else {
 			for (BackEdges.Edge edge : BackEdges.getOuts(oldBlock)) {
 				if (edge.node instanceof Phi) {
-					LOGGER.warn("move to new block %s", edge.node);
 					edge.node.setBlock(newBlock);
 				}
 			}
@@ -314,10 +301,8 @@ public class MethodInliningOptimization {
 
 	private void movePredecessors(Node node, Node oldBlock, Node newBlock) {
 		if (belongsToStart(node)) {
-			LOGGER.debug("set start block for %s", node);
 			node.setBlock(oldBlock.getGraph().getStartBlock());
 		} else {
-			LOGGER.debug("set normal block for %s", node);
 			node.setBlock(newBlock);
 		}
 		moveProjEdges(node, newBlock);
@@ -354,7 +339,7 @@ public class MethodInliningOptimization {
 		return nodes;
 	}
 
-	// TODO better loop detection
+	// TODO better loop detection (review freq)??
 	static class CostCalculator extends NodeVisitor.Default {
 		private static final double PHI_COST = 3d;
 		private static final double CONDITIONAL_JUMP_COST = 2d; // Proj X false OR Proj X true => 4 per Jmp
@@ -394,7 +379,7 @@ public class MethodInliningOptimization {
 		}
 
 		private void count(Node node) {
-			cost += switch (node) {
+			cost += GentleBindings.get_block_execfreq(node.ptr) * switch (node) {
 				case Call call -> {
 					if (((Address) call.getPtr()).getEntity().getGraph() == null) {
 						yield RUNTIME_CALL_COST;
