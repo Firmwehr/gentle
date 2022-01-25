@@ -377,15 +377,15 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				}
 			}
 
+			// local block stabilized, update available expression
+			availableExpressions.putAll(currentAvailable);
+
 			// extract surviving phi nodes, we might need to update them later
 			for (var node : availableExpressions.values()) {
 				if (node instanceof Phi phi) {
 					phis.add(phi);
 				}
 			}
-
-			// local block stabilized, update available expression
-			availableExpressions.putAll(currentAvailable);
 		}
 
 		private boolean rewireNode(HashMap<NodeHashKey, Node> lastAvailable, Node node) {
