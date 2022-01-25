@@ -49,6 +49,10 @@ public class ConstraintNodePrepare {
 		// needing backedges
 		perm.setOutRequirements(toPerm.stream().map(IkeaNode::inRequirements).toList());
 
+		// TODO: Pair up perm args that die at node with node defs => They can use the same register
+		// TODO: Compute a bipartite matching for all arguments to registers
+		// TODO: Color them :awesome:
+
 		// We might have screwed these things over royally
 		uses.recompute();
 		liveliness.recompute();
