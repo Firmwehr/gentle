@@ -4,6 +4,7 @@ package com.github.firmwehr.gentle.firm.optimization;
 import com.github.firmwehr.gentle.firm.optimization.callgraph.CallGraph;
 import firm.Graph;
 import firm.Program;
+import firm.bindings.binding_irgraph;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -48,6 +49,10 @@ public class Optimizer {
 		CallGraph callGraph = CallGraph.create(Program.getGraphs());
 		for (GraphOptimizationStep<CallGraph, Set<Graph>> step : this.callGraphOptimizationSteps) {
 			Set<Graph> modified = step.optimize(callGraph);
+			// FIXME: Delete this
+			for (Graph graph : modified) {
+				graph.confirmProperties(binding_irgraph.ir_graph_properties_t.IR_GRAPH_PROPERTIES_NONE);
+			}
 			modifiedCollect.addAll(modified);
 			callGraph = callGraph.updated(modified);
 		}
@@ -62,6 +67,8 @@ public class Optimizer {
 				changed = false;
 				for (GraphOptimizationStep<Graph, Boolean> step : this.graphOptimizationSteps) {
 					changed |= step.optimize(graph);
+					// FIXME: Delete this
+					graph.confirmProperties(binding_irgraph.ir_graph_properties_t.IR_GRAPH_PROPERTIES_NONE);
 				}
 				anyChanged |= changed;
 			} while (changed);
