@@ -6,7 +6,6 @@ import com.github.firmwehr.gentle.firm.optimization.callgraph.CallGraph;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.GraphDumper;
 import com.github.firmwehr.gentle.util.Pair;
-import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import firm.BackEdges;
 import firm.Graph;
