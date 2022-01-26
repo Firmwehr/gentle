@@ -44,11 +44,16 @@ public class PureFunctionOptimization {
 		});
 
 		Set<Graph> modified = new HashSet<>();
-		callGraph.walkPostorder(graph -> {
-			if (removeUnusedPureCalls(graph)) {
-				modified.add(graph);
-			}
-		});
+		Mut<Boolean> modifiedMore = new Mut<>(false);
+		do {
+			modifiedMore.set(false);
+			callGraph.walkPostorder(graph -> {
+				if (makePureCallsUseNoMem(graph)) {
+					modified.add(graph);
+					modifiedMore.set(true);
+				}
+			});
+		} while (modifiedMore.get());
 
 		for (Graph graph : modified) {
 			GraphDumper.dumpGraph(graph, "remove-pure");
@@ -111,29 +116,32 @@ public class PureFunctionOptimization {
 		return result.get();
 	}
 
-	private boolean removeUnusedPureCalls(Graph graph) {
+	private boolean makePureCallsUseNoMem(Graph graph) {
 		Mut<Boolean> changed = new Mut<>(false);
 		BackEdges.enable(graph);
 		graph.walk(new NodeVisitor.Default() {
 			@Override
 			public void visit(Call node) {
+				if (node.getMem().equals(graph.getNoMem())) {
+					return; // This function is already properly pure
+				}
 				Entity entity = ((Address) node.getPtr()).getEntity();
 				if (!pureFunctions.contains(entity)) {
 					return;
 				}
+				// First, point all users of this call's mem projection to the call's mem.
 				for (BackEdges.Edge out : BackEdges.getOuts(node)) {
 					if (out.node instanceof Proj proj && proj.getMode().equals(Mode.getM())) {
-						// All children of the call node are just memory projections
-						// We can safely remove the call since we know the function is pure
-					} else {
-						return;
+						for (BackEdges.Edge memUser : BackEdges.getOuts(proj)) {
+							memUser.node.setPred(memUser.pos, node.getMem());
+						}
 					}
 				}
-				for (BackEdges.Edge memProj : BackEdges.getOuts(node)) {
-					for (BackEdges.Edge memUser : BackEdges.getOuts(memProj.node)) {
-						memUser.node.setPred(memUser.pos, node.getMem());
-					}
-				}
+				// Then, insert a dummy so other optimizations can make use of the fact that this call is pure.
+				node.setMem(graph.getNoMem());
+				// If nobody uses the function's return value, it should automatically be garbage-collected by firm
+				// since nothing points towards it anymore.
+
 				changed.set(true);
 			}
 		});
