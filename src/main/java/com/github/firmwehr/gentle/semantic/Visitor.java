@@ -34,6 +34,7 @@ public interface Visitor<T> {
 	//<editor-fold desc="Expressions">
 	default T visit(SArrayAccessExpression arrayExpression) throws SemanticException {
 		arrayExpression.expression().accept(this);
+		arrayExpression.index().accept(this);
 		return defaultReturnValue();
 	}
 
