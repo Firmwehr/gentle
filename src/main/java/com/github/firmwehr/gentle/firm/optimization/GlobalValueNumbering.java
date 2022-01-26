@@ -17,6 +17,7 @@ import firm.nodes.Mod;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 import firm.nodes.Phi;
+import firm.nodes.Proj;
 import firm.nodes.Store;
 
 import java.util.ArrayList;
@@ -162,9 +163,6 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 						return false;
 					}
 				}
-				case iro_NoMem -> {
-					return true;
-				}
 				case iro_Offset -> throw new InternalCompilerException(
 					"encountered offset node (do we even have these?)");
 				case iro_Sel -> throw new InternalCompilerException("encountered sel node (should have been lowered)");
@@ -176,8 +174,15 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 						return false;
 					}
 				}
+				case iro_Proj -> {
+					var n0 = (Proj) node;
+					var n1 = (Proj) thatNode;
+					if (n0.getNum() != n1.getNum()) {
+						return false;
+					}
+				}
 				case iro_Switch -> throw new InternalCompilerException("switch node is not supported");
-				case iro_Jmp, iro_Proj, iro_Start, iro_Cond, iro_Phi -> {
+				case iro_Jmp, iro_Start, iro_Cond, iro_Phi -> {
 					/* some nodes should never be equal, unless firm itself considers them equal, but this way already
 					 * check a few lines above. if we reached this place, they are simply considered not equal
 					 */
@@ -380,15 +385,15 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				}
 			}
 
-			// local block stabilized, update available expression
-			availableExpressions.putAll(currentAvailable);
-
 			// extract surviving phi nodes, we might need to update them later
-			for (var node : availableExpressions.values()) {
+			for (var node : currentAvailable.values()) {
 				if (node instanceof Phi phi) {
 					phis.add(phi);
 				}
 			}
+
+			// local block stabilized, update available expression
+			availableExpressions.putAll(currentAvailable);
 		}
 
 		private boolean rewireNode(HashMap<NodeHashKey, Node> lastAvailable, Node node) {
