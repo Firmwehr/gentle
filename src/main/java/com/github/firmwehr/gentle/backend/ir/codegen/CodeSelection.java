@@ -55,6 +55,7 @@ import firm.nodes.Load;
 import firm.nodes.Minus;
 import firm.nodes.Mod;
 import firm.nodes.Mul;
+import firm.nodes.NoMem;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 import firm.nodes.Phi;
@@ -203,6 +204,11 @@ public class CodeSelection extends NodeVisitor.Default {
 	public void visit(Phi node) {
 		// Ignored here. Only added for completeness, as this visitor verifies no node is missed
 		// Phis are handled in a separate phase
+	}
+
+	@Override
+	public void visit(NoMem node) {
+		// Ignored here. Only added for completeness, as this visitor verifies no node is missed
 	}
 
 	@Override

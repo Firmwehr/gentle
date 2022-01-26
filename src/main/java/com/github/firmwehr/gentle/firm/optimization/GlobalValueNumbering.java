@@ -162,6 +162,9 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 						return false;
 					}
 				}
+				case iro_NoMem -> {
+					return true;
+				}
 				case iro_Offset -> throw new InternalCompilerException(
 					"encountered offset node (do we even have these?)");
 				case iro_Sel -> throw new InternalCompilerException("encountered sel node (should have been lowered)");
