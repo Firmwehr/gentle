@@ -76,6 +76,9 @@ public interface CommandArguments {
 	@Option(names = "--dump-backend-schedule", description = "include schedule information in backend graphs")
 	boolean dumpBackendSchedule();
 
+	@Option(names = "--no-inlining", description = "do not inline code")
+	boolean noInlining();
+
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",
 		paramLabel = "FILE")
 	Path path();

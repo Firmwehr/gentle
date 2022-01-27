@@ -113,10 +113,12 @@ public class FirmBuilder {
 			if (!CompilerArguments.get().noGlobalValueNumbering()) {
 				builder.addGraphStep(GlobalValueNumbering.deduplicate());
 			}
+			if (!CompilerArguments.get().noInlining()) {
+				builder.addCallGraphStep(MethodInliningOptimization.methodInlineOptimization());
+			}
 		} else {
 			LOGGER.info("optimization level set to 0, all optional optimization will be disabled");
 		}
-		builder.addCallGraphStep(MethodInliningOptimization.methodInlineOptimization());
 
 		Optimizer optimizer = builder.build();
 		optimizer.optimize();
