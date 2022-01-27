@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.backend.ir.visit;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAdd;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAnd;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaArgNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCall;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCmp;
@@ -37,6 +38,10 @@ public interface IkeaVisitor<T> {
 
 	default T visit(IkeaAdd add) {
 		return defaultVisit(add);
+	}
+
+	default T visit(IkeaAnd and) {
+		return defaultVisit(and);
 	}
 
 	default T visit(IkeaArgNode argNode) {

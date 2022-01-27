@@ -8,6 +8,7 @@ import com.github.firmwehr.gentle.backend.ir.IkeaImmediate;
 import com.github.firmwehr.gentle.backend.ir.IkeaVirtualRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.BoxScheme;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAdd;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAnd;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaArgNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCall;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCmp;
@@ -99,6 +100,11 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 	@Override
 	public String visit(IkeaAdd add) {
 		return simpleBinaryOperator("add", add.getRight().box(), add.getLeft().box(), add.box());
+	}
+
+	@Override
+	public String visit(IkeaAnd and) {
+		return simpleBinaryOperator("and", and.getRight().box(), and.getLeft().box(), and.box());
 	}
 
 	@Override

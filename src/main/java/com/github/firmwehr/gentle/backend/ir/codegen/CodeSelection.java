@@ -10,6 +10,7 @@ import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaVirtualRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.BoxScheme;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAdd;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAnd;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaArgNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCall;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCmp;
@@ -42,6 +43,7 @@ import firm.Mode;
 import firm.Relation;
 import firm.nodes.Add;
 import firm.nodes.Address;
+import firm.nodes.And;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cmp;
@@ -174,6 +176,19 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaAdd ikeaAdd = new IkeaAdd(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+		nodes.put(node, ikeaAdd);
+		block.nodes().add(ikeaAdd);
+	}
+
+	@Override
+	public void visit(And node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
+		IkeaBløck block = blocks.get((Block) node.getBlock());
+		IkeaAnd ikeaAdd = new IkeaAnd(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
 		nodes.put(node, ikeaAdd);
 		block.nodes().add(ikeaAdd);
 	}
