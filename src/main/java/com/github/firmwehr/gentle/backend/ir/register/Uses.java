@@ -6,6 +6,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.github.firmwehr.gentle.firm.model.LoopTree;
 import com.github.firmwehr.gentle.output.Logger;
+import com.google.common.collect.Lists;
 import com.google.common.graph.GraphBuilder;
 import com.google.common.graph.MutableGraph;
 
@@ -39,6 +40,22 @@ public class Uses {
 				}
 			}
 		}
+	}
+
+	public boolean isLastUse(LifetimeAnalysis liveliness, IkeaNode node) {
+		if (liveliness.getLiveOut(node.getBlock()).contains(node)) {
+			return false;
+		}
+		for (IkeaNode potentialUse : Lists.reverse(node.getBlock().nodes())) {
+			if (potentialUse.equals(node)) {
+				return true;
+			}
+			if (potentialUse.parents().contains(node)) {
+				return false;
+			}
+		}
+
+		throw new InternalCompilerException("Did not find node in its block");
 	}
 
 	public Set<IkeaNode> uses(IkeaNode node) {

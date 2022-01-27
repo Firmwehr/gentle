@@ -12,6 +12,7 @@ import com.google.common.collect.Lists;
 import firm.nodes.Block;
 
 import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -67,6 +68,10 @@ public class LifetimeAnalysis {
 
 	public Set<IkeaNode> getLiveIn(IkeaBløck block, IkeaBløck parent) {
 		return Set.copyOf(liveness.get(block).liveIn().get(parent));
+	}
+
+	public Set<IkeaNode> getAllLiveIn(IkeaBløck block) {
+		return liveness.get(block).liveIn().values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
 	}
 
 	public int getLoopPressure(LoopTree loopTree, LoopTree.LoopElement loopElement) {

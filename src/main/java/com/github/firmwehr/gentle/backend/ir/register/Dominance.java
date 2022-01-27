@@ -162,6 +162,13 @@ public class Dominance {
 		}
 	}
 
+	public Set<IkeaBløck> getDirectlyDominatedBlocks(IkeaBløck block) {
+		return blockDominators.successors(block)
+			.stream()
+			.filter(it -> getIdom(it).orElseThrow().equals(block))
+			.collect(Collectors.toSet());
+	}
+
 	public Optional<IkeaBløck> getIdom(IkeaBløck block) {
 		Set<IkeaBløck> dominators = new HashSet<>(blockDominators.predecessors(block));
 		dominators.remove(block);
