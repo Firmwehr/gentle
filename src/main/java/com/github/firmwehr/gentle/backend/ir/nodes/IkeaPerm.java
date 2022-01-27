@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
 import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
+import com.github.firmwehr.gentle.backend.ir.register.X86Register;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Node;
 
@@ -15,11 +16,13 @@ public class IkeaPerm implements IkeaNode {
 	private final List<IkeaNode> inputs;
 	private final IkeaBløck block;
 	private final List<List<IkeaRegisterRequirement>> outRequirements;
+	private final List<X86Register> outRegisters;
 
 	public IkeaPerm(List<IkeaNode> inputs, IkeaBløck block) {
 		this.inputs = inputs;
 		this.block = block;
 		this.outRequirements = new ArrayList<>();
+		this.outRegisters = new ArrayList<>();
 	}
 
 	@Override
@@ -40,6 +43,14 @@ public class IkeaPerm implements IkeaNode {
 	@Override
 	public List<Node> getUnderlyingFirmNodes() {
 		return List.of();
+	}
+
+	public List<X86Register> getOutRegisters() {
+		return outRegisters;
+	}
+
+	public List<List<IkeaRegisterRequirement>> getOutRequirements() {
+		return outRequirements;
 	}
 
 	@Override
