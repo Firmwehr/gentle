@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.firm.GentleBindings;
 import com.github.firmwehr.gentle.output.Logger;
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Iterables;
 import firm.Graph;
 import firm.bindings.binding_irdom;
 import firm.bindings.binding_irgopt;
@@ -74,7 +75,14 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 	 * <p>
 	 * Nodes are considered equal if they share the same predecessors and are configured the same way.
 	 */
-	private record NodeHashKey(Node node) {
+	private record NodeHashKey(
+		Node node,
+		Node[] preds
+	) {
+
+		public NodeHashKey(Node node) {
+			this(node, Iterables.toArray(node.getPreds(), Node.class));
+		}
 
 		@Override
 		public boolean equals(Object o) {
@@ -201,15 +209,14 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 
 			// while generally okay to ignore node configuration, some nodes never have preds and have identical hash
 			if (node instanceof Const cons) {
-				hash |= Long.hashCode(cons.getTarval().asLong());
+				hash ^= Long.hashCode(cons.getTarval().asLong());
 			} else if (node instanceof Address address) {
-				hash |= address.getEntity().hashCode();
-			} else if (node.getPredCount() == 0) {
-				LOGGER.warn("no inc: %s in %s", node, node.getGraph());
+				hash ^= address.getEntity().hashCode();
 			}
 
-			for (Node pred : node.getPreds()) {
+			for (Node pred : preds()) {
 				hash ^= pred.ptr.hashCode();
+				hash *= 31;
 			}
 
 			return hash;
