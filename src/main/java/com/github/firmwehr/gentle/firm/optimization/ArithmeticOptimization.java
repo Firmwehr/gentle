@@ -9,6 +9,7 @@ import com.github.firmwehr.fiascii.generated.DistributivePattern;
 import com.github.firmwehr.fiascii.generated.DivByConstPattern;
 import com.github.firmwehr.fiascii.generated.DivByNegOnePattern;
 import com.github.firmwehr.fiascii.generated.DivByOnePattern;
+import com.github.firmwehr.fiascii.generated.MinusMinusPattern;
 import com.github.firmwehr.fiascii.generated.ModByConstPattern;
 import com.github.firmwehr.fiascii.generated.SubtractFromZeroPattern;
 import com.github.firmwehr.fiascii.generated.SubtractSamePattern;
@@ -79,6 +80,7 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 				.orElse(false) //
 		)
 		.addStep(ArithmeticOptimization::timesConst, ArithmeticOptimization::acceptTimesConst)
+		.addStep(ArithmeticOptimization::minusMinus, (match, graph, block) -> exchange(match.repl(), match.value()))
 		.build();
 
 	private boolean hasChanged;
@@ -542,5 +544,25 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		         └────────┘""")
 	public static Optional<TimesConstPattern.Match> timesConst(Node node) {
 		return TimesConstPattern.match(node);
+	}
+
+	@FiAscii("""
+		 ┌───────────┐
+		 │ value: *  │
+		 └─────┬─────┘
+		       │
+		       │
+		       │
+		┌──────▼──────┐
+		│ drop: Minus │
+		└──────┬──────┘
+		       │
+		       │
+		       │
+		┌──────▼──────┐
+		│ repl: Minus │
+		└─────────────┘""")
+	public static Optional<MinusMinusPattern.Match> minusMinus(Node node) {
+		return MinusMinusPattern.match(node);
 	}
 }
