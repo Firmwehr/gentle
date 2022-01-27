@@ -33,4 +33,9 @@ public enum GentleBindings {
 		dom_tree_walk_irg(graph.ptr, new DominatorWalkCallback(preWalker), new DominatorWalkCallback(postWalker),
 			null);
 	}
+
+	public static native double get_block_execfreq(Pointer ptr);
+
+	public static native void ir_estimate_execfreq(Pointer ptr);
+
 }

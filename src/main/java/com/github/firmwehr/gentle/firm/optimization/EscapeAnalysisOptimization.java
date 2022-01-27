@@ -1,7 +1,7 @@
 package com.github.firmwehr.gentle.firm.optimization;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
-import com.github.firmwehr.gentle.firm.construction.StdLibEntity;
+import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.GraphDumper;
 import com.github.firmwehr.gentle.util.Pair;
@@ -9,7 +9,6 @@ import firm.BackEdges;
 import firm.Graph;
 import firm.Mode;
 import firm.nodes.Add;
-import firm.nodes.Address;
 import firm.nodes.Call;
 import firm.nodes.Cmp;
 import firm.nodes.Const;
@@ -95,7 +94,7 @@ public class EscapeAnalysisOptimization {
 		graph.walk(new NodeVisitor.Default() {
 			@Override
 			public void visit(Call node) {
-				if (!((Address) node.getPtr()).getEntity().equals(StdLibEntity.ALLOCATE.getEntity())) {
+				if (!Util.isAllocCall(node)) {
 					return;
 				}
 

@@ -7,6 +7,7 @@ import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.firm.optimization.EscapeAnalysisOptimization;
 import com.github.firmwehr.gentle.firm.optimization.FirmGraphCleanup;
 import com.github.firmwehr.gentle.firm.optimization.GlobalValueNumbering;
+import com.github.firmwehr.gentle.firm.optimization.MethodInliningOptimization;
 import com.github.firmwehr.gentle.firm.optimization.Optimizer;
 import com.github.firmwehr.gentle.firm.optimization.PureFunctionOptimization;
 import com.github.firmwehr.gentle.firm.optimization.UnusedParameterOptimization;
@@ -115,6 +116,7 @@ public class FirmBuilder {
 		} else {
 			LOGGER.info("optimization level set to 0, all optional optimization will be disabled");
 		}
+		builder.addCallGraphStep(MethodInliningOptimization.methodInlineOptimization());
 
 		Optimizer optimizer = builder.build();
 		optimizer.optimize();
