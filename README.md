@@ -16,7 +16,9 @@ The task were do be done in groups of four to five students, competing to compil
 without taking forever to do so). We choose to implement our compiler in Java, simply for the fact, that we all had a
 lot of experience using it and [bindings were already available](https://pp.ipd.kit.edu/git/jFirm/).
 
-All of this was done by @Chrisliebaer, @Garmelon, @I-Al-Istannen, @pbrinkmeier and @SirYWell
+All of this was done by [@Chrisliebaer](https://github.com/chrisliebaer), [@Garmelon](https://github.com/Garmelon),
+[@I-Al-Istannen](https://github.com/I-Al-Istannen), [@pbrinkmeier](https://github.com/pbrinkmeier)
+and [@SirYWell](https://github.com/SirYwell).
 
 # How to compile and run it
 TODO: docker image, gradlew
