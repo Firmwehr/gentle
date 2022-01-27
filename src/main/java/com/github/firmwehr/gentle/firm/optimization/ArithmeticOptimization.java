@@ -11,6 +11,8 @@ import com.github.firmwehr.fiascii.generated.DivByNegOnePattern;
 import com.github.firmwehr.fiascii.generated.DivByOnePattern;
 import com.github.firmwehr.fiascii.generated.MinusMinusPattern;
 import com.github.firmwehr.fiascii.generated.ModByConstPattern;
+import com.github.firmwehr.fiascii.generated.ShiftRightLeftPattern;
+import com.github.firmwehr.fiascii.generated.ShiftRightSignedLeftPattern;
 import com.github.firmwehr.fiascii.generated.SubtractFromZeroPattern;
 import com.github.firmwehr.fiascii.generated.SubtractSamePattern;
 import com.github.firmwehr.fiascii.generated.SubtractZeroPattern;
@@ -26,8 +28,10 @@ import firm.Graph;
 import firm.Mode;
 import firm.TargetValue;
 import firm.bindings.binding_irgopt;
+import firm.nodes.Const;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
+import firm.nodes.Shl;
 
 import java.util.Optional;
 
@@ -81,6 +85,10 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		)
 		.addStep(ArithmeticOptimization::timesConst, ArithmeticOptimization::acceptTimesConst)
 		.addStep(ArithmeticOptimization::minusMinus, (match, graph, block) -> exchange(match.repl(), match.value()))
+		.addStep(ArithmeticOptimization::shiftRightSignedLeft,
+			(m, graph, block) -> shiftRightLeft(graph, block, m.left(), m.lVal(), m.rVal(), m.value()))
+		.addStep(ArithmeticOptimization::shiftRightLeft,
+			(m, graph, block) -> shiftRightLeft(graph, block, m.left(), m.lVal(), m.rVal(), m.value()))
 		.build();
 
 	private boolean hasChanged;
@@ -256,6 +264,13 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		return new MagicDiv((int) M, p - 32);
 	}
 
+	private record MagicDiv(
+		int magicConst,
+		int shiftConst
+	) {
+
+	}
+
 	private static boolean acceptTimesConst(TimesConstPattern.Match match, Graph graph, Node block) {
 		int absVal = Math.abs(match.constVal().getTarval().asInt());
 		int log2 = Maths.floorLog2(absVal);
@@ -269,11 +284,19 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		return exchange(match.mul(), replaced);
 	}
 
-	private record MagicDiv(
-		int magicConst,
-		int shiftConst
+	private static boolean shiftRightLeft(
+		Graph graph, Node block, Shl left, Const leftValue, Const rightValue, Node value
 	) {
-
+		int leftShift = leftValue.getTarval().asInt();
+		int rightShift = rightValue.getTarval().asInt();
+		int diff = rightShift - leftShift;
+		if (diff == 0) {
+			// only n trailing bits are set to 0, nothing else changes
+			int upperBitsMask = -(1 << rightShift);
+			return exchange(left, graph.newAnd(block, value, newConst(graph, upperBitsMask, Mode.getIs())));
+		}
+		// we could partly shift if diff is nonzero, but it's rather not worth it?
+		return false;
 	}
 
 	private static Node newConst(Graph graph, int i, Mode mode) {
@@ -564,5 +587,47 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		└─────────────┘""")
 	public static Optional<MinusMinusPattern.Match> minusMinus(Node node) {
 		return MinusMinusPattern.match(node);
+	}
+
+	@FiAscii("""
+		┌──────────┐  ┌─────────────┐
+		│ value: * │  │ rVal: Const │
+		└─────┬────┘  └─┬───────────┘
+		      │         │
+		      │         │
+		      │         │
+		      │         │
+		     ┌▼─────────▼──┐ ┌─────────────┐
+		     │ right: Shrs │ │ lVal: Const │
+		     └─────────┬───┘ └┬────────────┘
+		               │      │
+		               │      │
+		               │      │
+		            ┌──▼──────▼─┐
+		            │ left: Shl │
+		            └───────────┘""")
+	public static Optional<ShiftRightSignedLeftPattern.Match> shiftRightSignedLeft(Node node) {
+		return ShiftRightSignedLeftPattern.match(node);
+	}
+
+	@FiAscii("""
+		┌──────────┐  ┌─────────────┐
+		│ value: * │  │ rVal: Const │
+		└─────┬────┘  └─┬───────────┘
+		      │         │
+		      │         │
+		      │         │
+		      │         │
+		     ┌▼─────────▼─┐  ┌─────────────┐
+		     │ right: Shr │  │ lVal: Const │
+		     └─────────┬──┘  └┬────────────┘
+		               │      │
+		               │      │
+		               │      │
+		            ┌──▼──────▼─┐
+		            │ left: Shl │
+		            └───────────┘""")
+	public static Optional<ShiftRightLeftPattern.Match> shiftRightLeft(Node node) {
+		return ShiftRightLeftPattern.match(node);
 	}
 }
