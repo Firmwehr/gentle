@@ -4,6 +4,7 @@ import com.github.firmwehr.fiascii.FiAscii;
 import com.github.firmwehr.fiascii.generated.TailCallPattern;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
+import com.github.firmwehr.gentle.util.GraphDumper;
 import firm.BackEdges;
 import firm.Graph;
 import firm.Mode;
@@ -105,6 +106,11 @@ public class TailCallOptimization {
 				binding_irgopt.remove_bads(graph.ptr);
 
 				BackEdges.disable(graph);
+
+				if (LOGGER.isDebugEnabled()) {
+					GraphDumper.dumpGraph(graph, "tco");
+				}
+
 				return true;
 			})
 			.build();
@@ -183,13 +189,10 @@ public class TailCallOptimization {
 		LOGGER.debugHeader("Looking for tails calls in %d returns...", graph.getEndBlock().getPredCount());
 		List<TailCall> tailCalls = new ArrayList<>();
 		Block end = graph.getEndBlock();
-		examineReturns:
+
 		for (Node endPred : end.getPreds()) {
 			LOGGER.debug("Examining node %s", endPred);
-			assert endPred instanceof Return;
-			Return ret = (Return) endPred;
-
-			matchTailCall(ret).ifPresent((tc) -> {
+			matchTailCall(endPred).map((match) -> new TailCall(match.ret(), match.call())).ifPresent((tc) -> {
 				LOGGER.debug("%s is in a fact a tail call", endPred);
 				tailCalls.add(tc);
 			});
@@ -198,20 +201,10 @@ public class TailCallOptimization {
 		return tailCalls;
 	}
 
-	public static Optional<TailCall> matchTailCall(Node node) {
-		return matchTailCall_(node).flatMap((match) -> {
-			if (match.ret() instanceof Return ret && match.call() instanceof Call call) {
-				return Optional.of(new TailCall(ret, call));
-			} else {
-				return Optional.empty();
-			}
-		});
-	}
-
 	@FiAscii("""
-		            ┌───────┐                          While it is technically possible
-		            │call: *├───────┐                  that a call returns multiple values,
-		            └┬──────┘       │                  the gentle frontend does not generate
+		            ┌──────────┐                       While it is technically possible
+		            │call: Call├────┐                  that a call returns multiple values,
+		            └┬─────────┘    │                  the gentle frontend does not generate
 		             │              │                  such code. Therefore we only need to
 		┌────────────▼──────────┐  ┌▼──────────────┐   consider tail calls with a single
 		│memProj: Proj ; +memory│  │tupleProj: Proj│   return value.
@@ -221,10 +214,10 @@ public class TailCallOptimization {
 		             │  │resultProj: Proj│
 		             │  └─┬──────────────┘
 		             │    │
-		            ┌▼────▼┐
-		            │ret: *│
-		            └──────┘""")
-	public static Optional<TailCallPattern.Match> matchTailCall_(Node node) {
+		            ┌▼────▼─────┐
+		            │ret: Return│
+		            └───────────┘""")
+	public static Optional<TailCallPattern.Match> matchTailCall(Node node) {
 		return TailCallPattern.match(node);
 	}
 
