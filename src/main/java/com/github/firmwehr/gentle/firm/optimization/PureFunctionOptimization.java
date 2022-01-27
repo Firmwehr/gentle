@@ -11,6 +11,7 @@ import firm.Mode;
 import firm.nodes.Address;
 import firm.nodes.Block;
 import firm.nodes.Call;
+import firm.nodes.Load;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 import firm.nodes.Proj;
@@ -101,6 +102,11 @@ public class PureFunctionOptimization {
 		graph.walk(new NodeVisitor.Default() {
 			@Override
 			public void visit(Store node) {
+				result.set(true);
+			}
+
+			@Override
+			public void visit(Load node) {
 				result.set(true);
 			}
 
