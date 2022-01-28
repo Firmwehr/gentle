@@ -14,8 +14,9 @@ public class SelfRecording {
 	public static void withProfiler(boolean jfr, Runnable runnable) {
 		if (!jfr) {
 			runnable.run();
+		} else {
+			runProfiled(runnable);
 		}
-		runProfiled(runnable);
 	}
 
 	private static void runProfiled(Runnable runnable) {
