@@ -21,6 +21,9 @@ public record IkeaCall(
 	int id
 ) implements IkeaNode {
 
+	public static final List<X86Register> REGISTER_ORDER =
+		List.of(X86Register.RDI, X86Register.RSI, X86Register.RDX, X86Register.RCX, X86Register.R8, X86Register.R9);
+
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
 		return visitor.visit(this);
@@ -28,9 +31,8 @@ public record IkeaCall(
 
 	@Override
 	public List<IkeaRegisterRequirement> inRequirements() {
-		List<X86Register> registerOrder = registerOrder();
 		return IntStream.range(0, graph.getInputs(this).size())
-			.mapToObj(registerOrder::get)
+			.mapToObj(REGISTER_ORDER::get)
 			.map(IkeaRegisterRequirement::singleRegister)
 			.toList();
 	}
@@ -54,11 +56,6 @@ public record IkeaCall(
 	@Override
 	public int hashCode() {
 		return System.identityHashCode(this);
-	}
-
-	private List<X86Register> registerOrder() {
-		return List.of(X86Register.RDI, X86Register.RSI, X86Register.RDX, X86Register.RCX, X86Register.R8,
-			X86Register.R9);
 	}
 
 	@Override

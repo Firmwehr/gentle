@@ -32,7 +32,11 @@ public record IkeaArgNode(
 
 	@Override
 	public IkeaRegisterRequirement registerRequirement() {
-		return IkeaRegisterRequirement.gpRegister();
+		// passed on the stack
+		if (index < IkeaCall.REGISTER_ORDER.size()) {
+			return IkeaRegisterRequirement.singleRegister(IkeaCall.REGISTER_ORDER.get(index));
+		}
+		return IkeaRegisterRequirement.none();
 	}
 
 	@Override
