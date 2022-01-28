@@ -1,9 +1,11 @@
 package com.github.firmwehr.gentle.backend.ir.register;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 
 import java.util.EnumSet;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -26,7 +28,7 @@ public class PerfectElimationOrderColorer {
 		this.uses = uses;
 	}
 
-	public void colorProgram() {
+	public void colorGraph() {
 		colorRecursive(graph.getStart());
 	}
 
@@ -39,15 +41,29 @@ public class PerfectElimationOrderColorer {
 		}
 
 		for (IkeaNode node : block.nodes()) {
-			for (IkeaNode parent : node.parents()) {
+			for (IkeaNode parent : node.inputs()) {
 				// Can free it now, it was the last use - the value is dead now, jim
-				if (uses.isLastUse(liveliness, node)) {
+				if (parent.register().get().isPresent() && uses.isLastUse(liveliness, parent, node)) {
 					assigned.remove(getRegister(parent));
+					assigned.removeAll(parent.clobbered());
 				}
 			}
 
-			assignRegister(node, freeRegister(assigned));
-			assigned.add(getRegister(node));
+			if (node.registerIgnore()) {
+				continue;
+			}
+			if (node.register().get().isEmpty()) {
+				assignRegister(node, freeRegister(assigned, node));
+				assigned.add(getRegister(node));
+				assigned.addAll(node.clobbered());
+			} else {
+				assigned.add(node.register().get().get());
+			}
+
+			if (uses.isLastUse(liveliness, node, node)) {
+				assigned.remove(getRegister(node));
+				assigned.removeAll(node.clobbered());
+			}
 		}
 
 		for (IkeaBløck dominatedBlock : dominance.getDirectlyDominatedBlocks(block)) {
@@ -56,17 +72,17 @@ public class PerfectElimationOrderColorer {
 	}
 
 	private X86Register getRegister(IkeaNode node) {
-		// TODO: Implement
-		return null;
+		return node.register().get().orElseThrow(() -> new InternalCompilerException("Expected register for " + node));
 	}
 
 	private void assignRegister(IkeaNode node, X86Register register) {
-		// TODO: Implement
+		node.register().set(Optional.of(register));
 	}
 
-	private X86Register freeRegister(Set<X86Register> assigned) {
+	private X86Register freeRegister(Set<X86Register> assigned, IkeaNode node) {
 		Set<X86Register> free = X86Register.all();
 		free.removeAll(assigned);
+		free.retainAll(node.registerRequirement().limitedTo());
 		return free.iterator().next();
 	}
 }

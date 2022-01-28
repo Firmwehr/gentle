@@ -3,27 +3,32 @@ package com.github.firmwehr.gentle.backend.ir.register;
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
-import com.github.firmwehr.gentle.backend.ir.IkeaVirtualRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
-import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPerm;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
-import com.github.firmwehr.gentle.backend.ir.nodes.IkeaReload;
+import com.github.firmwehr.gentle.util.Mut;
 
-import java.util.Collection;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
 
 public class SsaReconstruction {
 
 	private final Dominance dominance;
 	private final Uses uses;
+	private final Set<IkeaNode> definitions;
 
 	public SsaReconstruction(Dominance dominance, Uses uses) {
 		this.dominance = dominance;
 		this.uses = uses;
+
+		this.definitions = new HashSet<>();
+	}
+
+	public SsaReconstruction addDef(IkeaNode copy) {
+		definitions.add(copy);
+		return this;
 	}
 
 	/**
@@ -34,73 +39,62 @@ public class SsaReconstruction {
 	 * No use should be fixed before this method is called as the {@link Uses} information is queried. This method will
 	 * invalidate the state in {@link Uses} and it should be recomputed.
 	 *
-	 * @param brokenVariables all variables that now have multiple definitions
+	 * @param brokenVariable all variables that now have multiple definitions
 	 */
-	public void ssaReconstruction(Set<IkeaNode> brokenVariables) {
-		Set<IkeaBløck> F = brokenVariables.stream()
-			.map(it -> dominance.getDominanceFrontier(it.getBlock()))
-			.flatMap(Collection::stream)
-			.collect(Collectors.toSet());
+	public void ssaReconstruction(IkeaNode brokenVariable) {
+		Set<IkeaBløck> F = new HashSet<>(dominance.getDominanceFrontier(brokenVariable.block()));
 
-		Set<IkeaNode> uses =
-			brokenVariables.stream().flatMap(it -> this.uses.uses(it).stream()).collect(Collectors.toSet());
+		Set<IkeaNode> uses = this.uses.uses(brokenVariable);
 
 		for (IkeaNode use : uses) {
-			for (int i = 0; i < use.parents().size(); i++) {
-				IkeaNode x = findDef(use, use.parents().get(i).getBlock(), brokenVariables, F);
-				use.parents().set(i, x);
+			for (int i = 0; i < use.inputs().size(); i++) {
+				if (!use.inputs().get(i).equals(brokenVariable)) {
+					continue;
+				}
+				IkeaNode x = findDef(use, use.inputs().get(i).block(), Set.of(brokenVariable), F);
+				use.graph().setInput(use, i, x);
 			}
 		}
 	}
 
 	private IkeaNode findDef(IkeaNode use, IkeaBløck parent, Set<IkeaNode> brokenVariables, Set<IkeaBløck> F) {
 		if (use instanceof IkeaPhi phi) {
-			use = phi.getParents().get(parent);
+			use = phi.parent(parent);
 		}
 		while (true) {
 			// Try to find last def before use in use block
-			List<IkeaNode> nodes = use.getBlock().nodes();
+			List<IkeaNode> nodes = use.block().nodes();
 			for (int i = nodes.indexOf(use); i >= 0; i--) {
 				IkeaNode node = nodes.get(i);
 				if (brokenVariables.contains(node)) {
 					return node;
 				}
-				// reloads are definitions of the value
-				if (node instanceof IkeaReload reload && brokenVariables.contains(reload.getOriginalDef())) {
+				if (definitions.contains(node)) {
 					return node;
-				}
-				// Perms are also definitions of this value
-				if (node instanceof IkeaPerm perm) {
-					for (IkeaNode permArg : perm.parents()) {
-						if (brokenVariables.contains(permArg)) {
-							return node;
-						}
-					}
 				}
 			}
 
 			// No direct def found, and we are in a frontier block: insert phi
-			if (F.contains(use.getBlock())) {
-				// We always need one, I think
-				IkeaVirtualRegister box =
-					new IkeaVirtualRegister(ThreadLocalRandom.current().nextInt(400, 1000), use.box().size());
-				IkeaPhi phi = new IkeaPhi(box, null, use.getBlock());
-				// TODO: insert properly
-				use.getBlock().nodes().add(0, phi);
+			if (F.contains(use.block())) {
+				IkeaPhi phi = new IkeaPhi(new Mut<>(Optional.empty()), use.block(), use.graph(), List.of());
+				use.block().nodes().add(0, phi);
+				List<IkeaNode> phiParents = new ArrayList<>();
 
 				// Fill the slots by finding the last definition in the relevant parent blocks
-				for (IkeaParentBløck phiParent : phi.getBlock().parents()) {
+				for (IkeaParentBløck phiParent : phi.block().parents()) {
 					List<IkeaNode> parentNodes = phiParent.parent().nodes();
 					IkeaNode lastInParent = parentNodes.get(parentNodes.size() - 1);
-					phi.addParent(findDef(lastInParent, phiParent.parent(), brokenVariables, F), phiParent.parent());
+					phiParents.add(findDef(lastInParent, phiParent.parent(), brokenVariables, F));
 				}
+
+				phi.graph().addNode(phi, phiParents);
 				return phi;
 			}
 
 			// no def found in this block and not a frontier: Check for def in immediate dominator
 			// We can skip everything between us and the idom as we are not a frontier block.
 			// Any definition we can find must dominate this use
-			Optional<IkeaBløck> idom = dominance.getIdom(use.getBlock());
+			Optional<IkeaBløck> idom = dominance.getIdom(use.block());
 			if (idom.isEmpty()) {
 				throw new InternalCompilerException("No def found");
 			}

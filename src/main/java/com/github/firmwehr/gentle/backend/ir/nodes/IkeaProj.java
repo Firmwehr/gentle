@@ -11,12 +11,21 @@ import firm.nodes.Node;
 import java.util.List;
 import java.util.Optional;
 
-public record IkeaCmp(
+public record IkeaProj(
 	Mut<Optional<X86Register>> register,
 	IkeaBløck block,
 	IkeaGraph graph,
-	List<Node> underlyingFirmNodes
+	List<Node> underlyingFirmNodes,
+	int index,
+	Mut<IkeaRegisterRequirement> regRequirement
 ) implements IkeaNode {
+
+	public IkeaProj(
+		Mut<Optional<X86Register>> register, IkeaBløck block, IkeaGraph graph, List<Node> underlyingFirmNodes,
+		int index
+	) {
+		this(register, block, graph, underlyingFirmNodes, index, new Mut<>(IkeaRegisterRequirement.gpRegister()));
+	}
 
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
@@ -25,12 +34,12 @@ public record IkeaCmp(
 
 	@Override
 	public List<IkeaRegisterRequirement> inRequirements() {
-		return List.of(IkeaRegisterRequirement.gpRegister(), IkeaRegisterRequirement.gpRegister());
+		return List.of(IkeaRegisterRequirement.gpRegister());
 	}
 
 	@Override
 	public IkeaRegisterRequirement registerRequirement() {
-		return IkeaRegisterRequirement.gpRegister();
+		return regRequirement.get();
 	}
 
 	@Override
@@ -43,8 +52,12 @@ public record IkeaCmp(
 		return System.identityHashCode(this);
 	}
 
+	public void setRegisterRequirement(IkeaRegisterRequirement requirement) {
+		regRequirement.set(requirement);
+	}
+
 	@Override
 	public String toString() {
-		return getClass().getSimpleName();
+		return "IkeaProj " + index;
 	}
 }

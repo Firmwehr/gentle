@@ -2,12 +2,14 @@ package com.github.firmwehr.gentle.backend.ir.register;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
+import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaReload;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSpill;
 import com.github.firmwehr.gentle.firm.model.LoopTree;
 import com.github.firmwehr.gentle.output.Logger;
+import com.github.firmwehr.gentle.util.Mut;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -85,13 +87,13 @@ public class Belady {
 			// Not an instruction, only relevant for deciding our start worksets and wiring them up correctly
 			// Not keeping track of our phi inputs might cause additional register demand when translating phis, but
 			// due to exchange instructions on x86 this should be fine :^)
-			if (node instanceof IkeaPhi) {
+			if (node instanceof IkeaPhi || node.registerIgnore()) {
 				continue;
 			}
 
 			// We need all our inputs in registers here
-			displace(node.parents(), currentBlockWorkset, node, true);
-			displace(Set.of(node), currentBlockWorkset, node, false);
+			displace(new HashSet<>(node.inputs()), currentBlockWorkset, node, true);
+			displace(node.results(), currentBlockWorkset, node, false);
 		}
 
 		endWorksets.put(block, currentBlockWorkset);
@@ -115,7 +117,7 @@ public class Belady {
 				addReload(value, currentInstruction);
 				worksetValue.setSpilled(true);
 			} else {
-				if (!isUsage) {
+				if (currentWorkset.contains(worksetValue) && !isUsage) {
 					throw new InternalCompilerException("Already knew a value I am introducing?");
 				}
 				// Remove so it is not accidentally selected for spilling
@@ -165,7 +167,7 @@ public class Belady {
 				currentWorkset.remove(victim);
 				LOGGER.debug("Spilling %s before %s", victim, currentInstruction);
 				IkeaNode victimParent =
-					victimNode.getBlock().nodes().get(victimNode.getBlock().nodes().indexOf(victimNode) - 1);
+					victimNode.block().nodes().get(victimNode.block().nodes().indexOf(victimNode) - 1);
 
 				if (victim.spilled() || victim.distance() instanceof Infinity) {
 					LOGGER.debug("Skipping spill for %s due to distance/spilled status", victim);
@@ -302,7 +304,7 @@ public class Belady {
 			// The value is from our block. This is not possible for a normal starter we inherited from a parent.
 			// We are in the loop head and encountered a back edge to ourself. This does not count as spilled, we will
 			// clean that up when processing this block.
-			if (node.node().getBlock().equals(block)) {
+			if (node.node().block().equals(block)) {
 				node.setSpilled(false);
 				continue;
 			}
@@ -363,7 +365,7 @@ public class Belady {
 		for (IkeaBløck inputBlock : controlFlow.inputBlocks(block)) {
 			IkeaNode nodeToCheck = node;
 			if (nodeToCheck instanceof IkeaPhi phi) {
-				nodeToCheck = phi.getParents().get(inputBlock);
+				nodeToCheck = phi.parent(inputBlock);
 			}
 
 			Set<WorksetNode> parentEndWorkset = endWorksets.get(inputBlock);
@@ -427,7 +429,7 @@ public class Belady {
 				IkeaNode ikeaNode = node.node();
 				// For phis we need to have a close look at the relevant predecessor
 				if (node.node() instanceof IkeaPhi phi) {
-					ikeaNode = phi.getParents().get(parentBlock);
+					ikeaNode = phi.parent(parentBlock);
 				}
 
 				// We need to reload, it is not in a register in our parent
@@ -482,8 +484,8 @@ public class Belady {
 		// TODO: This might be one too low? We'd like to put that as the first instr in the block
 		addSpill(phi, block.nodes().get(0));
 
-		for (var entry : phi.getParents().entrySet()) {
-			addSpillOnEdge(entry.getValue(), block, entry.getKey());
+		for (IkeaParentBløck parent : block.parents()) {
+			addSpillOnEdge(phi.parent(block), block, parent.parent());
 		}
 	}
 
@@ -498,23 +500,29 @@ public class Belady {
 			// TODO: Calculate spill costs and maybe do rematerialization
 
 			spill(info);
+			SsaReconstruction ssaReconstruction = new SsaReconstruction(dominance, uses);
 
 			for (IkeaNode reloadBefore : info.reloadBefore()) {
-				int insertionPoint = reloadBefore.getBlock().nodes().indexOf(reloadBefore) - 1;
-				IkeaReload reload = new IkeaReload(null, reloadBefore.getBlock(), info.valueToSpill());
-				reloadBefore.getBlock().nodes().add(insertionPoint, reload);
+				int insertionPoint = reloadBefore.block().nodes().indexOf(reloadBefore) - 1;
+				IkeaReload reload =
+					new IkeaReload(new Mut<>(Optional.empty()), reloadBefore.block(), reloadBefore.graph(), List.of(),
+						new Mut<>(-1));
+				reloadBefore.block().nodes().add(insertionPoint, reload);
+				// TODO: What do we point to here?
+				reloadBefore.graph().addNode(reload, List.of(info.valueToSpill()));
+
+				ssaReconstruction.addDef(reload);
 			}
 
 			if (!info.reloadBefore().isEmpty()) {
 				// Dominance and uses are *invalid* after this point but that's okay, our spilled values are
 				// independent
-				new SsaReconstruction(dominance, uses).ssaReconstruction(Set.of(info.valueToSpill()));
+				ssaReconstruction.ssaReconstruction(info.valueToSpill());
 			}
 		}
 
 		// We need to fix up uses, dominance, liveliness and so forth
 		dominance.recompute();
-		uses.recompute();
 		liveliness.recompute();
 	}
 
@@ -534,10 +542,13 @@ public class Belady {
 
 	private void spillNode(SpillInfo spillInfo) {
 		for (IkeaNode spillAfter : spillInfo.toSpillAfter()) {
-			IkeaSpill spill = new IkeaSpill(null, spillAfter.getBlock(), spillInfo.valueToSpill());
+			IkeaSpill spill =
+				new IkeaSpill(new Mut<>(Optional.empty()), spillAfter.block(), spillAfter.graph(), List.of(),
+					new Mut<>(-1));
 
-			int insertPoint = spillAfter.getBlock().nodes().indexOf(spillAfter) + 1;
-			spillAfter.getBlock().nodes().add(insertPoint, spill);
+			int insertPoint = spillAfter.block().nodes().indexOf(spillAfter) + 1;
+			spillAfter.block().nodes().add(insertPoint, spill);
+			spillAfter.graph().addNode(spill, List.of(spillInfo.valueToSpill()));
 		}
 	}
 
@@ -547,7 +558,7 @@ public class Belady {
 		//  should be fine as long as we use the same spillslot for it.
 
 		IkeaPhi phi = (IkeaPhi) spillInfo.valueToSpill();
-		for (IkeaNode node : phi.getParents().values()) {
+		for (IkeaNode node : phi.graph().getInputs(phi)) {
 			spill(spillInfos.get(node));
 		}
 	}
@@ -558,10 +569,10 @@ public class Belady {
 			for (IkeaNode node : block.nodes()) {
 				if (node instanceof IkeaReload reload) {
 					int index = slotIndices.computeIfAbsent(node, ignored -> slotIndices.size());
-					reload.setSpillSlot(index);
+					reload.spillSlot().set(index);
 				} else if (node instanceof IkeaSpill spill) {
 					int index = slotIndices.computeIfAbsent(node, ignored -> slotIndices.size());
-					spill.setSpillSlot(index);
+					spill.spillSlot().set(index);
 				}
 			}
 		}

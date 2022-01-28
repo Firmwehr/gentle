@@ -21,6 +21,8 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static java.util.function.Predicate.not;
+
 @SuppressWarnings("UnstableApiUsage")
 public class Dominance {
 
@@ -111,9 +113,8 @@ public class Dominance {
 			}
 		}
 		for (IkeaNode node : dominatorTree.nodes()) {
-			LOGGER.debugHeader("%s dominates", node.getUnderlyingFirmNodes());
-			LOGGER.debug("-> %s",
-				dominatorTree.successors(node).stream().map(IkeaNode::getUnderlyingFirmNodes).toList());
+			LOGGER.debugHeader("%s dominates", node.underlyingFirmNodes());
+			LOGGER.debug("-> %s", dominatorTree.successors(node).stream().map(IkeaNode::underlyingFirmNodes).toList());
 		}
 	}
 
@@ -165,6 +166,7 @@ public class Dominance {
 	public Set<IkeaBløck> getDirectlyDominatedBlocks(IkeaBløck block) {
 		return blockDominators.successors(block)
 			.stream()
+			.filter(not(block::equals))
 			.filter(it -> getIdom(it).orElseThrow().equals(block))
 			.collect(Collectors.toSet());
 	}

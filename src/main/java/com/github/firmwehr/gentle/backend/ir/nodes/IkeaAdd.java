@@ -1,45 +1,25 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
-import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
+import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
 import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
+import com.github.firmwehr.gentle.backend.ir.register.X86Register;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
-import firm.nodes.Add;
+import com.github.firmwehr.gentle.util.Mut;
 import firm.nodes.Node;
 
 import java.util.List;
+import java.util.Optional;
 
-public class IkeaAdd implements IkeaNode {
-	private IkeaBøx box;
-	private final IkeaNode left;
-	private final IkeaNode right;
-	private final Add add;
-	private final IkeaBløck block;
+public record IkeaAdd(
+	Mut<Optional<X86Register>> register,
+	IkeaBløck block,
+	IkeaGraph graph,
+	List<Node> underlyingFirmNodes
+) implements IkeaNode {
 
-	public IkeaAdd(IkeaBøx box, IkeaNode left, IkeaNode right, Add add, IkeaBløck block) {
-		this.box = box;
-		this.left = left;
-		this.right = right;
-		this.add = add;
-		this.block = block;
-	}
-
-	@Override
-	public IkeaBøx box() {
-		return this.box;
-	}
-
-	@Override
-	public List<IkeaNode> parents() {
-		return List.of(this.left, this.right);
-	}
-
-	public IkeaNode getLeft() {
-		return left;
-	}
-
-	public IkeaNode getRight() {
-		return right;
+	public IkeaAdd(IkeaBløck block, IkeaGraph graph, List<Node> underlyingFirmNodes) {
+		this(new Mut<>(Optional.empty()), block, graph, underlyingFirmNodes);
 	}
 
 	@Override
@@ -48,22 +28,27 @@ public class IkeaAdd implements IkeaNode {
 	}
 
 	@Override
-	public List<Node> getUnderlyingFirmNodes() {
-		return List.of(add);
-	}
-
-	@Override
-	public IkeaBløck getBlock() {
-		return block;
-	}
-
-	@Override
 	public List<IkeaRegisterRequirement> inRequirements() {
 		return List.of(IkeaRegisterRequirement.gpRegister(), IkeaRegisterRequirement.gpRegister());
 	}
 
 	@Override
-	public List<IkeaRegisterRequirement> outRequirements() {
-		return List.of(IkeaRegisterRequirement.gpRegister());
+	public IkeaRegisterRequirement registerRequirement() {
+		return IkeaRegisterRequirement.gpRegister();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		return this == o;
+	}
+
+	@Override
+	public int hashCode() {
+		return System.identityHashCode(this);
+	}
+
+	@Override
+	public String toString() {
+		return getClass().getSimpleName();
 	}
 }

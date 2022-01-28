@@ -2,7 +2,6 @@ package com.github.firmwehr.gentle.backend.ir.register;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
-import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaConst;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
@@ -102,8 +101,8 @@ public class LifetimeAnalysis {
 		int maxLive = live.size();
 
 		for (IkeaNode node : Lists.reverse(block.nodes())) {
-			live.remove(node);
-			live.addAll(node.parents());
+			node.results().forEach(live::remove);
+			live.addAll(node.inputs());
 
 			// TODO: Is this clobber handling enough?
 			maxLive = Math.max(maxLive, live.size() + node.clobbered().size());
@@ -113,11 +112,14 @@ public class LifetimeAnalysis {
 	}
 
 	public Set<IkeaNode> getLiveBefore(IkeaNode before) {
-		Set<IkeaNode> live = getLiveOut(before.getBlock());
+		Set<IkeaNode> live = new HashSet<>(getLiveOut(before.block()));
 
-		for (IkeaNode node : Lists.reverse(before.getBlock().nodes())) {
-			live.remove(node);
-			live.addAll(node.parents());
+		for (IkeaNode node : Lists.reverse(before.block().nodes())) {
+			node.results().forEach(live::remove);
+			live.addAll(node.inputs());
+			if (node.equals(before)) {
+				break;
+			}
 		}
 
 		return live;
@@ -158,7 +160,7 @@ public class LifetimeAnalysis {
 			return block.nodes()
 				.stream()
 				.filter(it -> !(it instanceof IkeaConst))
-				.filter(it -> !(it.box() instanceof IkeaUnassignedBøx))
+				.filter(it -> !it.registerIgnore())
 				.collect(Collectors.toSet());
 		}
 
@@ -170,20 +172,20 @@ public class LifetimeAnalysis {
 
 			for (IkeaNode node : block.nodes()) {
 				if (node instanceof IkeaPhi phi) {
-					for (Map.Entry<IkeaBløck, IkeaNode> entry : phi.getParents().entrySet()) {
-						if (entry.getValue() instanceof IkeaConst ||
-							entry.getValue().box() instanceof IkeaUnassignedBøx) {
+					for (IkeaParentBløck parentBlock : block.parents()) {
+						IkeaNode parentValue = phi.parent(parentBlock.parent());
+						if (parentValue instanceof IkeaConst || parentValue.registerIgnore()) {
 							continue;
 						}
-						liveIns.get(entry.getKey()).add(entry.getValue());
+						liveIns.get(parentBlock.parent()).add(parentValue);
 					}
 					continue;
 				}
 
-				node.parents()
+				node.inputs()
 					.stream()
+					.filter(it -> !it.registerIgnore())
 					.filter(it -> !(it instanceof IkeaConst))
-					.filter(it -> !(it.box() instanceof IkeaUnassignedBøx))
 					.filter(it -> !block.nodes().contains(it))
 					.forEach(parent -> {
 						for (IkeaParentBløck parentBlock : block.parents()) {

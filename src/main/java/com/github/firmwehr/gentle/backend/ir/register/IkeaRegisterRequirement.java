@@ -19,4 +19,8 @@ public record IkeaRegisterRequirement(
 	public static IkeaRegisterRequirement singleRegister(X86Register register) {
 		return new IkeaRegisterRequirement(Set.of(register), Set.of(), Set.of());
 	}
+
+	public static IkeaRegisterRequirement none() {
+		return new IkeaRegisterRequirement(Set.of(), Set.of(), Set.of());
+	}
 }

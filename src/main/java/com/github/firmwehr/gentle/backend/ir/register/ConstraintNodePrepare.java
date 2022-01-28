@@ -4,11 +4,11 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPerm;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaProj;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.Mut;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -28,7 +28,7 @@ public class ConstraintNodePrepare {
 
 	public void prepare(ControlFlowGraph controlFlowGraph) {
 		for (IkeaBløck block : controlFlowGraph.getAllBlocks()) {
-			for (IkeaNode node : block.nodes()) {
+			for (IkeaNode node : List.copyOf(block.nodes())) {
 				if (isConstrained(node)) {
 					addPermForNode(node);
 				}
@@ -38,9 +38,11 @@ public class ConstraintNodePrepare {
 
 	private void addPermForNode(IkeaNode node) {
 		List<IkeaNode> toPerm = List.copyOf(liveliness.getLiveBefore(node));
-		IkeaPerm perm = new IkeaPerm(toPerm, node.getBlock());
-		int nodeIndex = node.getBlock().nodes().indexOf(node);
-		node.getBlock().nodes().add(nodeIndex, perm);
+		IkeaPerm perm = new IkeaPerm(new Mut<>(Optional.empty()), node.block(), node.graph(), List.of());
+		node.graph().addNode(perm, toPerm);
+		int nodeIndex = node.block().nodes().indexOf(node);
+		node.block().nodes().add(nodeIndex, perm);
+		nodeIndex++;
 
 		// Yay, we have a perm now. Congrats. This also breaks SSA:
 		//             Head
@@ -49,27 +51,52 @@ public class ConstraintNodePrepare {
 		//           \     /
 		//             Use
 		// We need to introduce a phi for the use if our perm introduces a new definition
-		new SsaReconstruction(dominance, uses).ssaReconstruction(Set.copyOf(toPerm));
+		List<IkeaProj> projs = new ArrayList<>();
+		for (int i = 0; i < toPerm.size(); i++) {
+			IkeaNode ikeaNode = toPerm.get(i);
+			IkeaProj proj = new IkeaProj(new Mut<>(Optional.empty()), perm.block(), perm.graph(), List.of(), i);
+			perm.graph().addNode(proj, List.of(perm));
+			node.block().nodes().add(nodeIndex++, proj);
+			projs.add(proj);
+
+			new SsaReconstruction(dominance, uses).addDef(proj).ssaReconstruction(ikeaNode);
+		}
+
+		for (int i = 0; i < node.inputs().size(); i++) {
+			IkeaProj input = (IkeaProj) node.inputs().get(i);
+			IkeaRegisterRequirement requirement = node.inRequirements().get(i);
+			input.setRegisterRequirement(requirement);
+		}
 
 		// Copy in requirements to perm. This ensures e.g. a call with a requirement of "EAX" for a register will have
 		// that reflected in the out requirements of the perm. We can use this to compute a valid matching without
 		// needing backedges
-		perm.setOutRequirements(toPerm.stream().map(IkeaNode::inRequirements).toList());
+		// TODO: Move this up to ssa fix where proj is created?
+		//		perm.setOutRequirements(toPerm.stream().map(IkeaNode::inRequirements).toList());
 
 		// TODO: Pair up perm args that die at node with node defs => They can use the same register. Use intersection
 		//  of allowed registers as requirements.
 
+		Set<X86Register> freeRegisters = EnumSet.allOf(X86Register.class);
+		freeRegisters.removeAll(node.clobbered());
+		if (node.registerRequirement().limited() && !node.registerIgnore()) {
+			if (node.registerRequirement().limitedTo().size() != 1) {
+				throw new InternalCompilerException("More than one output reg possible?");
+			}
+			freeRegisters.removeAll(node.registerRequirement().limitedTo());
+		}
 		// Order is unchanged, so this is fine
-		for (BipartiteEntry entry : BipartiteSolver.forNodes(toPerm).solve()) {
+		List<BipartiteEntry> solve = BipartiteSolver.forNodes(projs, freeRegisters).solve();
+		for (int i = 0; i < solve.size(); i++) {
+			BipartiteEntry entry = solve.get(i);
 			// The matching should be perfect as we have only one constrained instruction in our subgraph and no
 			// instruction can use the same register twice as input
 			X86Register register = entry.assignedRegister()
 				.orElseThrow(() -> new InternalCompilerException("No out register assigned for " + entry));
-			perm.getOutRegisters().add(register);
+			projs.get(i).register().set(Optional.of(register));
 		}
 
 		// We might have screwed these things over royally
-		uses.recompute();
 		liveliness.recompute();
 		dominance.recompute();
 	}
@@ -82,7 +109,7 @@ public class ConstraintNodePrepare {
 	 * Computes a perfect bipartite matching from nodes to registers.
 	 */
 	private static class BipartiteSolver {
-		private static final Logger LOGGER = new Logger(BipartiteSolver.class);
+		private static final Logger LOGGER = new Logger(BipartiteSolver.class, Logger.LogLevel.DEBUG);
 
 		private final List<BipartiteEntry> entries;
 		private final Set<X86Register> freeRegisters;
@@ -192,14 +219,14 @@ public class ConstraintNodePrepare {
 		/**
 		 * Constructs a solver instance for the passed nodes.
 		 *
-		 * @param nodes the input nodes to match to registers
+		 * @param projs the projections to take limits from
+		 * @param freeRegisters all free registers that might be used
 		 *
 		 * @return the created solver instance
 		 */
-		public static BipartiteSolver forNodes(Collection<IkeaNode> nodes) {
-			List<BipartiteEntry> entries = nodes.stream().map(BipartiteEntry::forNode).toList();
+		public static BipartiteSolver forNodes(List<IkeaProj> projs, Set<X86Register> freeRegisters) {
+			List<BipartiteEntry> entries = projs.stream().map(BipartiteEntry::forNode).toList();
 
-			Set<X86Register> freeRegisters = X86Register.all();
 			for (BipartiteEntry entry : entries) {
 				entry.assignedRegister().ifPresent(freeRegisters::remove);
 			}
@@ -217,10 +244,10 @@ public class ConstraintNodePrepare {
 			this.assignedRegister = assignedRegister;
 		}
 
-		private static BipartiteEntry forNode(IkeaNode node) {
+		private static BipartiteEntry forNode(IkeaProj proj) {
 			X86Register assignedRegister =
-				node.regRequirement().limited() ? node.regRequirement().limitedTo().iterator().next() : null;
-			return new BipartiteEntry(node.regRequirement().limitedTo(), assignedRegister);
+				proj.registerRequirement().limited() ? proj.registerRequirement().limitedTo().iterator().next() : null;
+			return new BipartiteEntry(proj.registerRequirement().limitedTo(), assignedRegister);
 		}
 
 		public Set<X86Register> allowedRegisters() {

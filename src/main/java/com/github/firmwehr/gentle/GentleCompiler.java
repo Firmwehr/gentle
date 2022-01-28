@@ -4,7 +4,6 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.codegen.CodePreselection;
 import com.github.firmwehr.gentle.backend.ir.codegen.CodePreselectionMatcher;
 import com.github.firmwehr.gentle.backend.ir.codegen.CodeSelection;
-import com.github.firmwehr.gentle.backend.ir.visit.DjungelskogVisitor;
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandDispatcher;
 import com.github.firmwehr.gentle.cli.CompilerArguments;
@@ -26,6 +25,7 @@ import com.github.firmwehr.gentle.semantic.SemanticAnalyzer;
 import com.github.firmwehr.gentle.semantic.SemanticException;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
 import com.github.firmwehr.gentle.source.Source;
+import com.github.firmwehr.gentle.util.GraphDumper;
 import firm.Backend;
 import firm.Graph;
 import firm.bindings.binding_irdump;
@@ -39,7 +39,6 @@ import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 public class GentleCompiler {
@@ -194,6 +193,7 @@ public class GentleCompiler {
 				FileUtils.forceMkdir(dumpBaseDir);
 
 				binding_irdump.ir_set_dump_path(dumpBaseDir.getPath());
+				GraphDumper.dumpPath = dumpBaseDir.toPath();
 			}
 
 			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
@@ -244,9 +244,9 @@ public class GentleCompiler {
 
 			CodeSelection codeSelection = new CodeSelection(graph, codePreselection);
 			List<IkeaBløck> blocks = codeSelection.convertBlocks();
-			DjungelskogVisitor visitor = new DjungelskogVisitor(debugStore);
-			String res = visitor.visit(graph, blocks);
-			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+			//			DjungelskogVisitor visitor = new DjungelskogVisitor(debugStore);
+			//			String res = visitor.visit(graph, blocks);
+			//			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
 		}
 
 		LOGGER.info("code preselection matched %s subtrees in total across all graphs", preselectionCount);

@@ -1,69 +1,62 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
-import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
+import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
+import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
 import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
+import com.github.firmwehr.gentle.backend.ir.register.X86Register;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
+import com.github.firmwehr.gentle.util.Mut;
 import firm.nodes.Node;
-import firm.nodes.Phi;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 
-public class IkeaPhi implements IkeaNode {
-	private IkeaBøx box;
-	private final Phi phi;
-	private final Map<IkeaBløck, IkeaNode> parents;
-	private final IkeaBløck block;
-
-	public IkeaPhi(IkeaBøx box, Phi phi, IkeaBløck block) {
-		this.box = box;
-		this.phi = phi;
-		this.block = block;
-		this.parents = new HashMap<>();
-	}
-
-	public void addParent(IkeaNode node, IkeaBløck parent) {
-		parents.put(parent, node);
-	}
-
-	@Override
-	public IkeaBøx box() {
-		return box;
-	}
-
-	public Map<IkeaBløck, IkeaNode> getParents() {
-		return parents;
-	}
-
-	@Override
-	public List<IkeaNode> parents() {
-		return List.copyOf(parents.values());
-	}
+public record IkeaPhi(
+	Mut<Optional<X86Register>> register,
+	IkeaBløck block,
+	IkeaGraph graph,
+	List<Node> underlyingFirmNodes
+) implements IkeaNode {
 
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
 		return visitor.visit(this);
 	}
 
-	@Override
-	public List<Node> getUnderlyingFirmNodes() {
-		return List.of(phi);
-	}
-
-	@Override
-	public IkeaBløck getBlock() {
-		return block;
+	public IkeaNode parent(IkeaBløck parentBlock) {
+		List<IkeaParentBløck> parents = block.parents();
+		for (int i = 0; i < parents.size(); i++) {
+			if (parents.get(i).parent().equals(parentBlock)) {
+				return graph.getInputs(this).get(i);
+			}
+		}
+		throw new InternalCompilerException("Could not find parent block " + parentBlock);
 	}
 
 	@Override
 	public List<IkeaRegisterRequirement> inRequirements() {
-		return parents().stream().map(it -> IkeaRegisterRequirement.gpRegister()).toList();
+		return graph.getInputs(this).stream().map(IkeaNode::registerRequirement).toList();
 	}
 
 	@Override
-	public List<IkeaRegisterRequirement> outRequirements() {
-		return List.of(IkeaRegisterRequirement.gpRegister());
+	public IkeaRegisterRequirement registerRequirement() {
+		return IkeaRegisterRequirement.gpRegister();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		return this == o;
+	}
+
+	@Override
+	public int hashCode() {
+		return System.identityHashCode(this);
+	}
+
+	@Override
+	public String toString() {
+		return getClass().getSimpleName();
 	}
 }

@@ -2,7 +2,6 @@ package com.github.firmwehr.gentle.backend.ir.register;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
-import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaConst;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.google.common.collect.Lists;
@@ -38,7 +37,7 @@ public class Interference {
 			b = first;
 		}
 
-		if (liveliness.getLiveOut(b.getBlock()).contains(t)) {
+		if (liveliness.getLiveOut(b.block()).contains(t)) {
 			return true;
 		}
 
@@ -56,11 +55,11 @@ public class Interference {
 		Set<IkeaBløck> visited = new HashSet<>();
 
 		for (IkeaNode use : uses.uses(x)) {
-			findInt(use.getBlock(), x, N, visited);
+			findInt(use.block(), x, N, visited);
 		}
 
 		return N.stream()
-			.filter(it -> !(it instanceof IkeaConst) && !(it.box() instanceof IkeaUnassignedBøx))
+			.filter(it -> !(it instanceof IkeaConst) && !it.registerIgnore())
 			.filter(it -> !it.equals(x))
 			.collect(Collectors.toSet());
 	}
@@ -74,7 +73,7 @@ public class Interference {
 				break;
 			}
 			liveouts.remove(node);
-			liveouts.addAll(node.parents());
+			liveouts.addAll(node.inputs());
 
 			if (liveouts.contains(x)) {
 				N.addAll(liveouts);

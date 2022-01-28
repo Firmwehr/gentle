@@ -22,11 +22,10 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPerm;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaProj;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaReload;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
-import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSet;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShl;
-import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSpill;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSpill;
@@ -42,10 +41,6 @@ public interface IkeaVisitor<T> {
 
 	default T visit(IkeaAdd add) {
 		return defaultVisit(add);
-	}
-
-	default T visit(IkeaArgNode argNode) {
-		return defaultVisit(argNode);
 	}
 
 	default T visit(IkeaCall call) {
@@ -116,10 +111,6 @@ public interface IkeaVisitor<T> {
 		return defaultVisit(ret);
 	}
 
-	default T visit(IkeaSet set) {
-		return defaultVisit(set);
-	}
-
 	default T visit(IkeaSub sub) {
 		return defaultVisit(sub);
 	}
@@ -136,20 +127,28 @@ public interface IkeaVisitor<T> {
 		return defaultVisit(shrs);
 	}
 
-	default T visit(IkeaReload ikeaReload) {
-		return defaultVisit(ikeaReload);
+	default T visit(IkeaReload reload) {
+		return defaultVisit(reload);
 	}
 
 	default T visit(IkeaCopy copy) {
 		return defaultVisit(copy);
 	}
 
-	default T visit(IkeaSpill ikeaSpill) {
-		return defaultVisit(ikeaSpill);
+	default T visit(IkeaSpill spill) {
+		return defaultVisit(spill);
 	}
 
-	default T visit(IkeaPerm ikeaPerm) {
-		return defaultVisit(ikeaPerm);
+	default T visit(IkeaPerm perm) {
+		return defaultVisit(perm);
+	}
+
+	default T visit(IkeaProj proj) {
+		return defaultVisit(proj);
+	}
+
+	default T visit(IkeaArgNode argNode) {
+		return defaultVisit(argNode);
 	}
 
 	default T visit(IkeaBløck block) {

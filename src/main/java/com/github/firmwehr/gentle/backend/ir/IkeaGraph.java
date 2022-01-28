@@ -29,11 +29,11 @@ public class IkeaGraph {
 	 * @return all inputs for the node
 	 */
 	public List<IkeaNode> getInputs(IkeaNode node) {
-		return network.inEdges(node).stream().sorted().map(IkeaEdge::dst).toList();
+		return network.outEdges(node).stream().sorted().map(IkeaEdge::dst).toList();
 	}
 
 	public Set<IkeaEdge> getInputEdges(IkeaNode node) {
-		return network.inEdges(node);
+		return network.outEdges(node);
 	}
 
 	/**
@@ -44,11 +44,11 @@ public class IkeaGraph {
 	 * @return all users of this node
 	 */
 	public Set<IkeaNode> getOutputs(IkeaNode node) {
-		return network.outEdges(node).stream().map(IkeaEdge::src).collect(Collectors.toSet());
+		return network.inEdges(node).stream().map(IkeaEdge::src).collect(Collectors.toSet());
 	}
 
 	public Set<IkeaEdge> getOutputEdges(IkeaNode node) {
-		return network.outEdges(node);
+		return network.inEdges(node);
 	}
 
 	/**

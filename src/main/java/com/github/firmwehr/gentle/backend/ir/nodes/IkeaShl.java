@@ -1,42 +1,22 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
-import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
+import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
+import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
+import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
+import com.github.firmwehr.gentle.backend.ir.register.X86Register;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
+import com.github.firmwehr.gentle.util.Mut;
 import firm.nodes.Node;
-import firm.nodes.Shl;
 
 import java.util.List;
+import java.util.Optional;
 
-public class IkeaShl implements IkeaNode {
-	private IkeaBøx box;
-	private final IkeaNode left;
-	private final IkeaNode right;
-	private final Shl shl;
-
-	public IkeaShl(IkeaBøx box, IkeaNode left, IkeaNode right, Shl shl) {
-		this.box = box;
-		this.left = left;
-		this.right = right;
-		this.shl = shl;
-	}
-
-	@Override
-	public IkeaBøx box() {
-		return this.box;
-	}
-
-	@Override
-	public List<IkeaNode> parents() {
-		return List.of(this.left, this.right);
-	}
-
-	public IkeaNode getLeft() {
-		return left;
-	}
-
-	public IkeaNode getRight() {
-		return right;
-	}
+public record IkeaShl(
+	Mut<Optional<X86Register>> register,
+	IkeaBløck block,
+	IkeaGraph graph,
+	List<Node> underlyingFirmNodes
+) implements IkeaNode {
 
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
@@ -44,7 +24,27 @@ public class IkeaShl implements IkeaNode {
 	}
 
 	@Override
-	public List<Node> getUnderlyingFirmNodes() {
-		return List.of(shl);
+	public List<IkeaRegisterRequirement> inRequirements() {
+		return List.of(IkeaRegisterRequirement.gpRegister());
+	}
+
+	@Override
+	public IkeaRegisterRequirement registerRequirement() {
+		return IkeaRegisterRequirement.gpRegister();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		return this == o;
+	}
+
+	@Override
+	public int hashCode() {
+		return System.identityHashCode(this);
+	}
+
+	@Override
+	public String toString() {
+		return getClass().getSimpleName();
 	}
 }

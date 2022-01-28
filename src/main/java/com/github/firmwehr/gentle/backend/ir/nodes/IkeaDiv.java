@@ -1,95 +1,62 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
-import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
+import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
 import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
+import com.github.firmwehr.gentle.backend.ir.register.X86Register;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
+import com.github.firmwehr.gentle.util.Mut;
 import firm.nodes.Node;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
-public class IkeaDiv implements IkeaNode {
-	private IkeaBøx boxQuotient;
-	private IkeaBøx boxMod;
-	private final IkeaNode left;
-	private final IkeaNode right;
-	private final Node node;
-	private final Result result;
-	private final IkeaBløck block;
-
-	public IkeaDiv(
-		IkeaBøx boxQuotient, IkeaBøx boxMod, IkeaNode left, IkeaNode right, Node node, Result result, IkeaBløck block
-	) {
-		this.boxQuotient = boxQuotient;
-		this.boxMod = boxMod;
-		this.left = left;
-		this.right = right;
-		this.node = node;
-		this.result = result;
-		this.block = block;
-	}
-
-	@Override
-	public IkeaBøx box() {
-		return result == Result.MOD ? boxMod : boxQuotient;
-	}
-
-	@Override
-	public List<IkeaNode> parents() {
-		return List.of(this.left, this.right);
-	}
-
-	public IkeaNode getLeft() {
-		return left;
-	}
-
-	public IkeaNode getRight() {
-		return right;
-	}
-
-	public Node getNode() {
-		return node;
-	}
-
-	public Result getResult() {
-		return result;
-	}
-
-	public IkeaBøx getBoxQuotient() {
-		return boxQuotient;
-	}
-
-	public IkeaBøx getBoxMod() {
-		return boxMod;
-	}
+public record IkeaDiv(
+	Mut<Optional<X86Register>> register,
+	IkeaBløck block,
+	IkeaGraph graph,
+	List<Node> underlyingFirmNodes
+) implements IkeaNode {
 
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
-		return visitor.visit(this);
+		return visitor.visit(block);
 	}
 
 	@Override
-	public List<Node> getUnderlyingFirmNodes() {
-		return List.of(node);
-	}
-
-	@Override
-	public IkeaBløck getBlock() {
-		return block;
+	public boolean isTuple() {
+		return true;
 	}
 
 	@Override
 	public List<IkeaRegisterRequirement> inRequirements() {
-		return null;
+		return List.of(IkeaRegisterRequirement.singleRegister(X86Register.RAX), IkeaRegisterRequirement.gpRegister());
 	}
 
 	@Override
-	public List<IkeaRegisterRequirement> outRequirements() {
-		return null;
+	public IkeaRegisterRequirement registerRequirement() {
+		return IkeaRegisterRequirement.none();
 	}
 
-	public enum Result {
-		QUOTIENT,
-		MOD
+	@Override
+	public Set<X86Register> clobbered() {
+		return EnumSet.of(X86Register.RAX, X86Register.RDX);
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		return this == o;
+	}
+
+	@Override
+	public int hashCode() {
+		return System.identityHashCode(this);
+	}
+
+	@Override
+	public String toString() {
+		return getClass().getSimpleName();
 	}
 }

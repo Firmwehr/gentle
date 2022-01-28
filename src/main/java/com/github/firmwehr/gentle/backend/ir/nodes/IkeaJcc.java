@@ -1,76 +1,30 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
-import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
-import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
-import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
+import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
 import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
+import com.github.firmwehr.gentle.backend.ir.register.X86Register;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
+import com.github.firmwehr.gentle.util.Mut;
 import firm.Relation;
-import firm.nodes.Cond;
 import firm.nodes.Node;
 
 import java.util.List;
+import java.util.Optional;
 
-public class IkeaJcc implements IkeaNode {
-	private final IkeaBløck trueTarget;
-	private final IkeaBløck falseTarget;
-	private final Cond cond;
-	private final Relation relation;
-	private final IkeaNode parent;
-	private final IkeaBløck block;
-
-
-	public IkeaJcc(
-		IkeaBløck trueTarget, IkeaBløck falseTarget, Cond cond, Relation relation, IkeaNode parent, IkeaBløck block
-	) {
-		this.trueTarget = trueTarget;
-		this.falseTarget = falseTarget;
-		this.cond = cond;
-		this.relation = relation;
-		this.parent = parent;
-		this.block = block;
-	}
-
-	public IkeaBløck getTrueTarget() {
-		return trueTarget;
-	}
-
-	public IkeaBløck getFalseTarget() {
-		return falseTarget;
-	}
-
-	public Relation getRelation() {
-		return relation;
-	}
-
-	public IkeaNode getParent() {
-		return parent;
-	}
-
-	@Override
-	public IkeaBøx box() {
-		return new IkeaUnassignedBøx(IkeaRegisterSize.ILLEGAL);
-	}
-
-	@Override
-	public List<IkeaNode> parents() {
-		return List.of(this.parent);
-	}
+public record IkeaJcc(
+	Mut<Optional<X86Register>> register,
+	IkeaBløck block,
+	IkeaGraph graph,
+	List<Node> underlyingFirmNodes,
+	Relation relation,
+	IkeaBløck trueTarget,
+	IkeaBløck falseTarget
+) implements IkeaNode {
 
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
 		return visitor.visit(this);
-	}
-
-	@Override
-	public List<Node> getUnderlyingFirmNodes() {
-		return List.of(cond);
-	}
-
-	@Override
-	public IkeaBløck getBlock() {
-		return block;
 	}
 
 	@Override
@@ -79,7 +33,22 @@ public class IkeaJcc implements IkeaNode {
 	}
 
 	@Override
-	public List<IkeaRegisterRequirement> outRequirements() {
-		return List.of();
+	public IkeaRegisterRequirement registerRequirement() {
+		return IkeaRegisterRequirement.none();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		return this == o;
+	}
+
+	@Override
+	public int hashCode() {
+		return System.identityHashCode(this);
+	}
+
+	@Override
+	public String toString() {
+		return "Jcc " + relation;
 	}
 }
