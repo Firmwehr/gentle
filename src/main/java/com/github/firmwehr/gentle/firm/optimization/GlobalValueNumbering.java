@@ -4,7 +4,6 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.firm.GentleBindings;
 import com.github.firmwehr.gentle.output.Logger;
 import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Iterables;
 import firm.Graph;
 import firm.bindings.binding_irdom;
 import firm.bindings.binding_irgopt;
@@ -77,11 +76,11 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 	 */
 	private record NodeHashKey(
 		Node node,
-		Node[] preds
+		int precomputedHashCode
 	) {
 
 		public NodeHashKey(Node node) {
-			this(node, Iterables.toArray(node.getPreds(), Node.class));
+			this(node, computeNodeHash(node));
 		}
 
 		@Override
@@ -111,7 +110,8 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 			}
 
 			// check each pred
-			for (int i = 0; i < node.getPredCount(); i++) {
+			var predCount = node.getPredCount();
+			for (int i = 0; i < predCount; i++) {
 				if (!node.getPred(i).equals(thatNode.getPred(i))) {
 					return false;
 				}
@@ -204,6 +204,10 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 
 		@Override
 		public int hashCode() {
+			return precomputedHashCode;
+		}
+
+		private static int computeNodeHash(Node node) {
 			// nodes are considered equal if they themself are equally configured and share the same preds
 			int hash = node.getClass().hashCode();
 
@@ -214,11 +218,12 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				hash ^= address.getEntity().hashCode();
 			}
 
-			for (Node pred : preds()) {
-				hash ^= pred.ptr.hashCode();
+			// check each pred
+			var predCount = node.getPredCount();
+			for (int i = 0; i < predCount; i++) {
+				hash += node.getPred(i).ptr.hashCode();
 				hash *= 31;
 			}
-
 			return hash;
 		}
 	}
@@ -390,7 +395,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				lastAvailable.putAll(availableExpressions);
 
 				// dump graphs if we had actual changes (next statement will destroy this information)
-				if (runAgain) {
+				if (runAgain && LOGGER.isDebugEnabled()) {
 					dumpGraph(graph, "gvn-iter-block" + block.getNr());
 				}
 
