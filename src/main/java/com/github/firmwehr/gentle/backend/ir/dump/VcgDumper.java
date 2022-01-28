@@ -32,9 +32,11 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSpill;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
 import com.github.firmwehr.gentle.backend.ir.register.ControlFlowGraph;
+import com.github.firmwehr.gentle.cli.CompilerArguments;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
@@ -43,13 +45,10 @@ public class VcgDumper {
 
 	private final ControlFlowGraph controlFlowGraph;
 	private final IkeaGraph ikeaGraph;
-	private final Map<IkeaNode, Integer> nodeIds;
 
 	public VcgDumper(ControlFlowGraph controlFlowGraph, IkeaGraph ikeaGraph) {
 		this.controlFlowGraph = controlFlowGraph;
 		this.ikeaGraph = ikeaGraph;
-
-		this.nodeIds = new HashMap<>();
 	}
 
 	public String dumpGraphAsString() {
@@ -99,8 +98,8 @@ public class VcgDumper {
 
 	private String formatBlock(IkeaBløck block) {
 		StringBuilder result = new StringBuilder("graph: {");
-		result.append("\n  title: " + '"' + "block-" + block.origin().getNr() + '"');
-		result.append("\n  label: " + '"' + block.origin() + '"');
+		result.append("\n  title: " + '"' + "block-").append(block.origin().getNr()).append('"');
+		result.append("\n  label: " + '"').append(block.origin()).append('"');
 		result.append("\n  status: clustered");
 		result.append("\n  color: ").append(VcgColor.BLOCK.id());
 		result.append("\n");
@@ -108,6 +107,10 @@ public class VcgDumper {
 		for (IkeaNode node : block.nodes()) {
 			result.append(formatNode(node).indent(2));
 			result.append(formatInputEdges(node).indent(2));
+		}
+
+		if (CompilerArguments.get().dumpBackendSchedule()) {
+			result.append(formatSchedule(block));
 		}
 
 		result.append("\n}");
@@ -138,13 +141,18 @@ public class VcgDumper {
 	}
 
 	private String formatInputEdges(IkeaNode node) {
+		return formatEdges(ikeaGraph.getInputEdges(node), "\n  priority: 50");
+	}
+
+	private String formatEdges(Collection<IkeaGraph.IkeaEdge> edges, String additionalProps) {
 		StringJoiner result = new StringJoiner("\n");
-		for (IkeaGraph.IkeaEdge edge : ikeaGraph.getInputEdges(node)) {
+		for (IkeaGraph.IkeaEdge edge : edges) {
 			StringBuilder inner = new StringBuilder();
 			// edge: {sourcename: "n74" targetname: "n71" label: "0" class:14 priority:50 color:blue}
 			inner.append("edge: {");
-			inner.append("\n sourcename: ").append('"').append(nodeTitle(edge.src())).append('"');
-			inner.append("\n targetname: ").append('"').append(nodeTitle(edge.dst())).append('"');
+			inner.append("\n  sourcename: ").append('"').append(nodeTitle(edge.src())).append('"');
+			inner.append("\n  targetname: ").append('"').append(nodeTitle(edge.dst())).append('"');
+			inner.append(additionalProps);
 			inner.append("\n}");
 			result.add(inner);
 		}
@@ -152,6 +160,20 @@ public class VcgDumper {
 		return result.toString();
 	}
 
+	private String formatSchedule(IkeaBløck block) {
+		List<IkeaGraph.IkeaEdge> edges = new ArrayList<>();
+		List<IkeaNode> nodes = block.nodes();
+		for (int i = 0; i < nodes.size() - 1; i++) {
+			IkeaNode src = nodes.get(i);
+			IkeaNode dst = nodes.get(i + 1);
+
+			edges.add(new IkeaGraph.IkeaEdge(dst, src, 0));
+		}
+
+		return formatEdges(edges, "\n  color: " + VcgColor.SCHEDULE.id());
+	}
+
+	@SuppressWarnings("DuplicateBranchesInSwitch")
 	private VcgColor nodeColor(IkeaNode node) {
 		return switch (node) {
 			case IkeaAdd ignored -> VcgColor.NORMAL;
@@ -186,9 +208,7 @@ public class VcgDumper {
 	}
 
 	private String nodeTitle(IkeaNode node) {
-		int id = nodeIds.computeIfAbsent(node, ignored -> nodeIds.size());
-
-		return "node-" + id;
+		return "node-" + node.id();
 	}
 
 	private String nodeLabel(IkeaNode node) {
@@ -196,24 +216,25 @@ public class VcgDumper {
 	}
 
 	private enum VcgColor {
-		// colorentry 100: 204 204 204 gray
-		//colorentry 101: 222 239 234  faint green
-		//colorentry 103: 242 242 242  white-ish
-		//colorentry 104: 153 255 153  light green
-		//colorentry 105: 153 153 255  blue
-		//colorentry 106: 255 153 153  red
-		//colorentry 107: 255 255 153  yellow
-		//colorentry 108: 255 153 255  pink
-		//colorentry 110: 127 127 127  dark gray
-		//colorentry 111: 153 255 153  light green
-		//colorentry 114: 153 153 255  blue
+		// colorentry 100: 204 204 204  gray
+		// colorentry 101: 222 239 234  faint green
+		// colorentry 103: 242 242 242  white-ish
+		// colorentry 104: 153 255 153  light green
+		// colorentry 105: 153 153 255  blue
+		// colorentry 106: 255 153 153  red
+		// colorentry 107: 255 255 153  yellow
+		// colorentry 108: 255 153 255  pink
+		// colorentry 110: 127 127 127  dark gray
+		// colorentry 111: 153 255 153  light green
+		// colorentry 114: 153 153 255  blue
 		CONTROL_FLOW("255 153 153"),
 		MEMORY("153 153 255"),
 		NORMAL("242 242 242"),
 		SPECIAL("222 239 234"),
 		CONST("255 255 153"),
 		PHI("153 255 153"),
-		BLOCK("204 204 204");
+		BLOCK("204 204 204"),
+		SCHEDULE("255 153 255");
 
 		private final String rgb;
 

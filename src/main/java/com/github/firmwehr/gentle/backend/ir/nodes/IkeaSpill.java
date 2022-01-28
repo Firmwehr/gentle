@@ -16,7 +16,8 @@ public record IkeaSpill(
 	IkeaBløck block,
 	IkeaGraph graph,
 	List<Node> underlyingFirmNodes,
-	Mut<Integer> spillSlot
+	Mut<Integer> spillSlot,
+	int id
 ) implements IkeaNode {
 
 	@Override
@@ -46,6 +47,6 @@ public record IkeaSpill(
 
 	@Override
 	public String toString() {
-		return "IkeaSpill " + spillSlot.get();
+		return "IkeaSpill " + spillSlot.get() + " (" + id() + ")";
 	}
 }

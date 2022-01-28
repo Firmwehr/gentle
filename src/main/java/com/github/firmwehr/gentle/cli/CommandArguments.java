@@ -73,6 +73,9 @@ public interface CommandArguments {
 	@Option(names = "--no-remove-pure-functions", description = "keep pure function calls")
 	boolean noRemovePureFunctions();
 
+	@Option(names = "--dump-backend-schedule", description = "include schedule information in backend graphs")
+	boolean dumpBackendSchedule();
+
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",
 		paramLabel = "FILE")
 	Path path();

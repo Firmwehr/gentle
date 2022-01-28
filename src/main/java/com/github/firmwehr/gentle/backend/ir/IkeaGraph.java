@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 @SuppressWarnings("UnstableApiUsage")
 public class IkeaGraph {
 
+	private int idCounter;
 	private final MutableNetwork<IkeaNode, IkeaEdge> network;
 
 	public IkeaGraph() {
@@ -92,6 +93,10 @@ public class IkeaGraph {
 		for (int i = 0; i < inputs.size(); i++) {
 			network.addEdge(node, inputs.get(i), new IkeaEdge(node, inputs.get(i), i));
 		}
+	}
+
+	public int nextId() {
+		return idCounter++;
 	}
 
 	/**

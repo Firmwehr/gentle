@@ -16,7 +16,8 @@ public record IkeaJmp(
 	IkeaBløck block,
 	IkeaGraph graph,
 	List<Node> underlyingFirmNodes,
-	IkeaBløck target
+	IkeaBløck target,
+	int id
 ) implements IkeaNode {
 
 	@Override
@@ -46,6 +47,6 @@ public record IkeaJmp(
 
 	@Override
 	public String toString() {
-		return getClass().getSimpleName();
+		return getClass().getSimpleName() + " (" + id() + ")";
 	}
 }

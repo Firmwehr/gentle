@@ -16,7 +16,8 @@ public record IkeaMovStoreEx(
 	IkeaBløck block,
 	IkeaGraph graph,
 	List<Node> underlyingFirmNodes,
-	BoxScheme scheme
+	BoxScheme scheme,
+	int id
 ) implements IkeaNode {
 
 	@Override
@@ -46,6 +47,6 @@ public record IkeaMovStoreEx(
 
 	@Override
 	public String toString() {
-		return getClass().getSimpleName();
+		return getClass().getSimpleName() + " (" + id() + ")";
 	}
 }

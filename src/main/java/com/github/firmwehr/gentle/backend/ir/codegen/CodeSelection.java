@@ -126,7 +126,7 @@ public class CodeSelection extends NodeVisitor.Default {
 					return;
 				}
 				IkeaBløck block = blocks.get((Block) node.getBlock());
-				IkeaPhi ikeaPhi = new IkeaPhi(noReg(), block, ikeaGraph, List.of(node));
+				IkeaPhi ikeaPhi = new IkeaPhi(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 				nodes.put(node, ikeaPhi);
 				block.nodes().add(ikeaPhi);
 				phiBär.computeIfAbsent((Block) node.getBlock(), ignore -> new ArrayList<>()).add(node);
@@ -177,13 +177,19 @@ public class CodeSelection extends NodeVisitor.Default {
 		Uses uses = new Uses(controlFlowGraph, ikeaGraph);
 		LoopTree loopTree = LoopTree.forGraph(graph);
 
+		GraphDumper.dumpGraph(controlFlowGraph, "backend-init");
+
 		// 1. Prepare for spilling
 		Spillprepare prepare = new Spillprepare(liveliness, dominance, uses);
 		prepare.prepare(controlFlowGraph);
 
+		GraphDumper.dumpGraph(controlFlowGraph, "backend-spillprepare");
+
 		// 2. Spill
 		Belady belady = new Belady(dominance, controlFlowGraph, liveliness, uses, loopTree);
 		belady.spill(controlFlowGraph);
+
+		GraphDumper.dumpGraph(controlFlowGraph, "backend-spille");
 
 		// 3. Constraint handling
 		ConstraintNodePrepare constraintNodePrepare = new ConstraintNodePrepare(liveliness, uses, dominance);
@@ -198,7 +204,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		LOGGER.error("FANCY! Done for %s", graph.getEntity().getLdName());
 
-		GraphDumper.dumpGraph(controlFlowGraph, "backend-1");
+		GraphDumper.dumpGraph(controlFlowGraph, "backend-color");
 
 		return orderedBlocks;
 	}
@@ -219,7 +225,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaAdd ikeaAdd = new IkeaAdd(noReg(), block, ikeaGraph, List.of(node.getLeft(), node.getRight()));
+		IkeaAdd ikeaAdd =
+			new IkeaAdd(noReg(), block, ikeaGraph, List.of(node.getLeft(), node.getRight()), ikeaGraph.nextId());
 		nodes.put(node, ikeaAdd);
 		block.nodes().add(ikeaAdd);
 		ikeaGraph.addNode(ikeaAdd, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
@@ -275,7 +282,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			.filter(it -> !(it instanceof Address))
 			.map(nodes::get)
 			.toList();
-		IkeaCall ikeaCall = new IkeaCall(noReg(), block, ikeaGraph, List.of(node));
+		IkeaCall ikeaCall = new IkeaCall(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		ikeaGraph.addNode(ikeaCall, arguments);
 		nodes.put(node, ikeaCall);
 		block.nodes().add(ikeaCall);
@@ -288,7 +295,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	private IkeaCmp visitFromCond(Cmp node) {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		return new IkeaCmp(noReg(), block, ikeaGraph, List.of(node));
+		return new IkeaCmp(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 	}
 
 	@Override
@@ -313,7 +320,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		IkeaCmp cmp = visitFromCond((Cmp) node.getSelector());
 
 		IkeaJcc ikeaJcc = new IkeaJcc(noReg(), block, ikeaGraph, List.of(node), relation, blocks.get(trueBlock),
-			blocks.get(falseBlock));
+			blocks.get(falseBlock), ikeaGraph.nextId());
 		this.nodes.put(node, ikeaJcc);
 		block.nodes().add(cmp);
 		block.nodes().add(ikeaJcc);
@@ -330,7 +337,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaConst ikeaConst = new IkeaConst(noReg(), block, ikeaGraph, List.of(node), node.getTarval());
+		IkeaConst ikeaConst =
+			new IkeaConst(noReg(), block, ikeaGraph, List.of(node), node.getTarval(), ikeaGraph.nextId());
 		nodes.put(node, ikeaConst);
 		block.nodes().add(ikeaConst);
 		ikeaGraph.addNode(ikeaConst, List.of());
@@ -344,7 +352,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaConv ikeaConv = new IkeaConv(noReg(), block, ikeaGraph, List.of(node));
+		IkeaConv ikeaConv = new IkeaConv(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		nodes.put(node, ikeaConv);
 		block.nodes().add(ikeaConv);
 		ikeaGraph.addNode(ikeaConv, List.of(nodes.get(node.getOp())));
@@ -358,12 +366,12 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaDiv ikeaDiv = new IkeaDiv(noReg(), block, ikeaGraph, List.of(node));
+		IkeaDiv ikeaDiv = new IkeaDiv(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		nodes.put(node, ikeaDiv);
 		block.nodes().add(ikeaDiv);
 		ikeaGraph.addNode(ikeaDiv, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
 
-		IkeaProj divProj = new IkeaProj(noReg(), block, ikeaGraph, List.of(node), 0);
+		IkeaProj divProj = new IkeaProj(noReg(), block, ikeaGraph, List.of(node), 0, ikeaGraph.nextId());
 		block.nodes().add(divProj);
 		nodes.put(node, divProj);
 		ikeaGraph.addNode(divProj, List.of(ikeaDiv));
@@ -379,7 +387,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		for (BackEdges.Edge edge : BackEdges.getOuts(node)) {
 			if (edge.node instanceof Block targetBlock) {
-				IkeaJmp ikeaJmp = new IkeaJmp(noReg(), block, ikeaGraph, List.of(node), blocks.get(targetBlock));
+				IkeaJmp ikeaJmp =
+					new IkeaJmp(noReg(), block, ikeaGraph, List.of(node), blocks.get(targetBlock), ikeaGraph.nextId());
 				nodes.put(node, ikeaJmp);
 				block.nodes().add(ikeaJmp);
 				ikeaGraph.addNode(ikeaJmp, List.of());
@@ -396,7 +405,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			var scheme = maybeScheme.get();
 
 			IkeaMovLoadEx mov = new IkeaMovLoadEx(noReg(), block, ikeaGraph, List.of(node),
-				BoxScheme.fromAddressingScheme(scheme, nodes::get));
+				BoxScheme.fromAddressingScheme(scheme, nodes::get), ikeaGraph.nextId());
 			nodes.put(node, mov);
 			block.nodes().add(mov);
 			// FIXME: This mess
@@ -408,7 +417,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			return;
 		}
 
-		IkeaMovLoad ikeaMovLoad = new IkeaMovLoad(noReg(), block, ikeaGraph, List.of(node));
+		IkeaMovLoad ikeaMovLoad = new IkeaMovLoad(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		nodes.put(node, ikeaMovLoad);
 		block.nodes().add(ikeaMovLoad);
 		ikeaGraph.addNode(ikeaMovLoad, List.of(nodes.get(node.getPtr())));
@@ -422,7 +431,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaNeg ikeaNeg = new IkeaNeg(noReg(), block, ikeaGraph, List.of(node));
+		IkeaNeg ikeaNeg = new IkeaNeg(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		nodes.put(node, ikeaNeg);
 		block.nodes().add(ikeaNeg);
 		ikeaGraph.addNode(ikeaNeg, List.of(nodes.get(node.getOp())));
@@ -436,12 +445,12 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaDiv ikeaDiv = new IkeaDiv(noReg(), block, ikeaGraph, List.of(node));
+		IkeaDiv ikeaDiv = new IkeaDiv(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		nodes.put(node, ikeaDiv);
 		block.nodes().add(ikeaDiv);
 		ikeaGraph.addNode(ikeaDiv, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
 
-		IkeaProj modProj = new IkeaProj(noReg(), block, ikeaGraph, List.of(node), 1);
+		IkeaProj modProj = new IkeaProj(noReg(), block, ikeaGraph, List.of(node), 1, ikeaGraph.nextId());
 		nodes.put(node, modProj);
 		block.nodes().add(modProj);
 		ikeaGraph.addNode(modProj, List.of(ikeaDiv));
@@ -455,7 +464,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaMul ikeaMul = new IkeaMul(noReg(), block, ikeaGraph, List.of(node));
+		IkeaMul ikeaMul = new IkeaMul(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		nodes.put(node, ikeaMul);
 		block.nodes().add(ikeaMul);
 		ikeaGraph.addNode(ikeaMul, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
@@ -491,7 +500,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		// no need to check for replaced node since caller will already check for us
 
 		IkeaBløck block = blocks.get((Block) proj.getBlock());
-		IkeaArgNode ikeaArgNode = new IkeaArgNode(noReg(), block, ikeaGraph, List.of(proj), proj.getNum());
+		IkeaArgNode ikeaArgNode =
+			new IkeaArgNode(noReg(), block, ikeaGraph, List.of(proj), proj.getNum(), ikeaGraph.nextId());
 		nodes.put(proj, ikeaArgNode);
 		block.nodes().add(ikeaArgNode);
 		ikeaGraph.addNode(ikeaArgNode, List.of());
@@ -505,7 +515,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaRet ikeaRet = new IkeaRet(noReg(), block, ikeaGraph, List.of(node));
+		IkeaRet ikeaRet = new IkeaRet(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		nodes.put(node, ikeaRet);
 		block.nodes().add(ikeaRet);
 		ikeaGraph.addNode(ikeaRet,
@@ -523,7 +533,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			var scheme = maybeScheme.get();
 
 			IkeaMovStoreEx mov = new IkeaMovStoreEx(noReg(), block, ikeaGraph, List.of(node),
-				BoxScheme.fromAddressingScheme(scheme, nodes::get));
+				BoxScheme.fromAddressingScheme(scheme, nodes::get), ikeaGraph.nextId());
 			nodes.put(node, mov);
 			block.nodes().add(mov);
 			// FIXME: This mess
@@ -536,7 +546,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			return;
 		}
 
-		IkeaMovStore ikeaMovStore = new IkeaMovStore(noReg(), block, ikeaGraph, List.of(node));
+		IkeaMovStore ikeaMovStore = new IkeaMovStore(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		nodes.put(node, ikeaMovStore);
 		block.nodes().add(ikeaMovStore);
 		ikeaGraph.addNode(value, List.of(nodes.get(node.getPtr()), value));
@@ -550,7 +560,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaShl ikeaShl = new IkeaShl(noReg(), block, ikeaGraph, List.of(node));
+		IkeaShl ikeaShl = new IkeaShl(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		nodes.put(node, ikeaShl);
 		block.nodes().add(ikeaShl);
 		ikeaGraph.addNode(ikeaShl, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
@@ -564,7 +574,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaShr ikeaShr = new IkeaShr(noReg(), block, ikeaGraph, List.of(node));
+		IkeaShr ikeaShr = new IkeaShr(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		nodes.put(node, ikeaShr);
 		block.nodes().add(ikeaShr);
 		ikeaGraph.addNode(ikeaShr, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
@@ -578,7 +588,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaShrs ikeaShrs = new IkeaShrs(noReg(), block, ikeaGraph, List.of(node));
+		IkeaShrs ikeaShrs = new IkeaShrs(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		nodes.put(node, ikeaShrs);
 		block.nodes().add(ikeaShrs);
 		ikeaGraph.addNode(ikeaShrs, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
@@ -592,7 +602,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaSub ikeaSub = new IkeaSub(noReg(), block, ikeaGraph, List.of(node));
+		IkeaSub ikeaSub = new IkeaSub(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		nodes.put(node, ikeaSub);
 		block.nodes().add(ikeaSub);
 		ikeaGraph.addNode(ikeaSub, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
@@ -606,7 +616,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaConst ikeaConst = new IkeaConst(noReg(), block, ikeaGraph, List.of(node), node.getMode().getNull());
+		IkeaConst ikeaConst =
+			new IkeaConst(noReg(), block, ikeaGraph, List.of(node), node.getMode().getNull(), ikeaGraph.nextId());
 		nodes.put(node, ikeaConst);
 		block.nodes().add(ikeaConst);
 		ikeaGraph.addNode(ikeaConst, List.of());

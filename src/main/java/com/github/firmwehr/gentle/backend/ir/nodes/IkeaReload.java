@@ -16,7 +16,8 @@ public record IkeaReload(
 	IkeaBløck block,
 	IkeaGraph graph,
 	List<Node> underlyingFirmNodes,
-	Mut<Integer> spillSlot
+	Mut<Integer> spillSlot,
+	int id
 ) implements IkeaNode {
 
 	@Override
@@ -47,6 +48,6 @@ public record IkeaReload(
 
 	@Override
 	public String toString() {
-		return "IkeaReload " + spillSlot.get();
+		return "IkeaReload " + spillSlot.get() + " (" + id() + ")";
 	}
 }

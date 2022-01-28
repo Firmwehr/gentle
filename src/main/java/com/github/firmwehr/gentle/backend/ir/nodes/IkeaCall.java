@@ -17,7 +17,8 @@ public record IkeaCall(
 	Mut<Optional<X86Register>> register,
 	IkeaBløck block,
 	IkeaGraph graph,
-	List<Node> underlyingFirmNodes
+	List<Node> underlyingFirmNodes,
+	int id
 ) implements IkeaNode {
 
 	@Override

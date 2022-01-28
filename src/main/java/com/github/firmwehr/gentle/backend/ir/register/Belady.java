@@ -155,7 +155,9 @@ public class Belady {
 				}
 			}
 
-			List<WorksetNode> sortedNodes = currentWorkset.stream().sorted(Collections.reverseOrder()).toList();
+			List<WorksetNode> sortedNodes = currentWorkset.stream()
+				.sorted(Collections.reverseOrder(Comparator.comparing(WorksetNode::distance)))
+				.toList();
 
 			LOGGER.debug("Workset for spill: ");
 			LOGGER.debug("  %s",
@@ -166,15 +168,16 @@ public class Belady {
 				IkeaNode victimNode = victim.node();
 				currentWorkset.remove(victim);
 				LOGGER.debug("Spilling %s before %s", victim, currentInstruction);
-				IkeaNode victimParent =
-					victimNode.block().nodes().get(victimNode.block().nodes().indexOf(victimNode) - 1);
+				IkeaNode spillAfter = currentInstruction.block()
+					.nodes()
+					.get(currentInstruction.block().nodes().indexOf(currentInstruction) - 1);
 
 				if (victim.spilled() || victim.distance() instanceof Infinity) {
 					LOGGER.debug("Skipping spill for %s due to distance/spilled status", victim);
 					continue;
 				}
 				LOGGER.debug("Spilling %s after encountering %s", victim, currentInstruction);
-				addSpill(victimNode, victimParent);
+				addSpill(victimNode, spillAfter);
 			}
 		}
 
@@ -506,7 +509,7 @@ public class Belady {
 				int insertionPoint = reloadBefore.block().nodes().indexOf(reloadBefore) - 1;
 				IkeaReload reload =
 					new IkeaReload(new Mut<>(Optional.empty()), reloadBefore.block(), reloadBefore.graph(), List.of(),
-						new Mut<>(-1));
+						new Mut<>(-1), reloadBefore.graph().nextId());
 				reloadBefore.block().nodes().add(insertionPoint, reload);
 				// TODO: What do we point to here?
 				reloadBefore.graph().addNode(reload, List.of(info.valueToSpill()));
@@ -544,7 +547,7 @@ public class Belady {
 		for (IkeaNode spillAfter : spillInfo.toSpillAfter()) {
 			IkeaSpill spill =
 				new IkeaSpill(new Mut<>(Optional.empty()), spillAfter.block(), spillAfter.graph(), List.of(),
-					new Mut<>(-1));
+					new Mut<>(-1), spillAfter.graph().nextId());
 
 			int insertPoint = spillAfter.block().nodes().indexOf(spillAfter) + 1;
 			spillAfter.block().nodes().add(insertPoint, spill);

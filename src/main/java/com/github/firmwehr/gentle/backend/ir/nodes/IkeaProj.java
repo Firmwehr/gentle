@@ -17,14 +17,15 @@ public record IkeaProj(
 	IkeaGraph graph,
 	List<Node> underlyingFirmNodes,
 	int index,
-	Mut<IkeaRegisterRequirement> regRequirement
+	Mut<IkeaRegisterRequirement> regRequirement,
+	int id
 ) implements IkeaNode {
 
 	public IkeaProj(
 		Mut<Optional<X86Register>> register, IkeaBløck block, IkeaGraph graph, List<Node> underlyingFirmNodes,
-		int index
+		int index, int id
 	) {
-		this(register, block, graph, underlyingFirmNodes, index, new Mut<>(IkeaRegisterRequirement.gpRegister()));
+		this(register, block, graph, underlyingFirmNodes, index, new Mut<>(IkeaRegisterRequirement.gpRegister()), id);
 	}
 
 	@Override

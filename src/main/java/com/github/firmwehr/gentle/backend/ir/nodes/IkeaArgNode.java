@@ -16,7 +16,8 @@ public record IkeaArgNode(
 	IkeaBløck block,
 	IkeaGraph graph,
 	List<Node> underlyingFirmNodes,
-	int index
+	int index,
+	int id
 ) implements IkeaNode {
 
 	@Override
@@ -46,6 +47,6 @@ public record IkeaArgNode(
 
 	@Override
 	public String toString() {
-		return "IkeaArg " + index;
+		return "IkeaArg " + index + " (" + id() + ")";
 	}
 }

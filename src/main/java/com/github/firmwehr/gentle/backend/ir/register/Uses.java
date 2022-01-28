@@ -164,7 +164,9 @@ public class Uses {
 		// Hm. This sounds bad? Might happen if from is the only use and excludeFrom is set, but does that ever happen?
 		// TODO: Does this happen?
 		if (foundUse == null) {
-			throw new InternalCompilerException("Not a single use found for " + def + " after " + from);
+			// I think this is fine... Happens if a node in our workset is dead :(
+			LOGGER.warn("Not a single use found for %s after %s", def, from);
+			return Optional.empty();
 		}
 
 		// Cap loop depth at the largest one. We don't really care if the next use is more deeply nested:

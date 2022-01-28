@@ -19,7 +19,8 @@ public record IkeaJcc(
 	List<Node> underlyingFirmNodes,
 	Relation relation,
 	IkeaBløck trueTarget,
-	IkeaBløck falseTarget
+	IkeaBløck falseTarget,
+	int id
 ) implements IkeaNode {
 
 	@Override

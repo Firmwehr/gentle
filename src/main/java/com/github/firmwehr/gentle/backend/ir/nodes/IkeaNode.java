@@ -26,6 +26,8 @@ public interface IkeaNode {
 		return false;
 	}
 
+	int id();
+
 	IkeaBløck block();
 
 	IkeaGraph graph();

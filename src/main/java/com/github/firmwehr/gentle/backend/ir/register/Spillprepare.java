@@ -71,7 +71,8 @@ public class Spillprepare {
 
 				// TODO: Use SSA reconstruction code and use copy in rest!
 				// FIXME: keep virtual register allocator
-				IkeaCopy copy = new IkeaCopy(new Mut<>(Optional.empty()), first.block(), first.graph(), List.of());
+				IkeaCopy copy = new IkeaCopy(new Mut<>(Optional.empty()), first.block(), first.graph(), List.of(),
+					first.graph().nextId());
 				copy.graph().addNode(copy, List.of(first));
 				copy.graph().setInput(first, j, copy);
 				copies.add(copy);
@@ -105,7 +106,9 @@ public class Spillprepare {
 				continue;
 			}
 
-			IkeaCopy copy = new IkeaCopy(new Mut<>(Optional.empty()), node.block(), node.graph(), List.of());
+			IkeaCopy copy =
+				new IkeaCopy(new Mut<>(Optional.empty()), node.block(), node.graph(), List.of(),
+					node.graph().nextId());
 			copy.graph().addNode(copy, List.of(in));
 			copies.add(copy);
 			copy.graph().setInput(node, i, copy);

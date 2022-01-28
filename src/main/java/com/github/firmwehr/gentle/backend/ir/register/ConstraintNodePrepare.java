@@ -38,7 +38,8 @@ public class ConstraintNodePrepare {
 
 	private void addPermForNode(IkeaNode node) {
 		List<IkeaNode> toPerm = List.copyOf(liveliness.getLiveBefore(node));
-		IkeaPerm perm = new IkeaPerm(new Mut<>(Optional.empty()), node.block(), node.graph(), List.of());
+		IkeaPerm perm =
+			new IkeaPerm(new Mut<>(Optional.empty()), node.block(), node.graph(), List.of(), node.graph().nextId());
 		node.graph().addNode(perm, toPerm);
 		int nodeIndex = node.block().nodes().indexOf(node);
 		node.block().nodes().add(nodeIndex, perm);
@@ -54,7 +55,8 @@ public class ConstraintNodePrepare {
 		List<IkeaProj> projs = new ArrayList<>();
 		for (int i = 0; i < toPerm.size(); i++) {
 			IkeaNode ikeaNode = toPerm.get(i);
-			IkeaProj proj = new IkeaProj(new Mut<>(Optional.empty()), perm.block(), perm.graph(), List.of(), i);
+			IkeaProj proj = new IkeaProj(new Mut<>(Optional.empty()), perm.block(), perm.graph(), List.of(), i,
+				node.graph().nextId());
 			perm.graph().addNode(proj, List.of(perm));
 			node.block().nodes().add(nodeIndex++, proj);
 			projs.add(proj);

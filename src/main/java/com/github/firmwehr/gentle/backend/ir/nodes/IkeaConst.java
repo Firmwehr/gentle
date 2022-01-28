@@ -17,7 +17,8 @@ public record IkeaConst(
 	IkeaBløck block,
 	IkeaGraph graph,
 	List<Node> underlyingFirmNodes,
-	TargetValue value
+	TargetValue value,
+	int id
 ) implements IkeaNode {
 
 	@Override
@@ -47,6 +48,6 @@ public record IkeaConst(
 
 	@Override
 	public String toString() {
-		return "IkeaConst " + value.asLong();
+		return "IkeaConst " + value.asLong() + " (" + id() + ")";
 	}
 }

@@ -76,7 +76,9 @@ public class SsaReconstruction {
 
 			// No direct def found, and we are in a frontier block: insert phi
 			if (F.contains(use.block())) {
-				IkeaPhi phi = new IkeaPhi(new Mut<>(Optional.empty()), use.block(), use.graph(), List.of());
+				IkeaPhi phi =
+					new IkeaPhi(new Mut<>(Optional.empty()), use.block(), use.graph(), List.of(),
+						use.graph().nextId());
 				use.block().nodes().add(0, phi);
 				List<IkeaNode> phiParents = new ArrayList<>();
 

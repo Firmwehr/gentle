@@ -15,7 +15,8 @@ public record IkeaShl(
 	Mut<Optional<X86Register>> register,
 	IkeaBløck block,
 	IkeaGraph graph,
-	List<Node> underlyingFirmNodes
+	List<Node> underlyingFirmNodes,
+	int id
 ) implements IkeaNode {
 
 	@Override
@@ -45,6 +46,6 @@ public record IkeaShl(
 
 	@Override
 	public String toString() {
-		return getClass().getSimpleName();
+		return getClass().getSimpleName() + " (" + id() + ")";
 	}
 }

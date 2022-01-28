@@ -15,7 +15,8 @@ public record IkeaMovLoad(
 	Mut<Optional<X86Register>> register,
 	IkeaBløck block,
 	IkeaGraph graph,
-	List<Node> underlyingFirmNodes
+	List<Node> underlyingFirmNodes,
+	int id
 ) implements IkeaNode {
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
@@ -44,6 +45,6 @@ public record IkeaMovLoad(
 
 	@Override
 	public String toString() {
-		return getClass().getSimpleName();
+		return getClass().getSimpleName() + " (" + id() + ")";
 	}
 }

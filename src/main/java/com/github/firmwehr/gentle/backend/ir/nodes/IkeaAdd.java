@@ -15,11 +15,12 @@ public record IkeaAdd(
 	Mut<Optional<X86Register>> register,
 	IkeaBløck block,
 	IkeaGraph graph,
-	List<Node> underlyingFirmNodes
+	List<Node> underlyingFirmNodes,
+	int id
 ) implements IkeaNode {
 
-	public IkeaAdd(IkeaBløck block, IkeaGraph graph, List<Node> underlyingFirmNodes) {
-		this(new Mut<>(Optional.empty()), block, graph, underlyingFirmNodes);
+	public IkeaAdd(IkeaBløck block, IkeaGraph graph, List<Node> underlyingFirmNodes, int id) {
+		this(new Mut<>(Optional.empty()), block, graph, underlyingFirmNodes, id);
 	}
 
 	@Override
@@ -49,6 +50,6 @@ public record IkeaAdd(
 
 	@Override
 	public String toString() {
-		return getClass().getSimpleName();
+		return getClass().getSimpleName() + " (" + id() + ")";
 	}
 }
