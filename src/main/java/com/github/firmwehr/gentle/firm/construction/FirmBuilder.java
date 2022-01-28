@@ -116,6 +116,7 @@ public class FirmBuilder {
 			if (!CompilerArguments.get().noInlining()) {
 				builder.addCallGraphStep(MethodInliningOptimization.methodInlineOptimization());
 			}
+			builder.freeUnusedGraphs(!CompilerArguments.get().noFreeUnusedGraphs());
 		} else {
 			LOGGER.info("optimization level set to 0, all optional optimization will be disabled");
 		}

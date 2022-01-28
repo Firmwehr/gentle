@@ -21,13 +21,16 @@ public class Optimizer {
 	private static final Logger LOGGER = new Logger(Optimizer.class);
 	private final List<GraphOptimizationStep<Graph, Boolean>> graphOptimizationSteps;
 	private final List<GraphOptimizationStep<CallGraph, Set<Graph>>> callGraphOptimizationSteps;
+	private boolean freeUnusedGraphs;
 
 	private Optimizer(
 		List<GraphOptimizationStep<Graph, Boolean>> graphOptimizationSteps,
-		List<GraphOptimizationStep<CallGraph, Set<Graph>>> callGraphOptimizationSteps
+		List<GraphOptimizationStep<CallGraph, Set<Graph>>> callGraphOptimizationSteps,
+		boolean freeUnusedGraphs
 	) {
 		this.graphOptimizationSteps = List.copyOf(graphOptimizationSteps);
 		this.callGraphOptimizationSteps = List.copyOf(callGraphOptimizationSteps);
+		this.freeUnusedGraphs = freeUnusedGraphs;
 	}
 
 	public static Builder builder() {
@@ -78,6 +81,9 @@ public class Optimizer {
 	private Set<Graph> collectUnused(CallGraph callGraph) {
 		Set<Graph> used = new HashSet<>();
 		Set<Graph> deletable = new HashSet<>();
+		if (!freeUnusedGraphs) {
+			return deletable; // empty set, no deletion
+		}
 		Queue<Graph> workList = new ArrayDeque<>();
 		Graph main = new Graph(binding_irprog.get_irp_main_irg());
 		used.add(main); // main is never called but always used
@@ -119,6 +125,7 @@ public class Optimizer {
 		private final List<GraphOptimizationStep<Graph, Boolean>> graphOptimizationSteps = new ArrayList<>();
 		private final List<GraphOptimizationStep<CallGraph, Set<Graph>>> callGraphOptimizationSteps =
 			new ArrayList<>();
+		private boolean freeUnusedGraphs;
 
 		public Builder addGraphStep(GraphOptimizationStep<Graph, Boolean> step) {
 			this.graphOptimizationSteps.add(step);
@@ -130,8 +137,13 @@ public class Optimizer {
 			return this;
 		}
 
+		public Builder freeUnusedGraphs(boolean free) {
+			this.freeUnusedGraphs = free;
+			return this;
+		}
+
 		public Optimizer build() {
-			return new Optimizer(this.graphOptimizationSteps, this.callGraphOptimizationSteps);
+			return new Optimizer(this.graphOptimizationSteps, this.callGraphOptimizationSteps, freeUnusedGraphs);
 		}
 	}
 }
