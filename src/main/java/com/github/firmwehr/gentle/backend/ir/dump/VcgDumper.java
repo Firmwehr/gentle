@@ -152,6 +152,7 @@ public class VcgDumper {
 			inner.append("edge: {");
 			inner.append("\n  sourcename: ").append('"').append(nodeTitle(edge.src())).append('"');
 			inner.append("\n  targetname: ").append('"').append(nodeTitle(edge.dst())).append('"');
+			inner.append("\n  label: ").append('"').append(edge.index()).append('"');
 			inner.append(additionalProps);
 			inner.append("\n}");
 			result.add(inner);
