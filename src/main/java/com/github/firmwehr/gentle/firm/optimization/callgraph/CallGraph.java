@@ -180,10 +180,6 @@ public final class CallGraph {
 		}
 	}
 
-	public Set<Call> callSitesIn(Graph graph) {
-		return calledMethods.outEdges(graph.getEntity());
-	}
-
 	@Override
 	public String toString() {
 		return "CallGraph";
