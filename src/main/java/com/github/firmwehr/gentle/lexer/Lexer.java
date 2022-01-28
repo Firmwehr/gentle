@@ -14,6 +14,10 @@ import com.github.firmwehr.gentle.source.Source;
 import com.github.firmwehr.gentle.source.SourceSpan;
 import com.github.firmwehr.gentle.util.string.SimpleStringTable;
 import com.github.firmwehr.gentle.util.string.StringTable;
+import jdk.jfr.Category;
+import jdk.jfr.Description;
+import jdk.jfr.Event;
+import jdk.jfr.Label;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -32,6 +36,8 @@ public class Lexer {
 	}
 
 	public List<Token> lex() throws LexerException {
+		LexEvent lexEvent = new LexEvent();
+		lexEvent.begin();
 		List<Token> tokens = new ArrayList<>();
 
 		while (reader.canRead()) {
@@ -62,6 +68,8 @@ public class Lexer {
 		}
 		tokens.add(new EofToken(new SourceSpan(reader.getPosition(), reader.getPosition())));
 
+		lexEvent.tokens = tokens.size();
+		lexEvent.commit();
 		return tokens;
 	}
 
@@ -320,5 +328,15 @@ public class Lexer {
 		}
 
 		return Optional.of(new KeywordToken(new SourceSpan(start, end), keyword));
+	}
+
+	@Label("Lexer")
+	@Description("An optimization by gentle on firm graphs")
+	@Category("Gentle")
+	private static class LexEvent extends Event {
+
+		@Label("Tokens")
+		@Description("The amount of tokens parsed by the lexer")
+		public int tokens;
 	}
 }
