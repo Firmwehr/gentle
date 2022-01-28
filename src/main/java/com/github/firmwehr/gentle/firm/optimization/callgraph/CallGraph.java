@@ -189,10 +189,6 @@ public final class CallGraph {
 		return "CallGraph";
 	}
 
-	public void debug() {
-		System.out.println(calledMethods);
-	}
-
 	public enum Effect {
 		LOAD, // loads from memory
 		STORE, // stores into memory

@@ -2,7 +2,9 @@ package com.github.firmwehr.gentle.firm.optimization;
 
 
 import com.github.firmwehr.gentle.firm.optimization.callgraph.CallGraph;
+import com.github.firmwehr.gentle.output.Logger;
 import firm.Graph;
+import firm.GraphBase;
 import firm.Program;
 import firm.bindings.binding_irprog;
 import firm.nodes.Address;
@@ -16,6 +18,7 @@ import java.util.Queue;
 import java.util.Set;
 
 public class Optimizer {
+	private static final Logger LOGGER = new Logger(Optimizer.class);
 	private final List<GraphOptimizationStep<Graph, Boolean>> graphOptimizationSteps;
 	private final List<GraphOptimizationStep<CallGraph, Set<Graph>>> callGraphOptimizationSteps;
 
@@ -38,7 +41,7 @@ public class Optimizer {
 			Set<Graph> freed = new HashSet<>();
 			while (true) {
 				GlobalOptimizationResult result = globalOptimizations();
-				freed.addAll(result.deleted());
+				freed.addAll(result.deletable());
 				if (result.modified().isEmpty()) {
 					break; // break from do while loop, no more global optimizations in this round
 				}
@@ -46,6 +49,8 @@ public class Optimizer {
 			}
 			// the graph should not be passed to any other optimizations after it was freed
 			modified.removeAll(freed);
+			LOGGER.info("Freeing %s", freed);
+			freed.forEach(GraphBase::free);
 			if (!localOptimizations(modified)) {
 				return; // no more local changes, so nothing left to optimize
 			}
@@ -60,20 +65,19 @@ public class Optimizer {
 			modifiedCollect.addAll(modified);
 			callGraph = callGraph.updated(modified);
 		}
-		callGraph.debug();
-		Set<Graph> freed = deleteUnused(callGraph);
+		Set<Graph> freed = collectUnused(callGraph);
 		return new GlobalOptimizationResult(modifiedCollect, freed);
 	}
 
 	record GlobalOptimizationResult(
 		Set<Graph> modified,
-		Set<Graph> deleted
+		Set<Graph> deletable
 	) {
 	}
 
-	private Set<Graph> deleteUnused(CallGraph callGraph) {
+	private Set<Graph> collectUnused(CallGraph callGraph) {
 		Set<Graph> used = new HashSet<>();
-		Set<Graph> freed = new HashSet<>();
+		Set<Graph> deletable = new HashSet<>();
 		Queue<Graph> workList = new ArrayDeque<>();
 		Graph main = new Graph(binding_irprog.get_irp_main_irg());
 		used.add(main); // main is never called but always used
@@ -89,11 +93,10 @@ public class Optimizer {
 		}
 		for (Graph graph : Program.getGraphs()) {
 			if (!used.contains(graph)) {
-				freed.add(graph);
-				graph.free();
+				deletable.add(graph);
 			}
 		}
-		return freed;
+		return deletable;
 	}
 
 	private boolean localOptimizations(Iterable<Graph> graphs) {
