@@ -35,20 +35,24 @@ public class Optimizer {
 		localOptimizations(Program.getGraphs());
 		while (true) {
 			Set<Graph> modified = new HashSet<>();
+			Set<Graph> freed = new HashSet<>();
 			while (true) {
-				Set<Graph> graphs = globalOptimizations();
-				if (graphs.isEmpty()) {
+				GlobalOptimizationResult result = globalOptimizations();
+				freed.addAll(result.deleted());
+				if (result.modified().isEmpty()) {
 					break; // break from do while loop, no more global optimizations in this round
 				}
-				modified.addAll(graphs);
+				modified.addAll(result.modified());
 			}
+			// the graph should not be passed to any other optimizations after it was freed
+			modified.removeAll(freed);
 			if (!localOptimizations(modified)) {
 				return; // no more local changes, so nothing left to optimize
 			}
 		}
 	}
 
-	private Set<Graph> globalOptimizations() {
+	private GlobalOptimizationResult globalOptimizations() {
 		Set<Graph> modifiedCollect = new HashSet<>();
 		CallGraph callGraph = CallGraph.create(Program.getGraphs());
 		for (GraphOptimizationStep<CallGraph, Set<Graph>> step : this.callGraphOptimizationSteps) {
@@ -57,12 +61,19 @@ public class Optimizer {
 			callGraph = callGraph.updated(modified);
 		}
 		callGraph.debug();
-		deleteUnused(callGraph, modifiedCollect);
-		return modifiedCollect;
+		Set<Graph> freed = deleteUnused(callGraph);
+		return new GlobalOptimizationResult(modifiedCollect, freed);
 	}
 
-	private void deleteUnused(CallGraph callGraph, Set<Graph> modifiedCollect) {
+	record GlobalOptimizationResult(
+		Set<Graph> modified,
+		Set<Graph> deleted
+	) {
+	}
+
+	private Set<Graph> deleteUnused(CallGraph callGraph) {
 		Set<Graph> used = new HashSet<>();
+		Set<Graph> freed = new HashSet<>();
 		Queue<Graph> workList = new ArrayDeque<>();
 		Graph main = new Graph(binding_irprog.get_irp_main_irg());
 		used.add(main); // main is never called but always used
@@ -76,15 +87,13 @@ public class Optimizer {
 				}
 			}
 		}
-		System.out.println(modifiedCollect);
 		for (Graph graph : Program.getGraphs()) {
 			if (!used.contains(graph)) {
-				// the graph should not be passed to any other optimizations after it was freed
-				modifiedCollect.remove(graph);
-				System.out.println("freeing " + graph);
+				freed.add(graph);
 				graph.free();
 			}
 		}
+		return freed;
 	}
 
 	private boolean localOptimizations(Iterable<Graph> graphs) {
