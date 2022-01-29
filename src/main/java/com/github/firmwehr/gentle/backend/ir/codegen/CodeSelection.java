@@ -149,7 +149,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			List<IkeaNode> jumps = block.nodes()
 				.stream()
 				.filter(it -> it instanceof IkeaJcc || it instanceof IkeaJmp || it instanceof IkeaRet ||
-					it instanceof IkeaCmp)
+					(it instanceof IkeaCmp cmp && cmp.belongsToJump()))
 				.toList();
 			block.nodes().removeAll(jumps);
 			block.nodes().addAll(jumps);
@@ -258,7 +258,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		// x86 uses special registers for conditional jump, so cmp result needs to be preceeding conditional jump
 	}
 
-	private IkeaCmp visitFromCond(Cmp node) {
+	private IkeaCmp visitFromCond(Cmp node, boolean fromJumo) {
 		IkeaBløck block = blocks.get((Block) node.getBlock());
 		IkeaNode left = nodes.get(node.getLeft());
 		IkeaNode right = nodes.get(node.getRight());
@@ -271,7 +271,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			wasInverted = true;
 		}
 
-		return new IkeaCmp(left, right, node, wasInverted);
+		return new IkeaCmp(left, right, node, wasInverted, fromJumo);
 	}
 
 	@Override
@@ -293,10 +293,10 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		Relation relation = ((Cmp) node.getSelector()).getRelation();
 
-		IkeaCmp cmp = visitFromCond((Cmp) node.getSelector());
+		IkeaCmp cmp = visitFromCond((Cmp) node.getSelector(), true);
 
 		if (cmp.wasInverted()) {
-			relation = relation.inversed();
+			relation = Util.invert(relation);
 		}
 
 		IkeaJcc ikeaJcc = new IkeaJcc(blocks.get(trueBlock), blocks.get(falseBlock), node, relation, cmp);
@@ -471,9 +471,10 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		IkeaBløck block = blocks.get((Block) node.getBlock());
-		IkeaSet ikeaSet =
-			new IkeaSet(nextRegister(node), node, nodes.get(node.getSel()), ((Cmp) node.getSel()).getRelation());
+		IkeaCmp ikeaCmp = visitFromCond((Cmp) node.getSel(), false);
+		IkeaSet ikeaSet = new IkeaSet(nextRegister(node), node, ikeaCmp, ((Cmp) node.getSel()).getRelation());
 		nodes.put(node, ikeaSet);
+		block.nodes().add(ikeaCmp);
 		block.nodes().add(ikeaSet);
 	}
 

@@ -14,12 +14,14 @@ public class IkeaCmp implements IkeaNode {
 	private final IkeaNode right;
 	private final Cmp cmp;
 	private final boolean wasInverted;
+	private final boolean belongsToJump;
 
-	public IkeaCmp(IkeaNode left, IkeaNode right, Cmp cmp, boolean wasInverted) {
+	public IkeaCmp(IkeaNode left, IkeaNode right, Cmp cmp, boolean wasInverted, boolean belongsToJump) {
 		this.left = left;
 		this.right = right;
 		this.cmp = cmp;
 		this.wasInverted = wasInverted;
+		this.belongsToJump = belongsToJump;
 	}
 
 	@Override
@@ -42,6 +44,10 @@ public class IkeaCmp implements IkeaNode {
 
 	public boolean wasInverted() {
 		return wasInverted;
+	}
+
+	public boolean belongsToJump() {
+		return belongsToJump;
 	}
 
 	@Override

@@ -3,9 +3,11 @@ package com.github.firmwehr.gentle.firm.optimization;
 import com.github.firmwehr.fiascii.FiAscii;
 import com.github.firmwehr.fiascii.generated.CmpWithSameInputsPattern;
 import com.github.firmwehr.fiascii.generated.CondToBoolShortcutPattern;
+import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
 import firm.BackEdges;
 import firm.Graph;
+import firm.Mode;
 import firm.bindings.binding_irgopt;
 import firm.bindings.binding_irnode;
 import firm.nodes.Cond;
@@ -14,6 +16,8 @@ import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
 import firm.nodes.Phi;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
@@ -79,48 +83,69 @@ public class BooleanOptimization extends NodeVisitor.Default {
 	}
 
 	private static boolean applyCondToBoolShortcut(CondToBoolShortcutPattern.Match match, Graph graph, Node block) {
-		Optional<Phi> maybePhi = findPhi(match);
-		if (maybePhi.isEmpty()) {
-			return false;
+		boolean changed = false;
+
+		for (Phi phi : findPhi(match)) {
+			int trueIndex = match.out1().getNum() == Cond.pnTrue ? 0 : 1;
+			int falseIndex = 1 - trueIndex;
+			Const trueNode = (Const) phi.getPred(trueIndex);
+			Const falseNode = (Const) phi.getPred(falseIndex);
+
+			// setxx has a hardcoded meaning and true is 1!
+			if (!trueNode.getTarval().isOne()) {
+				match.cmp().setRelation(Util.invert(match.cmp().getRelation()));
+				Const tmp = trueNode;
+				trueNode = falseNode;
+				falseNode = tmp;
+			}
+
+			Node mux = match.cmp().getGraph().newMux(match.cmp().getBlock(), match.cmp(), falseNode, trueNode);
+
+			for (BackEdges.Edge out : BackEdges.getOuts(phi)) {
+				out.node.setPred(out.pos, mux);
+			}
+
+			Node jmp = match.cmp().getGraph().newJmp(match.cmp().getBlock());
+			binding_irnode.set_irn_in(match.afterBlock().ptr, 1, Node.getBufferFromNodeList(new Node[]{jmp}));
+
+			changed = true;
 		}
-		Phi phi = maybePhi.get();
 
-		int trueIndex = match.out1().getNum() == Cond.pnTrue ? 0 : 1;
-		int falseIndex = 1 - trueIndex;
-		Const trueNode = (Const) phi.getPred(trueIndex);
-		Const falseNode = (Const) phi.getPred(falseIndex);
-
-		// setxx has a hardcoded meaning and true is 1!
-		if (!trueNode.getTarval().isOne()) {
-			match.cmp().setRelation(match.cmp().getRelation().inversed());
-			Const tmp = trueNode;
-			trueNode = falseNode;
-			falseNode = tmp;
-		}
-
-		Node mux = match.cmp().getGraph().newMux(match.cmp().getBlock(), match.cmp(), falseNode, trueNode);
-
-		for (BackEdges.Edge out : BackEdges.getOuts(phi)) {
-			out.node.setPred(out.pos, mux);
-		}
-
-		Node jmp = match.cmp().getGraph().newJmp(match.cmp().getBlock());
-		binding_irnode.set_irn_in(match.afterBlock().ptr, 1, Node.getBufferFromNodeList(new Node[]{jmp}));
-
-		return true;
-	}
-
-	private static Optional<Phi> findPhi(CondToBoolShortcutPattern.Match match) {
-		for (BackEdges.Edge edge : BackEdges.getOuts(match.afterBlock())) {
-			if (edge.node instanceof Phi phi) {
-				if (!(phi.getPred(0) instanceof Const) || !(phi.getPred(1) instanceof Const)) {
-					continue;
+		if (changed) {
+			for (BackEdges.Edge edge : BackEdges.getOuts(match.afterBlock())) {
+				if (edge.node instanceof Phi phi && phi.getMode().equals(Mode.getM())) {
+					for (BackEdges.Edge out : BackEdges.getOuts(phi)) {
+						out.node.setPred(out.pos, phi.getPred(0));
+					}
+					Node[] newPreds =
+						Util.predsStream(graph.getEnd()).filter(it -> !it.equals(phi)).toArray(Node[]::new);
+					binding_irnode.set_irn_in(graph.getEnd().ptr, newPreds.length,
+						Node.getBufferFromNodeList(newPreds));
+					Graph.killNode(phi);
 				}
-				return Optional.of(phi);
 			}
 		}
 
-		return Optional.empty();
+		return changed;
+	}
+
+	private static List<Phi> findPhi(CondToBoolShortcutPattern.Match match) {
+		List<Phi> foundPhis = new ArrayList<>();
+		for (BackEdges.Edge edge : BackEdges.getOuts(match.afterBlock())) {
+			if (edge.node instanceof Phi phi && !phi.getMode().equals(Mode.getM())) {
+				if (!(phi.getPred(0) instanceof Const left) || !(phi.getPred(1) instanceof Const right)) {
+					return List.of();
+				}
+				if (left.getTarval().isOne() && right.getTarval().isNull()) {
+					foundPhis.add(phi);
+				}
+				if (left.getTarval().isNull() && right.getTarval().isOne()) {
+					foundPhis.add(phi);
+				}
+			}
+		}
+
+		return foundPhis;
 	}
 
 	private void applyBooleanOptimization() {
@@ -161,9 +186,9 @@ public class BooleanOptimization extends NodeVisitor.Default {
 		│ out1: Proj │ │out2: Proj │
 		└──────┬─────┘ └────┬──────┘
 		       │            │
-		       └──────┬─────┘
-		              │
-		    ┌─────────▼────────┐
+		       │            │
+		       │            │
+		    ┌──▼────────────▼──┐
 		    │afterBlock: Block │
 		    └──────────────────┘""")
 	public static Optional<CondToBoolShortcutPattern.Match> condToBoolShortcut(Node node) {

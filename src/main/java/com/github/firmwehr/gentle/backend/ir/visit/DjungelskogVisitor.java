@@ -197,7 +197,7 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 			case Greater -> "setg";
 			case LessEqual -> "setle";
 			case GreaterEqual -> "setge";
-			case LessGreater, UnorderedLessGreater -> "jne";
+			case LessGreater, UnorderedLessGreater -> "setne";
 			default -> throw new InternalCompilerException(":( Where do we use " + set.getRelation());
 		};
 
