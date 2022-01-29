@@ -2,6 +2,11 @@ package com.github.firmwehr.gentle.firm.optimization;
 
 import com.github.firmwehr.gentle.output.Logger;
 import com.google.common.base.Preconditions;
+import jdk.jfr.Category;
+import jdk.jfr.Description;
+import jdk.jfr.Event;
+import jdk.jfr.Label;
+
 
 public final class GraphOptimizationStep<T, R> {
 	private static final Logger LOGGER = new Logger(GraphOptimizationStep.class);
@@ -16,7 +21,12 @@ public final class GraphOptimizationStep<T, R> {
 
 	public R optimize(T t) {
 		LOGGER.info("Running %s for %s", this.description, t);
-		return this.optimizationFunction.optimize(t);
+		OptimizationEvent event = new OptimizationEvent(this.description, String.valueOf(t));
+		event.begin();
+		R result = this.optimizationFunction.optimize(t);
+		event.result = String.valueOf(result);
+		event.commit();
+		return result;
 	}
 
 	public static <T, C> Builder<T, C> builder() {
@@ -48,5 +58,25 @@ public final class GraphOptimizationStep<T, R> {
 	public interface OptimizationFunction<T, R> {
 
 		R optimize(T t);
+	}
+
+	@Label("FirmOptimization")
+	@Description("An optimization by gentle on firm graphs")
+	@Category("Gentle")
+	private static class OptimizationEvent extends Event {
+		@Label("Type")
+		private final String type;
+
+		@Label("Object")
+		private final String object;
+
+		@Label("Result")
+		@Description("The result of the optimization")
+		private String result;
+
+		private OptimizationEvent(String type, String object) {
+			this.type = type;
+			this.object = object;
+		}
 	}
 }
