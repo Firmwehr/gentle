@@ -33,6 +33,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShl;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaXor;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.Pair;
@@ -52,6 +53,7 @@ import firm.nodes.Const;
 import firm.nodes.Conv;
 import firm.nodes.Div;
 import firm.nodes.End;
+import firm.nodes.Eor;
 import firm.nodes.Jmp;
 import firm.nodes.Load;
 import firm.nodes.Minus;
@@ -350,6 +352,20 @@ public class CodeSelection extends NodeVisitor.Default {
 		// @formatter:on
 		nodes.put(node, ikeaDiv);
 		block.nodes().add(ikeaDiv);
+	}
+
+	@Override
+	public void visit(Eor node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
+		IkeaBløck block = blocks.get((Block) node.getBlock());
+		IkeaXor ikeaXor =
+			new IkeaXor(nextRegister(node.getMode()), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
+		nodes.put(node, ikeaXor);
+		block.nodes().add(ikeaXor);
 	}
 
 	@Override

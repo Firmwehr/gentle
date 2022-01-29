@@ -30,6 +30,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShl;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaXor;
 import com.github.firmwehr.gentle.debug.DebugStore;
 import com.google.common.collect.Lists;
 import firm.Entity;
@@ -105,6 +106,11 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 	@Override
 	public String visit(IkeaAnd and) {
 		return simpleBinaryOperator("and", and.getRight().box(), and.getLeft().box(), and.box());
+	}
+
+	@Override
+	public String visit(IkeaXor xor) {
+		return simpleBinaryOperator("xor", xor.getRight().box(), xor.getLeft().box(), xor.box());
 	}
 
 	@Override
