@@ -10,13 +10,8 @@ import firm.Dump;
 import firm.Graph;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.function.ToIntFunction;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 public class GraphDumper {
 
@@ -42,35 +37,16 @@ public class GraphDumper {
 		IkeaGraph ikeaGraph = controlFlowGraph.getStart().nodes().get(0).graph();
 		Graph firmGraph = controlFlowGraph.getStart().origin().getGraph();
 
+		char graphDumpNumber = firmGraph.ptr.getChar(192 /* Not a magic number */);
+		firmGraph.ptr.setChar(192 /* Still not a magic number */, (char) (graphDumpNumber + 1));
 
-		Pattern graphFilePattern =
-			Pattern.compile(".+" + Pattern.quote(firmGraph.getEntity().getLdName()) + "-(\\d+)-.+\\.vcg");
+		String fileName = "%s-%02d-%s.vcg".formatted(firmGraph.getEntity().getLdName(), (int) graphDumpNumber, name);
+		String asString = new VcgDumper(controlFlowGraph, ikeaGraph).dumpGraphAsString();
 
-		try (Stream<Path> files = Files.list(dumpPath)) {
-			int maxNum = files.map(Path::toString)
-				.filter(graphFilePattern.asMatchPredicate())
-				.mapToInt(graphNumber(graphFilePattern))
-				.max()
-				.orElse(0);
-
-
-			String fileName = "%s-%02d-%s.vcg".formatted(firmGraph.getEntity().getLdName(), maxNum + 1, name);
-
-			String asString = new VcgDumper(controlFlowGraph, ikeaGraph).dumpGraphAsString();
+		try {
 			Files.writeString(dumpPath.resolve(fileName), asString);
 		} catch (IOException e) {
-			throw new UncheckedIOException(e);
+			throw new InternalCompilerException("Failed to dump backend graph", e);
 		}
-
-	}
-
-	private static ToIntFunction<String> graphNumber(Pattern graphFilePattern) {
-		return it -> {
-			Matcher matcher = graphFilePattern.matcher(it);
-			if (!matcher.find()) {
-				throw new InternalCompilerException("Could not extract dump path " + it);
-			}
-			return Integer.parseInt(matcher.group(1));
-		};
 	}
 }
