@@ -3,6 +3,7 @@ package com.github.firmwehr.gentle.firm.construction;
 import com.github.firmwehr.gentle.cli.CompilerArguments;
 import com.github.firmwehr.gentle.debug.DebugStore;
 import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
+import com.github.firmwehr.gentle.firm.optimization.BooleanOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.firm.optimization.EscapeAnalysisOptimization;
 import com.github.firmwehr.gentle.firm.optimization.FirmGraphCleanup;
@@ -116,6 +117,9 @@ public class FirmBuilder {
 			if (!CompilerArguments.get().noInlining()) {
 				builder.addCallGraphStep(MethodInliningOptimization.methodInlineOptimization());
 			}
+
+			builder.addGraphStep(BooleanOptimization.booleanOptimization());
+
 			builder.freeUnusedGraphs(!CompilerArguments.get().noFreeUnusedGraphs());
 		} else {
 			LOGGER.info("optimization level set to 0, all optional optimization will be disabled");
