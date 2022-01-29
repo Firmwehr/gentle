@@ -51,6 +51,7 @@ import firm.Construction;
 import firm.Entity;
 import firm.Graph;
 import firm.Mode;
+import firm.Program;
 import firm.Relation;
 import firm.Type;
 import firm.bindings.binding_ircons;
@@ -134,6 +135,8 @@ public class FirmGraphBuilder {
 				construction.setVariable(index, proj);
 				debugStore.putMetadata(proj, forElement(parameter));
 			}
+		} else {
+			Program.setMainGraph(currentGraph);
 		}
 
 		processMethodBody(new Context(construction, slotTable, method), method);
