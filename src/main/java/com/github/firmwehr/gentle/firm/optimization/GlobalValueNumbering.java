@@ -4,12 +4,9 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.firm.GentleBindings;
 import com.github.firmwehr.gentle.output.Logger;
 import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Iterables;
 import firm.Graph;
-import firm.Mode;
 import firm.bindings.binding_irdom;
 import firm.bindings.binding_irgopt;
-import firm.bindings.binding_irnode;
 import firm.nodes.Address;
 import firm.nodes.Block;
 import firm.nodes.Cmp;
@@ -79,15 +76,11 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 	 */
 	private record NodeHashKey(
 		Node node,
-		binding_irnode.ir_opcode opcode,
-		Node[] preds,
-		Mode mode,
-		long tarval
+		int precomputedHashCode
 	) {
 
 		public NodeHashKey(Node node) {
-			this(node, node.getOpCode(), Iterables.toArray(node.getPreds(), Node.class), node.getMode(),
-				node instanceof Const cons ? cons.getTarval().asLong() : 0);
+			this(node, computeNodeHash(node));
 		}
 
 		@Override
@@ -99,7 +92,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				return false;
 			}
 			NodeHashKey that = (NodeHashKey) o;
-			var thatNode = that.node();
+			var thatNode = that.node;
 
 			// check if firm considers them equal
 			if (node.equals(thatNode)) {
@@ -107,29 +100,30 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 			}
 
 			// check node op
-			if (opcode() != that.opcode()) {
+			if (node.getOpCode() != thatNode.getOpCode()) {
 				return false;
 			}
 
 			// check pred node count
-			if (preds().length != that.preds().length) {
+			if (node.getPredCount() != thatNode.getPredCount()) {
 				return false;
 			}
 
 			// check each pred
-			for (int i = 0; i < preds().length; i++) {
-				if (!preds()[i].equals(that.preds[i])) {
+			var predCount = node.getPredCount();
+			for (int i = 0; i < predCount; i++) {
+				if (!node.getPred(i).equals(thatNode.getPred(i))) {
 					return false;
 				}
 			}
 
 			// actuall different objects, must use equals
-			if (!mode().equals(that.mode())) {
+			if (!node.getMode().equals(thatNode.getMode())) {
 				return false;
 			}
 
 			// some nodes can be configured (like const) this is a special case for each node
-			switch (opcode()) {
+			switch (node.getOpCode()) {
 				case iro_Address -> {
 					var n0 = (Address) node;
 					var n1 = (Address) thatNode;
@@ -145,8 +139,10 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 					}
 				}
 				case iro_Const -> {
+					var n0 = (Const) node;
+					var n1 = (Const) thatNode;
 					// TODO: does tarval do internal deduplication?
-					if (tarval() != that.tarval()) {
+					if (n0.getTarval().asLong() != n1.getTarval().asLong()) {
 						return false;
 					}
 				}
@@ -162,7 +158,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				case iro_Load -> {
 					var n0 = (Load) node;
 					var n1 = (Load) thatNode;
-					if (!mode().equals(that.mode()) || !n0.getType().equals(n1.getType())) {
+					if (!n0.getMode().equals(n1.getMode()) || !n0.getType().equals(n1.getType())) {
 						return false;
 					}
 				}
@@ -208,13 +204,26 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 
 		@Override
 		public int hashCode() {
+			return precomputedHashCode;
+		}
+
+		private static int computeNodeHash(Node node) {
 			// nodes are considered equal if they themself are equally configured and share the same preds
-			// this hash ignores node configuration, but that's okay
 			int hash = node.getClass().hashCode();
-			for (Node pred : preds()) {
-				hash ^= pred.ptr.hashCode();
+
+			// while generally okay to ignore node configuration, some nodes never have preds and have identical hash
+			if (node instanceof Const cons) {
+				hash ^= Long.hashCode(cons.getTarval().asLong());
+			} else if (node instanceof Address address) {
+				hash ^= address.getEntity().hashCode();
 			}
 
+			// check each pred
+			var predCount = node.getPredCount();
+			for (int i = 0; i < predCount; i++) {
+				hash += node.getPred(i).ptr.hashCode();
+				hash *= 31;
+			}
 			return hash;
 		}
 	}
@@ -386,7 +395,7 @@ public class GlobalValueNumbering extends NodeVisitor.Default {
 				lastAvailable.putAll(availableExpressions);
 
 				// dump graphs if we had actual changes (next statement will destroy this information)
-				if (runAgain) {
+				if (runAgain && LOGGER.isDebugEnabled()) {
 					dumpGraph(graph, "gvn-iter-block" + block.getNr());
 				}
 
