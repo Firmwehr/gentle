@@ -49,6 +49,9 @@ import com.github.firmwehr.gentle.parser.tokens.Token;
 import com.github.firmwehr.gentle.source.Source;
 import com.github.firmwehr.gentle.source.SourceSpan;
 import com.github.firmwehr.gentle.util.Pair;
+import jdk.jfr.Category;
+import jdk.jfr.Event;
+import jdk.jfr.Label;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -68,6 +71,8 @@ public class Parser {
 	}
 
 	public Program parse() throws ParseException {
+		ParseEvent parseEvent = new ParseEvent();
+		parseEvent.begin();
 		List<ClassDeclaration> classDeclarations = new ArrayList<>();
 
 		while (tokens.expecting(ExpectedToken.CLASS).peek().isKeyword(Keyword.CLASS)) {
@@ -76,6 +81,7 @@ public class Parser {
 
 		tokens.expecting(ExpectedToken.EOF).takeEof();
 
+		parseEvent.commit();
 		return new Program(classDeclarations);
 	}
 
@@ -596,5 +602,11 @@ public class Parser {
 
 	private Ident parseIdent() throws ParseException {
 		return Ident.fromToken(tokens.expecting(ExpectedToken.IDENTIFIER).takeIdent());
+	}
+
+	@Label("Parser")
+	@Category("Gentle")
+	private static class ParseEvent extends Event {
+
 	}
 }

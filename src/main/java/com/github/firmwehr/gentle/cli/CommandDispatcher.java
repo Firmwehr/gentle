@@ -1,6 +1,7 @@
 package com.github.firmwehr.gentle.cli;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
+import com.github.firmwehr.gentle.jfr.SelfRecording;
 import com.github.firmwehr.gentle.output.UserOutput;
 
 import java.nio.file.Path;
@@ -64,7 +65,7 @@ public class CommandDispatcher {
 			System.exit(1);
 		}
 
-		requestedCommands.get(0).command().accept(arguments.path());
+		SelfRecording.withProfiler(arguments.jfr(), () -> requestedCommands.get(0).command().accept(arguments.path()));
 	}
 
 	private record CommandSpec(

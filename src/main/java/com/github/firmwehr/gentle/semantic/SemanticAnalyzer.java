@@ -22,6 +22,9 @@ import com.github.firmwehr.gentle.semantic.ast.type.SVoidType;
 import com.github.firmwehr.gentle.semantic.ast.type.SVoidyType;
 import com.github.firmwehr.gentle.source.Source;
 import com.github.firmwehr.gentle.source.SourceSpan;
+import jdk.jfr.Category;
+import jdk.jfr.Event;
+import jdk.jfr.Label;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +40,8 @@ public class SemanticAnalyzer {
 	}
 
 	public SProgram analyze() throws SemanticException {
+		SemanticAnalysisEvent event = new SemanticAnalysisEvent();
+		event.begin();
 		Namespace<SClassDeclaration> classes = new Namespace<>(source);
 
 		addClasses(classes);
@@ -50,6 +55,7 @@ public class SemanticAnalyzer {
 
 		SMethod mainMethod = findMainMethod(classes);
 
+		event.commit();
 		return new SProgram(classes, mainMethod);
 	}
 
@@ -216,6 +222,12 @@ public class SemanticAnalyzer {
 		}
 
 		return visitor.getFoundMainMethod();
+	}
+
+	@Label("SemanticAnalysis")
+	@Category("Gentle")
+	private static class SemanticAnalysisEvent extends Event {
+
 	}
 
 }

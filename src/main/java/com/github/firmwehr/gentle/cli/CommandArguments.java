@@ -83,6 +83,9 @@ public interface CommandArguments {
 		paramLabel = "FILE")
 	Path path();
 
+	@Option(names = "--jfr", description = "run with java flight recorder running")
+	boolean jfr();
+
 
 	class ExistingFileConverter extends StringConverter<Path> {
 
