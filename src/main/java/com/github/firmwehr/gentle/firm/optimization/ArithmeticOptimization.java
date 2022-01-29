@@ -559,7 +559,7 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 
 	@FiAscii("""
 		      ┌───────────┐    ┌───────┐
-		      │ factor: * │    │ bv: * │ Similar to DistributivePattern, can be brought to
+		      │ factor: * │    │ bv: * │ Similar to DistributivePattern, with av = 1
 		      └────┬─────┬┘    └───┬───┘
 		           │     │         │
 		           │     └───────┬─┘
