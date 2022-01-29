@@ -43,7 +43,7 @@ import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 
 public class ArithmeticOptimization extends NodeVisitor.Default {
 
-	private static final Logger LOGGER = new Logger(ArithmeticOptimization.class, Logger.LogLevel.DEBUG);
+	private static final Logger LOGGER = new Logger(ArithmeticOptimization.class);
 
 	private static final OptimizationList OPTIMIZATIONS = OptimizationList.builder()
 		.addStep(ArithmeticOptimization::timesZero,
@@ -153,11 +153,7 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 
 	@Override
 	public void defaultVisit(Node node) {
-		boolean before = hasChanged;
 		hasChanged |= OPTIMIZATIONS.optimize(node, node.getGraph(), node.getBlock());
-		if (hasChanged != before) {
-			LOGGER.warn("OPTIMIZED %s in %s", node, node.getGraph());
-		}
 	}
 
 	private static boolean collapseDoubleShiftLeft(DoubleShiftLeftPattern.Match match, Graph graph, Node block) {
@@ -557,12 +553,7 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		                 │ add: Add│
 		                 └─────────┘""")
 	public static Optional<DistributivePattern.Match> distributive(Node node) {
-		Optional<DistributivePattern.Match> match = DistributivePattern.match(node);
-		LOGGER.warn("TRYING MATCH FOR %s", node);
-		if (match.isPresent()) {
-			LOGGER.warn("MATCH FOR %s: %s", node, match.get());
-		}
-		return match;
+		return DistributivePattern.match(node);
 	}
 
 

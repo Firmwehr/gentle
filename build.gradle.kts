@@ -87,8 +87,9 @@ dependencies {
 	implementation("io.github.jbock-java:jbock:$jbock")
 	annotationProcessor("io.github.jbock-java:jbock-compiler:$jbock")
 
-	implementation("com.github.firmwehr:FiAscii:188d11fdb4")
-	annotationProcessor("com.github.firmwehr:FiAscii:188d11fdb4")
+	val fiascii = "d78d2fa106"
+	implementation("com.github.firmwehr:FiAscii:$fiascii")
+	annotationProcessor("com.github.firmwehr:FiAscii:$fiascii")
 
 	// Persistent collections
 	implementation("org.javimmutable:javimmutable-collections:3.2.1")
