@@ -149,18 +149,18 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 	}
 
 	private static boolean collapseDistributiveShifts(DistributiveShiftsPattern.Match match, Graph graph, Node block) {
-		int a = 1 << match.av().getTarval().asInt();
-		int b = 1 << match.bv().getTarval().asInt();
+		int a = match.av().getTarval().asInt();
+		int b = match.bv().getTarval().asInt();
 		Mode mode = match.add().getMode();
 		if (a == b) { // (n << k) + (n << k) == (n << (k + 1))
-			int newShiftValue = a << 1;
+			int newShiftValue = a + 1;
 			if (newShiftValue >= mode.getSizeBits()) {
 				return exchange(match.add(), newConst(graph, 0, mode));
 			}
 			Node newShiftConstant = newConst(graph, newShiftValue, Mode.getIu());
 			return exchange(match.add(), graph.newShl(block, match.factor(), newShiftConstant));
 		}
-		return exchange(match.add(), graph.newMul(block, match.factor(), newConst(graph, a + b, mode)));
+		return exchange(match.add(), graph.newMul(block, match.factor(), newConst(graph, (1 << a) + (1 << b), mode)));
 	}
 
 	private static boolean collapseMixedDistributive(MixedDistributivePattern.Match match, Graph graph, Node block) {

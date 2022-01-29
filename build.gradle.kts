@@ -87,7 +87,7 @@ dependencies {
 	implementation("io.github.jbock-java:jbock:$jbock")
 	annotationProcessor("io.github.jbock-java:jbock-compiler:$jbock")
 
-	val fiascii = "d78d2fa106"
+	val fiascii = "bef150f1f0665d718d96631a68e30917d579ce63"
 	implementation("com.github.firmwehr:FiAscii:$fiascii")
 	annotationProcessor("com.github.firmwehr:FiAscii:$fiascii")
 
