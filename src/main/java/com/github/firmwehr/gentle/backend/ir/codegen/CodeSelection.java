@@ -29,6 +29,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSet;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShl;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
@@ -59,6 +60,7 @@ import firm.nodes.Load;
 import firm.nodes.Minus;
 import firm.nodes.Mod;
 import firm.nodes.Mul;
+import firm.nodes.Mux;
 import firm.nodes.NoMem;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
@@ -459,6 +461,20 @@ public class CodeSelection extends NodeVisitor.Default {
 		IkeaMul ikeaMul = new IkeaMul(nextRegister(node), nodes.get(node.getLeft()), nodes.get(node.getRight()), node);
 		nodes.put(node, ikeaMul);
 		block.nodes().add(ikeaMul);
+	}
+
+	@Override
+	public void visit(Mux node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
+		IkeaBløck block = blocks.get((Block) node.getBlock());
+		IkeaSet ikeaSet =
+			new IkeaSet(nextRegister(node), node, nodes.get(node.getSel()), ((Cmp) node.getSel()).getRelation());
+		nodes.put(node, ikeaSet);
+		block.nodes().add(ikeaSet);
 	}
 
 	@Override

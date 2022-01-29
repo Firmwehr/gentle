@@ -2,13 +2,17 @@ package com.github.firmwehr.gentle.firm.optimization;
 
 import com.github.firmwehr.fiascii.FiAscii;
 import com.github.firmwehr.fiascii.generated.CmpWithSameInputsPattern;
+import com.github.firmwehr.fiascii.generated.CondToBoolShortcutPattern;
 import com.github.firmwehr.gentle.output.Logger;
 import firm.BackEdges;
 import firm.Graph;
 import firm.bindings.binding_irgopt;
+import firm.bindings.binding_irnode;
+import firm.nodes.Cond;
 import firm.nodes.Const;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
+import firm.nodes.Phi;
 
 import java.util.Optional;
 
@@ -25,11 +29,12 @@ public class BooleanOptimization extends NodeVisitor.Default {
 				return false;
 			}
 
-			Node newInput = graph.newConst(match.cmp().getMode().getNull());
+			Node newInput = graph.newConst(match.input().getMode().getNull());
 			match.cmp().setLeft(newInput);
 			match.cmp().setRight(newInput);
 			return true;
 		}) //
+		.addStep(BooleanOptimization::condToBoolShortcut, BooleanOptimization::applyCondToBoolShortcut) //
 		.build();
 
 	private boolean hasChanged;
@@ -73,6 +78,51 @@ public class BooleanOptimization extends NodeVisitor.Default {
 			.build();
 	}
 
+	private static boolean applyCondToBoolShortcut(CondToBoolShortcutPattern.Match match, Graph graph, Node block) {
+		Optional<Phi> maybePhi = findPhi(match);
+		if (maybePhi.isEmpty()) {
+			return false;
+		}
+		Phi phi = maybePhi.get();
+
+		int trueIndex = match.out1().getNum() == Cond.pnTrue ? 0 : 1;
+		int falseIndex = 1 - trueIndex;
+		Const trueNode = (Const) phi.getPred(trueIndex);
+		Const falseNode = (Const) phi.getPred(falseIndex);
+
+		// setxx has a hardcoded meaning and true is 1!
+		if (!trueNode.getTarval().isOne()) {
+			match.cmp().setRelation(match.cmp().getRelation().inversed());
+			Const tmp = trueNode;
+			trueNode = falseNode;
+			falseNode = tmp;
+		}
+
+		Node mux = match.cmp().getGraph().newMux(match.cmp().getBlock(), match.cmp(), falseNode, trueNode);
+
+		for (BackEdges.Edge out : BackEdges.getOuts(phi)) {
+			out.node.setPred(out.pos, mux);
+		}
+
+		Node jmp = match.cmp().getGraph().newJmp(match.cmp().getBlock());
+		binding_irnode.set_irn_in(match.afterBlock().ptr, 1, Node.getBufferFromNodeList(new Node[]{jmp}));
+
+		return true;
+	}
+
+	private static Optional<Phi> findPhi(CondToBoolShortcutPattern.Match match) {
+		for (BackEdges.Edge edge : BackEdges.getOuts(match.afterBlock())) {
+			if (edge.node instanceof Phi phi) {
+				if (!(phi.getPred(0) instanceof Const) || !(phi.getPred(1) instanceof Const)) {
+					continue;
+				}
+				return Optional.of(phi);
+			}
+		}
+
+		return Optional.empty();
+	}
+
 	private void applyBooleanOptimization() {
 		// We want to walk the normal walk. Starting at the end and walking up the pred chain allows us to
 		// match larger patterns first. This is relevant as e.g. associativeMul should simplify multiplication before
@@ -96,5 +146,27 @@ public class BooleanOptimization extends NodeVisitor.Default {
 		└──────────┘""")
 	public static Optional<CmpWithSameInputsPattern.Match> cmpWithSameInputs(Node node) {
 		return CmpWithSameInputsPattern.match(node);
+	}
+
+	@FiAscii("""
+		         ┌──────────┐
+		         │ cmp: Cmp │
+		         └────┬─────┘
+		              │
+		        ┌─────▼──────┐
+		        │ cond: Cond │
+		        └──┬─────┬───┘
+		           │     │
+		┌──────────▼─┐ ┌─▼─────────┐
+		│ out1: Proj │ │out2: Proj │
+		└──────┬─────┘ └────┬──────┘
+		       │            │
+		       └──────┬─────┘
+		              │
+		    ┌─────────▼────────┐
+		    │afterBlock: Block │
+		    └──────────────────┘""")
+	public static Optional<CondToBoolShortcutPattern.Match> condToBoolShortcut(Node node) {
+		return CondToBoolShortcutPattern.match(node);
 	}
 }

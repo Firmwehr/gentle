@@ -26,6 +26,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSet;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShl;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
@@ -184,6 +185,24 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		result += " " + blockMarker(jcc.getTrueTarget());
 		result += "\n";
 		result += "jmp " + blockMarker(jcc.getFalseTarget());
+
+		return result;
+	}
+
+	@Override
+	public String visit(IkeaSet set) {
+		String result = switch (set.getRelation()) {
+			case Equal -> "sete";
+			case Less -> "setl";
+			case Greater -> "setg";
+			case LessEqual -> "setle";
+			case GreaterEqual -> "setge";
+			case LessGreater, UnorderedLessGreater -> "jne";
+			default -> throw new InternalCompilerException(":( Where do we use " + set.getRelation());
+		};
+
+		result += " %%r8%s\n".formatted(getRegisterSuffix(set.box()));
+		result += storeFromTargetToStack(set.box(), "%r8") + "\n";
 
 		return result;
 	}
