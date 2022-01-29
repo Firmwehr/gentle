@@ -79,6 +79,10 @@ public interface CommandArguments {
 	@Option(names = "--no-inlining", description = "do not inline code")
 	boolean noInlining();
 
+	@Option(names = "--no-free-unused-graphs",
+		description = "do not remove graphs that are not reachable from the main method")
+	boolean noFreeUnusedGraphs();
+
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",
 		paramLabel = "FILE")
 	Path path();
