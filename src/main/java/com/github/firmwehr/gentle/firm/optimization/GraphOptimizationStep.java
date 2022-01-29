@@ -16,7 +16,9 @@ public final class GraphOptimizationStep<T, R> {
 
 	public R optimize(T t) {
 		LOGGER.info("Running %s for %s", this.description, t);
-		return this.optimizationFunction.optimize(t);
+		R result = this.optimizationFunction.optimize(t);
+		LOGGER.warn("Result: %s", result);
+		return result;
 	}
 
 	public static <T, C> Builder<T, C> builder() {

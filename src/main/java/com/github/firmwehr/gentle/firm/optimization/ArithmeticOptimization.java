@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.firm.optimization;
 
 import com.github.firmwehr.fiascii.FiAscii;
 import com.github.firmwehr.fiascii.generated.AddMinusPattern;
+import com.github.firmwehr.fiascii.generated.AddSamePattern;
 import com.github.firmwehr.fiascii.generated.AddZeroPattern;
 import com.github.firmwehr.fiascii.generated.AssociativeAddPattern;
 import com.github.firmwehr.fiascii.generated.AssociativeMulPattern;
@@ -9,8 +10,11 @@ import com.github.firmwehr.fiascii.generated.DistributivePattern;
 import com.github.firmwehr.fiascii.generated.DivByConstPattern;
 import com.github.firmwehr.fiascii.generated.DivByNegOnePattern;
 import com.github.firmwehr.fiascii.generated.DivByOnePattern;
+import com.github.firmwehr.fiascii.generated.DoubleShiftLeftPattern;
 import com.github.firmwehr.fiascii.generated.MinusMinusPattern;
 import com.github.firmwehr.fiascii.generated.ModByConstPattern;
+import com.github.firmwehr.fiascii.generated.MulInAddPattern;
+import com.github.firmwehr.fiascii.generated.MulInShiftLeftPattern;
 import com.github.firmwehr.fiascii.generated.ShiftRightLeftPattern;
 import com.github.firmwehr.fiascii.generated.ShiftRightSignedLeftPattern;
 import com.github.firmwehr.fiascii.generated.SubtractFromZeroPattern;
@@ -39,10 +43,9 @@ import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 
 public class ArithmeticOptimization extends NodeVisitor.Default {
 
-	private static final Logger LOGGER = new Logger(ArithmeticOptimization.class);
+	private static final Logger LOGGER = new Logger(ArithmeticOptimization.class, Logger.LogLevel.DEBUG);
 
 	private static final OptimizationList OPTIMIZATIONS = OptimizationList.builder()
-		.addStep(ArithmeticOptimization::timesOne, (match, graph, block) -> exchange(match.mul(), match.other()))
 		.addStep(ArithmeticOptimization::timesZero,
 			(match, graph, block) -> exchange(match.mul(), newConst(graph, 0, match.mul().getMode())))
 		.addStep(ArithmeticOptimization::timesNegOne,
@@ -52,6 +55,8 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		.addStep(ArithmeticOptimization::divByOne,
 			(match, graph, block) -> replace(match.div(), match.mem(), match.other()))
 		.addStep(ArithmeticOptimization::addWithZero, (match, graph, block) -> exchange(match.add(), match.any()))
+		.addStep(ArithmeticOptimization::addSame, (match, graph, block) -> exchange(match.add(),
+			graph.newMul(block, match.val(), newConst(graph, 2, match.add().getMode()))))
 		.addStep(ArithmeticOptimization::subtractSame,
 			(match, graph, block) -> exchange(match.sub(), graph.newConst(0, match.sub().getMode())))
 		.addStep(ArithmeticOptimization::subtractFromZero,
@@ -71,6 +76,10 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		})
 		.addStep(ArithmeticOptimization::distributive, (match, graph, block) -> exchange(match.add(),
 			graph.newMul(block, match.factor(), graph.newAdd(block, match.av(), match.bv()))))
+		.addStep(ArithmeticOptimization::mulInAdd, (match, graph, block) -> exchange(match.outer(),
+			graph.newMul(block, match.factor(),
+				graph.newAdd(block, newConst(graph, 1, match.outer().getMode()), match.bv()))))
+		.addStep(ArithmeticOptimization::timesOne, (match, graph, block) -> exchange(match.mul(), match.other()))
 		.addStep( //
 			ArithmeticOptimization::divByConst, //
 			(match, graph, block) -> constructFastDiv(match, graph) //
@@ -89,6 +98,9 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 			(m, graph, block) -> shiftRightLeft(graph, block, m.left(), m.lVal(), m.rVal(), m.value()))
 		.addStep(ArithmeticOptimization::shiftRightLeft,
 			(m, graph, block) -> shiftRightLeft(graph, block, m.left(), m.lVal(), m.rVal(), m.value()))
+		.addStep(ArithmeticOptimization::mulInShiftLeft, (match, graph, block) -> exchange(match.outer(),
+			graph.newMul(block, match.value(), graph.newShl(block, match.ci(), match.co()))))
+		.addStep(ArithmeticOptimization::doubleShiftLeft, ArithmeticOptimization::collapseDoubleShiftLeft)
 		.build();
 
 	private boolean hasChanged;
@@ -141,7 +153,19 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 
 	@Override
 	public void defaultVisit(Node node) {
+		boolean before = hasChanged;
 		hasChanged |= OPTIMIZATIONS.optimize(node, node.getGraph(), node.getBlock());
+		if (hasChanged != before) {
+			LOGGER.warn("OPTIMIZED %s in %s", node, node.getGraph());
+		}
+	}
+
+	private static boolean collapseDoubleShiftLeft(DoubleShiftLeftPattern.Match match, Graph graph, Node block) {
+		int shiftsAdded = match.ci().getTarval().add(match.co().getTarval()).asInt();
+		if (shiftsAdded >= match.outer().getMode().getSizeBits()) {
+			return exchange(match.outer(), newConst(graph, 0, match.outer().getMode()));
+		}
+		return exchange(match.outer(), graph.newShl(block, match.value(), newConst(graph, shiftsAdded, Mode.getIu())));
 	}
 
 	private static Optional<Node> constructFastMod(ModByConstPattern.Match match, Graph graph) {
@@ -325,6 +349,19 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		         └──────────┘""")
 	public static Optional<AddZeroPattern.Match> addWithZero(Node node) {
 		return AddZeroPattern.match(node);
+	}
+
+	@FiAscii("""
+		 ┌──────┐
+		 │val: *│
+		 └─┬──┬─┘
+		   │  │
+		   │  │
+		┌──▼──▼──┐
+		│add: Add│
+		└────────┘""")
+	public static Optional<AddSamePattern.Match> addSame(Node node) {
+		return AddSamePattern.match(node);
 	}
 
 	@FiAscii("""
@@ -520,7 +557,34 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		                 │ add: Add│
 		                 └─────────┘""")
 	public static Optional<DistributivePattern.Match> distributive(Node node) {
-		return DistributivePattern.match(node);
+		Optional<DistributivePattern.Match> match = DistributivePattern.match(node);
+		LOGGER.warn("TRYING MATCH FOR %s", node);
+		if (match.isPresent()) {
+			LOGGER.warn("MATCH FOR %s: %s", node, match.get());
+		}
+		return match;
+	}
+
+
+	@FiAscii("""
+		      ┌───────────┐    ┌───────┐
+		      │ factor: * │    │ bv: * │ Similar to DistributivePattern, can be brought to
+		      └────┬─────┬┘    └───┬───┘
+		           │     │         │
+		           │     └───────┬─┘
+		           │             │
+		           │      ┌──────▼─────┐
+		           │      │ inner: Mul │
+		           │      └───┬────────┘
+		           │          │
+		           └───┬──────┘
+		               │
+		         ┌─────▼──────┐
+		         │ outer: Add │
+		         └────────────┘
+		""")
+	public static Optional<MulInAddPattern.Match> mulInAdd(Node node) {
+		return MulInAddPattern.match(node);
 	}
 
 	@FiAscii("""
@@ -629,5 +693,47 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		            └───────────┘""")
 	public static Optional<ShiftRightLeftPattern.Match> shiftRightLeft(Node node) {
 		return ShiftRightLeftPattern.match(node);
+	}
+
+	@FiAscii("""
+		┌──────────┐  ┌───────────┐
+		│ value: * │  │ ci: Const │
+		└─────┬────┘  └─┬─────────┘
+		      │         │
+		      │         │
+		      │         │
+		      │         │
+		     ┌▼─────────▼─┐  ┌───────────┐
+		     │ inner: Mul │  │ co: Const │
+		     └─────────┬──┘  └┬──────────┘
+		               │      │
+		               │      │
+		               │      │
+		            ┌──▼──────▼──┐
+		            │ outer: Shl │
+		            └────────────┘""")
+	public static Optional<MulInShiftLeftPattern.Match> mulInShiftLeft(Node node) {
+		return MulInShiftLeftPattern.match(node);
+	}
+
+	@FiAscii("""
+		┌──────────┐  ┌───────────┐
+		│ value: * │  │ ci: Const │
+		└─────┬────┘  └─┬─────────┘
+		      │         │
+		      │         │
+		      │         │
+		      │         │
+		     ┌▼─────────▼─┐  ┌───────────┐
+		     │ inner: Shl │  │ co: Const │
+		     └─────────┬──┘  └┬──────────┘
+		               │      │
+		               │      │
+		               │      │
+		            ┌──▼──────▼──┐
+		            │ outer: Shl │
+		            └────────────┘""")
+	public static Optional<DoubleShiftLeftPattern.Match> doubleShiftLeft(Node node) {
+		return DoubleShiftLeftPattern.match(node);
 	}
 }
