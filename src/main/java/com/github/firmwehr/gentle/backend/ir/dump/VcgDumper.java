@@ -3,6 +3,7 @@ package com.github.firmwehr.gentle.backend.ir.dump;
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
+import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAdd;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaArgNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCall;
@@ -85,7 +86,7 @@ public class VcgDumper {
 		result.append("graph: {");
 		result.append("\n  title: ").append('"').append("method").append('"');
 		result.append("\n  label: ").append('"').append(name).append('"');
-		result.append("\n  color: ").append(VcgColor.BLOCK.id());
+		result.append("\n  color: ").append(VcgColor.ROOT_BLOCK.id());
 
 		for (IkeaBløck block : controlFlowGraph.getAllBlocks()) {
 			result.append("\n").append(formatBlock(block).indent(2));
@@ -98,7 +99,7 @@ public class VcgDumper {
 
 	private String formatBlock(IkeaBløck block) {
 		StringBuilder result = new StringBuilder("graph: {");
-		result.append("\n  title: " + '"' + "block-").append(block.origin().getNr()).append('"');
+		result.append("\n  title: " + '"').append(blockTitle(block)).append('"');
 		result.append("\n  label: " + '"').append(block.origin()).append('"');
 		result.append("\n  status: clustered");
 		result.append("\n  color: ").append(VcgColor.BLOCK.id());
@@ -108,6 +109,7 @@ public class VcgDumper {
 			result.append(formatNode(node).indent(2));
 			result.append(formatInputEdges(node).indent(2));
 		}
+		result.append(formatControlflowEdges(block));
 
 		if (CompilerArguments.get().dumpBackendSchedule()) {
 			result.append(formatSchedule(block));
@@ -142,6 +144,39 @@ public class VcgDumper {
 
 	private String formatInputEdges(IkeaNode node) {
 		return formatEdges(ikeaGraph.getInputEdges(node), "\n  priority: 50");
+	}
+
+	private String formatControlflowEdges(IkeaBløck block) {
+		StringJoiner result = new StringJoiner("\n");
+		List<IkeaParentBløck> parents = block.parents();
+		for (int i = 0; i < parents.size(); i++) {
+			IkeaParentBløck parent = parents.get(i);
+
+			for (IkeaNode node : parent.parent().nodes()) {
+				if (node instanceof IkeaJcc jcc) {
+					if (jcc.trueTarget().equals(block)) {
+						result.add(formatControlflowEdge(block, jcc, "True: " + i));
+					} else {
+						result.add(formatControlflowEdge(block, jcc, "False: " + i));
+					}
+				} else if (node instanceof IkeaJmp jmp) {
+					result.add(formatControlflowEdge(jmp.target(), jmp, String.valueOf(i)));
+				}
+
+			}
+		}
+
+		return result.toString();
+	}
+
+	private String formatControlflowEdge(IkeaBløck source, IkeaNode dst, String label) {
+		String result = "edge: {";
+		result += "\n  sourcename: " + '"' + blockTitle(source) + '"';
+		result += "\n  targetname: " + '"' + nodeTitle(dst) + '"';
+		result += "\n  label: " + '"' + label + '"';
+		result += "\n  color: " + VcgColor.CONTROL_FLOW.id();
+		result += "\n}";
+		return result;
 	}
 
 	private String formatEdges(Collection<IkeaGraph.IkeaEdge> edges, String additionalProps) {
@@ -216,6 +251,10 @@ public class VcgDumper {
 		return node.toString();
 	}
 
+	private String blockTitle(IkeaBløck block) {
+		return "block-" + block.origin().getNr();
+	}
+
 	private enum VcgColor {
 		// colorentry 100: 204 204 204  gray
 		// colorentry 101: 222 239 234  faint green
@@ -231,10 +270,11 @@ public class VcgDumper {
 		CONTROL_FLOW("255 153 153"),
 		MEMORY("153 153 255"),
 		NORMAL("242 242 242"),
-		SPECIAL("222 239 234"),
+		SPECIAL("255 153 255"),
 		CONST("255 255 153"),
 		PHI("153 255 153"),
-		BLOCK("204 204 204"),
+		ROOT_BLOCK("204 204 204"),
+		BLOCK("222 239 234"),
 		SCHEDULE("255 153 255");
 
 		private final String rgb;

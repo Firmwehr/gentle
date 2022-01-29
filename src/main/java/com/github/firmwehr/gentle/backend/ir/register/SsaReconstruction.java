@@ -51,7 +51,11 @@ public class SsaReconstruction {
 				if (!use.inputs().get(i).equals(brokenVariable)) {
 					continue;
 				}
-				IkeaNode x = findDef(use, use.inputs().get(i).block(), Set.of(brokenVariable), F);
+				IkeaBløck parent = use.inputs().get(i).block();
+				if (use instanceof IkeaPhi phi) {
+					parent = phi.block().parents().get(i).parent();
+				}
+				IkeaNode x = findDef(use, parent, Set.of(brokenVariable), F);
 				use.graph().setInput(use, i, x);
 			}
 		}

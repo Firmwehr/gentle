@@ -27,10 +27,10 @@ public class Uses {
 	}
 
 	public boolean isLastUse(LifetimeAnalysis liveliness, IkeaNode def, IkeaNode use) {
-		if (liveliness.getLiveOut(def.block()).contains(def)) {
+		if (liveliness.getLiveOut(use.block()).contains(def)) {
 			return false;
 		}
-		for (IkeaNode potentialUse : Lists.reverse(def.block().nodes())) {
+		for (IkeaNode potentialUse : Lists.reverse(use.block().nodes())) {
 			if (potentialUse.equals(use)) {
 				return true;
 			}

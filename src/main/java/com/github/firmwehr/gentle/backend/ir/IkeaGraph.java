@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.backend.ir;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.google.common.graph.MutableNetwork;
 import com.google.common.graph.NetworkBuilder;
 
@@ -92,6 +93,24 @@ public class IkeaGraph {
 		network.addNode(node);
 		for (int i = 0; i < inputs.size(); i++) {
 			network.addEdge(node, inputs.get(i), new IkeaEdge(node, inputs.get(i), i));
+		}
+	}
+
+	/**
+	 * Overwrites an existing phi to materialize its inputs.
+	 *
+	 * @param phi the phi node to overwrite
+	 * @param inputs the phi inputs
+	 */
+	public void overwritePhi(IkeaPhi phi, List<IkeaNode> inputs) {
+		if (!network.nodes().contains(phi)) {
+			throw new InternalCompilerException("Phi was not already part of graph");
+		}
+		if (!getInputs(phi).isEmpty()) {
+			throw new InternalCompilerException("Phi has inputs already");
+		}
+		for (int i = 0; i < inputs.size(); i++) {
+			network.addEdge(phi, inputs.get(i), new IkeaEdge(phi, inputs.get(i), i));
 		}
 	}
 

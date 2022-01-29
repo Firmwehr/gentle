@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPerm;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaProj;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.Mut;
@@ -104,7 +105,7 @@ public class ConstraintNodePrepare {
 	}
 
 	private boolean isConstrained(IkeaNode node) {
-		return node.inRequirements().stream().anyMatch(IkeaRegisterRequirement::limited);
+		return node.inRequirements().stream().anyMatch(IkeaRegisterRequirement::limited) && !(node instanceof IkeaPhi);
 	}
 
 	/**

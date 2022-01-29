@@ -129,14 +129,12 @@ public class CodeSelection extends NodeVisitor.Default {
 				IkeaPhi ikeaPhi = new IkeaPhi(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 				nodes.put(node, ikeaPhi);
 				block.nodes().add(ikeaPhi);
+				ikeaGraph.addNode(ikeaPhi, List.of());
 				phiBär.computeIfAbsent((Block) node.getBlock(), ignore -> new ArrayList<>()).add(node);
 			}
 		});
 		graph.walkTopological(this);
 		graph.walkBlocks(block -> {
-			for (Phi phi : phiBär.getOrDefault(block, List.of())) {
-				ikeaGraph.addNode(nodes.get(phi), Util.predsStream(phi).map(nodes::get).toList());
-			}
 			for (int i = 0, c = block.getPredCount(); i < c; i++) {
 				Block pred = (Block) block.getPred(i).getBlock();
 				IkeaBløck ikeaPred = blocks.get(pred);
@@ -189,7 +187,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		Belady belady = new Belady(dominance, controlFlowGraph, liveliness, uses, loopTree);
 		belady.spill(controlFlowGraph);
 
-		GraphDumper.dumpGraph(controlFlowGraph, "backend-spille");
+		GraphDumper.dumpGraph(controlFlowGraph, "backend-spill");
 
 		// 3. Constraint handling
 		ConstraintNodePrepare constraintNodePrepare = new ConstraintNodePrepare(liveliness, uses, dominance);
@@ -259,9 +257,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			return;
 		}
 		IkeaPhi ikeaPhi = (IkeaPhi) nodes.get(node);
-		for (int i = 0; i < node.getPredCount(); i++) {
-			ikeaGraph.setInput(ikeaPhi, i, nodes.get(node.getPred(i)));
-		}
+		ikeaGraph.overwritePhi(ikeaPhi, Util.predsStream(node).map(nodes::get).toList());
 	}
 
 	@Override

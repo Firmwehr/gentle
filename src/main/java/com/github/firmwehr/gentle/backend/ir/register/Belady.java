@@ -262,7 +262,9 @@ public class Belady {
 
 		if (freeSlots > 0) {
 			int takenSlots = 0;
-			for (WorksetNode worksetNode : delayed.stream().sorted().toList()) {
+			List<WorksetNode> delayedNodes =
+				delayed.stream().sorted(Comparator.comparing(WorksetNode::distance)).toList();
+			for (WorksetNode worksetNode : delayedNodes) {
 				if (takenSlots >= freeSlots) {
 					break;
 				}
@@ -277,6 +279,7 @@ public class Belady {
 
 				LOGGER.debug("Taking delayed node %s", worksetNode);
 				starters.add(worksetNode);
+				delayed.remove(worksetNode);
 				takenSlots++;
 			}
 		}
@@ -363,7 +366,7 @@ public class Belady {
 	}
 
 	private PredecessorAvailability computePredecessorAvailability(IkeaBløck block, IkeaNode node) {
-		PredecessorAvailability result = PredecessorAvailability.MIXED;
+		PredecessorAvailability result = PredecessorAvailability.LIVE_IN_ALL;
 
 		for (IkeaBløck inputBlock : controlFlow.inputBlocks(block)) {
 			IkeaNode nodeToCheck = node;
@@ -462,6 +465,7 @@ public class Belady {
 	}
 
 	private void addSpillOnEdge(IkeaNode node, IkeaBløck block, IkeaBløck parent) {
+		LOGGER.debug("Adding spill for %s on edge %s -> %s", node, block, parent);
 		// We have only one parent, we can spill at the entry to our block
 		if (controlFlow.inputBlocks(block).size() == 1) {
 			addSpill(node, block.nodes().get(0));
@@ -484,11 +488,12 @@ public class Belady {
 	}
 
 	private void addPhiSpill(IkeaPhi phi, IkeaBløck block) {
+		LOGGER.debug("Spilling phi %s", phi);
 		// TODO: This might be one too low? We'd like to put that as the first instr in the block
 		addSpill(phi, block.nodes().get(0));
 
 		for (IkeaParentBløck parent : block.parents()) {
-			addSpillOnEdge(phi.parent(block), block, parent.parent());
+			addSpillOnEdge(phi.parent(parent.parent()), block, parent.parent());
 		}
 	}
 
@@ -502,6 +507,7 @@ public class Belady {
 		for (SpillInfo info : spillInfos.values()) {
 			// TODO: Calculate spill costs and maybe do rematerialization
 
+			LOGGER.debug("Realizing spill %s", info);
 			spill(info);
 			SsaReconstruction ssaReconstruction = new SsaReconstruction(dominance, uses);
 
