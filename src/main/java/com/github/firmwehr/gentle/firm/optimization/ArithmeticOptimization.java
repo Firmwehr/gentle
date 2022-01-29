@@ -7,11 +7,13 @@ import com.github.firmwehr.fiascii.generated.AddZeroPattern;
 import com.github.firmwehr.fiascii.generated.AssociativeAddPattern;
 import com.github.firmwehr.fiascii.generated.AssociativeMulPattern;
 import com.github.firmwehr.fiascii.generated.DistributivePattern;
+import com.github.firmwehr.fiascii.generated.DistributiveShiftsPattern;
 import com.github.firmwehr.fiascii.generated.DivByConstPattern;
 import com.github.firmwehr.fiascii.generated.DivByNegOnePattern;
 import com.github.firmwehr.fiascii.generated.DivByOnePattern;
 import com.github.firmwehr.fiascii.generated.DoubleShiftLeftPattern;
 import com.github.firmwehr.fiascii.generated.MinusMinusPattern;
+import com.github.firmwehr.fiascii.generated.MixedDistributivePattern;
 import com.github.firmwehr.fiascii.generated.ModByConstPattern;
 import com.github.firmwehr.fiascii.generated.MulInAddPattern;
 import com.github.firmwehr.fiascii.generated.MulInShiftLeftPattern;
@@ -43,7 +45,7 @@ import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 
 public class ArithmeticOptimization extends NodeVisitor.Default {
 
-	private static final Logger LOGGER = new Logger(ArithmeticOptimization.class);
+	private static final Logger LOGGER = new Logger(ArithmeticOptimization.class, Logger.LogLevel.DEBUG);
 
 	private static final OptimizationList OPTIMIZATIONS = OptimizationList.builder()
 		.addStep(ArithmeticOptimization::timesZero,
@@ -76,6 +78,8 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		})
 		.addStep(ArithmeticOptimization::distributive, (match, graph, block) -> exchange(match.add(),
 			graph.newMul(block, match.factor(), graph.newAdd(block, match.av(), match.bv()))))
+		.addStep(ArithmeticOptimization::distributiveShifts, ArithmeticOptimization::collapseDistributiveShifts)
+		.addStep(ArithmeticOptimization::mixedDistributive, ArithmeticOptimization::collapseMixedDistributive)
 		.addStep(ArithmeticOptimization::mulInAdd, (match, graph, block) -> exchange(match.outer(),
 			graph.newMul(block, match.factor(),
 				graph.newAdd(block, newConst(graph, 1, match.outer().getMode()), match.bv()))))
@@ -142,6 +146,27 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 				return changed;
 			})
 			.build();
+	}
+
+	private static boolean collapseDistributiveShifts(DistributiveShiftsPattern.Match match, Graph graph, Node block) {
+		int a = 1 << match.av().getTarval().asInt();
+		int b = 1 << match.bv().getTarval().asInt();
+		Mode mode = match.add().getMode();
+		if (a == b) { // (n << k) + (n << k) == (n << (k + 1))
+			int newShiftValue = a << 1;
+			if (newShiftValue >= mode.getSizeBits()) {
+				return exchange(match.add(), newConst(graph, 0, mode));
+			}
+			Node newShiftConstant = newConst(graph, newShiftValue, Mode.getIu());
+			return exchange(match.add(), graph.newShl(block, match.factor(), newShiftConstant));
+		}
+		return exchange(match.add(), graph.newMul(block, match.factor(), newConst(graph, a + b, mode)));
+	}
+
+	private static boolean collapseMixedDistributive(MixedDistributivePattern.Match match, Graph graph, Node block) {
+		int b = 1 << match.bv().getTarval().asInt();
+		Node newAdd = graph.newAdd(block, match.av(), newConst(graph, b, match.add().getMode()));
+		return exchange(match.add(), graph.newMul(block, match.factor(), newAdd));
 	}
 
 	private void applyArithmeticOptimization() {
@@ -576,6 +601,53 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		""")
 	public static Optional<MulInAddPattern.Match> mulInAdd(Node node) {
 		return MulInAddPattern.match(node);
+	}
+
+	@FiAscii("""
+		           ┌───────────┐
+		           │ factor: * │
+		           └─┬───────┬─┘
+		             │       │
+		    ┌────────┘       └───┐
+		    │                    │
+		    │   ┌────────────┐   │     ┌───────────┐
+		    │   │  av: Const │   │     │ bv: Const │
+		    │   └──┬─────────┘   │     └┬──────────┘
+		    │      │             │      │
+		┌───▼──────▼┐          ┌─▼──────▼───┐
+		│ left: Shl │          │ right: Shl │
+		└────────┬──┘          └─┬──────────┘
+		         │               │
+		         └───────┬───────┘
+		                 │
+		                 │
+		           ┌─────▼────┐
+		           │ add: Add │
+		           └──────────┘""")
+	public static Optional<DistributiveShiftsPattern.Match> distributiveShifts(Node node) {
+		return DistributiveShiftsPattern.match(node);
+	}
+
+	@FiAscii("""
+		┌───────┐     ┌───────────────┐   ┌───────────┐
+		│ av: * │     │ factor: *     │   │ bv: Const │ Similar to distributive
+		└────┬──┘     └───┬───────┬───┘   └───┬───────┘ but one side has a Shl
+		     │            │       │           │
+		     └──────┬─────┘       └───┐  ┌────┘
+		            │                 │  │
+		        ┌───▼────┐        ┌───▼──▼─┐
+		        │ a: Mul │        │ b: Shl │
+		        └────┬───┘        └─────┬──┘
+		             │                  │
+		             └────────┬─────────┘
+		                      │
+		                 ┌────▼─────┐
+		                 │ add: Add │
+		                 └──────────┘""")
+	public static Optional<MixedDistributivePattern.Match> mixedDistributive(Node node) {
+		Optional<MixedDistributivePattern.Match> match = MixedDistributivePattern.match(node);
+		LOGGER.warn("match for %s: %s", node, match);
+		return match;
 	}
 
 	@FiAscii("""
