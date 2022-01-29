@@ -6,6 +6,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.google.common.graph.MutableNetwork;
 import com.google.common.graph.NetworkBuilder;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -35,7 +36,7 @@ public class IkeaGraph {
 	}
 
 	public Set<IkeaEdge> getInputEdges(IkeaNode node) {
-		return network.outEdges(node);
+		return Collections.unmodifiableSet(network.outEdges(node));
 	}
 
 	/**
@@ -50,7 +51,7 @@ public class IkeaGraph {
 	}
 
 	public Set<IkeaEdge> getOutputEdges(IkeaNode node) {
-		return network.inEdges(node);
+		return Collections.unmodifiableSet(network.inEdges(node));
 	}
 
 	/**
@@ -94,6 +95,18 @@ public class IkeaGraph {
 		for (int i = 0; i < inputs.size(); i++) {
 			network.addEdge(node, inputs.get(i), new IkeaEdge(node, inputs.get(i), i));
 		}
+	}
+
+	/**
+	 * Removes a node and all incident edges.
+	 * <p>
+	 * <em>Also removes the node from its block</em>
+	 *
+	 * @param node the node to remove
+	 */
+	public void removeNode(IkeaNode node) {
+		network.removeNode(node);
+		node.block().nodes().remove(node);
 	}
 
 	/**

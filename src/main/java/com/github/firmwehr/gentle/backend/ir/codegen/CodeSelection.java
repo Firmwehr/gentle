@@ -36,6 +36,7 @@ import com.github.firmwehr.gentle.backend.ir.register.ConstraintNodePrepare;
 import com.github.firmwehr.gentle.backend.ir.register.ControlFlowGraph;
 import com.github.firmwehr.gentle.backend.ir.register.Dominance;
 import com.github.firmwehr.gentle.backend.ir.register.LifetimeAnalysis;
+import com.github.firmwehr.gentle.backend.ir.register.LowerPerms;
 import com.github.firmwehr.gentle.backend.ir.register.PerfectElimationOrderColorer;
 import com.github.firmwehr.gentle.backend.ir.register.Spillprepare;
 import com.github.firmwehr.gentle.backend.ir.register.Uses;
@@ -203,6 +204,10 @@ public class CodeSelection extends NodeVisitor.Default {
 		LOGGER.error("FANCY! Done for %s", graph.getEntity().getLdName());
 
 		GraphDumper.dumpGraph(controlFlowGraph, "backend-color");
+
+		new LowerPerms(ikeaGraph, controlFlowGraph).lower();
+
+		GraphDumper.dumpGraph(controlFlowGraph, "lower-perms");
 
 		return orderedBlocks;
 	}

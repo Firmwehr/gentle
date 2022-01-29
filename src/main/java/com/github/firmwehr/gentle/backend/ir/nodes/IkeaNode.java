@@ -1,5 +1,6 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
 import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
@@ -17,6 +18,11 @@ import java.util.stream.Collectors;
 public interface IkeaNode {
 
 	Mut<Optional<X86Register>> register();
+
+	default X86Register uncheckedRegister() {
+		return register().get()
+			.orElseThrow(() -> new InternalCompilerException("Expected register for " + this + " to be present!"));
+	}
 
 	default boolean registerIgnore() {
 		return registerRequirement().limitedTo().isEmpty();

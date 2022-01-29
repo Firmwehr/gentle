@@ -225,7 +225,7 @@ public class VcgDumper {
 			case IkeaLea ignored -> VcgColor.NORMAL;
 			case IkeaMovLoad ignored -> VcgColor.MEMORY;
 			case IkeaMovLoadEx ignored -> VcgColor.MEMORY;
-			case IkeaMovRegister ignored -> VcgColor.NORMAL;
+			case IkeaMovRegister ignored -> VcgColor.SPECIAL;
 			case IkeaMovStore ignored -> VcgColor.MEMORY;
 			case IkeaMovStoreEx ignored -> VcgColor.MEMORY;
 			case IkeaMul ignored -> VcgColor.NORMAL;

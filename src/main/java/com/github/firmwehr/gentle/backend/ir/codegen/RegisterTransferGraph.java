@@ -1,7 +1,6 @@
 package com.github.firmwehr.gentle.backend.ir.codegen;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
-import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.Pair;
 import com.google.common.graph.EndpointPair;
@@ -27,14 +26,14 @@ import java.util.Set;
  * ordered sequence of register swaps is generated.
  */
 @SuppressWarnings("UnstableApiUsage")
-public class RegisterTransferGraph {
+public class RegisterTransferGraph<T> {
 
 	private static final Logger LOGGER = new Logger(RegisterTransferGraph.class);
 
-	private final MutableGraph<IkeaBøx> graph;
-	private final Queue<IkeaBøx> freeRegisters;
+	private final MutableGraph<T> graph;
+	private final Queue<T> freeRegisters;
 
-	public RegisterTransferGraph(Set<IkeaBøx> freeRegisters) {
+	public RegisterTransferGraph(Set<T> freeRegisters) {
 		this.freeRegisters = new ArrayDeque<>(freeRegisters);
 		this.graph = GraphBuilder.directed().allowsSelfLoops(true).build();
 	}
@@ -46,7 +45,7 @@ public class RegisterTransferGraph {
 	 * @param source the source of the edge
 	 * @param target the target of the edge
 	 */
-	public void addMove(IkeaBøx source, IkeaBøx target) {
+	public void addMove(T source, T target) {
 		graph.putEdge(source, target);
 		LOGGER.debug("Added move %s -> %s", source, target);
 	}
@@ -56,13 +55,13 @@ public class RegisterTransferGraph {
 	 *
 	 * @return an ordered sequence of moves from {@link Pair#first()} tp {@link Pair#second()}
 	 */
-	public List<Pair<IkeaBøx, IkeaBøx>> generateMoveSequence() {
+	public List<Pair<T, T>> generateMoveSequence() {
 		if (graph.edges().isEmpty()) {
 			LOGGER.debug("Nothing to move!");
 			return List.of();
 		}
 
-		List<Pair<IkeaBøx, IkeaBøx>> generatedMoves = new ArrayList<>();
+		List<Pair<T, T>> generatedMoves = new ArrayList<>();
 		solveStraightPaths(generatedMoves);
 
 		// Unbelievable
@@ -74,7 +73,7 @@ public class RegisterTransferGraph {
 		// Pain. We have cycles (not the renderer).
 
 		if (!freeRegisters.isEmpty()) {
-			IkeaBøx tempRegister = freeRegisters.iterator().next();
+			T tempRegister = freeRegisters.iterator().next();
 			LOGGER.debug("Free register found, using %s as a scratchpad", tempRegister);
 			solveCyclesWithFreeRegister(generatedMoves, tempRegister);
 		} else {
@@ -89,7 +88,7 @@ public class RegisterTransferGraph {
 		return generatedMoves;
 	}
 
-	private void solveCyclesWithFreeRegister(List<Pair<IkeaBøx, IkeaBøx>> generatedMoves, IkeaBøx tempRegister) {
+	private void solveCyclesWithFreeRegister(List<Pair<T, T>> generatedMoves, T tempRegister) {
 		// Moves:
 		// temp <- r1
 		// r1   <- r2
@@ -99,7 +98,7 @@ public class RegisterTransferGraph {
 		// rn   <- temp
 
 		while (!graph.edges().isEmpty()) {
-			EndpointPair<IkeaBøx> startEdge = graph.edges().iterator().next();
+			EndpointPair<T> startEdge = graph.edges().iterator().next();
 			LOGGER.debug("Processing %s -> %s", startEdge.source(), startEdge.target());
 
 			if (startEdge.source().equals(startEdge.target())) {
@@ -111,15 +110,15 @@ public class RegisterTransferGraph {
 			// temp <- r1
 			generatedMoves.add(new Pair<>(startEdge.source(), tempRegister));
 			LOGGER.debug("Adding move %s -> %s", startEdge.source(), tempRegister);
-			IkeaBøx lastNode = startEdge.target();
+			T lastNode = startEdge.target();
 
 			// r1   <- r2
 			// r2   <- r3
 			// r3   <- r4
-			IkeaBøx current = startEdge.source();
+			T current = startEdge.source();
 			while (!graph.predecessors(current).isEmpty()) {
 				LOGGER.debug("Entered with current %s and preds %s", current, graph.predecessors(current));
-				IkeaBøx source = graph.predecessors(current).iterator().next();
+				T source = graph.predecessors(current).iterator().next();
 				generatedMoves.add(new Pair<>(source, current));
 				LOGGER.debug("Adding move %s -> %s", source, current);
 				graph.removeEdge(source, current);
@@ -141,11 +140,11 @@ public class RegisterTransferGraph {
 	 *
 	 * @param generatedMoves the list to store generated moves in
 	 */
-	private void solveStraightPaths(List<Pair<IkeaBøx, IkeaBøx>> generatedMoves) {
-		Optional<EndpointPair<IkeaBøx>> edgeOpt;
+	private void solveStraightPaths(List<Pair<T, T>> generatedMoves) {
+		Optional<EndpointPair<T>> edgeOpt;
 		//noinspection NestedAssignment
 		while ((edgeOpt = findEdgeWithUnusedTarget()).isPresent()) {
-			EndpointPair<IkeaBøx> edge = edgeOpt.get();
+			EndpointPair<T> edge = edgeOpt.get();
 			LOGGER.debug("Found victim %s -> %s", edge.source(), edge.target());
 			generatedMoves.add(new Pair<>(edge.source(), edge.target()));
 
@@ -153,7 +152,7 @@ public class RegisterTransferGraph {
 			graph.removeEdge(edge);
 
 			// Free as early as possible: Rewire to read from target
-			for (IkeaBøx successor : Set.copyOf(graph.successors(edge.source()))) {
+			for (T successor : Set.copyOf(graph.successors(edge.source()))) {
 				// TODO: Verify this code is correct once we can have self loops with pyhsical registers
 				// Do not rewire self loops to save a move
 				if (edge.source().equals(successor)) {
@@ -179,8 +178,8 @@ public class RegisterTransferGraph {
 	/**
 	 * @return an edge where the target has outdegree 0, if one exists
 	 */
-	private Optional<EndpointPair<IkeaBøx>> findEdgeWithUnusedTarget() {
-		for (EndpointPair<IkeaBøx> edge : graph.edges()) {
+	private Optional<EndpointPair<T>> findEdgeWithUnusedTarget() {
+		for (EndpointPair<T> edge : graph.edges()) {
 			if (graph.outDegree(edge.target()) == 0) {
 				return Optional.of(edge);
 			}
