@@ -36,7 +36,7 @@ import java.util.Queue;
 import java.util.Set;
 
 public class MethodInliningOptimization {
-	private static final Logger LOGGER = new Logger(MethodInliningOptimization.class);
+	private static final Logger LOGGER = new Logger(MethodInliningOptimization.class, Logger.LogLevel.DEBUG);
 	// values carefully picked by having no clue
 	private static final double CALLER_INLINE_COST_THRESHOLD = 256;
 	private final CallGraph callGraph;
@@ -68,7 +68,7 @@ public class MethodInliningOptimization {
 						binding_irgraph.ir_graph_properties_t.IR_GRAPH_PROPERTIES_NONE);
 				}
 			} else {
-				LOGGER.debug("skipping because of self cost");
+				LOGGER.debug("skipping %s because of self cost (%s)", graph, selfCost);
 			}
 			inlineCandidates.put(graph, selfCost);
 		});
@@ -356,8 +356,14 @@ public class MethodInliningOptimization {
 			CostCalculator calculator = new CostCalculator(graph);
 			// if the End block does not only have Return preds, we rather not inline that method
 			// as it might be an infinite loop => not worth
-			for (Node pred : graph.getEnd().getPreds()) {
-				if (!(pred instanceof Return)) {
+			Node endBlock = graph.getEndBlock();
+			int predCount = endBlock.getPredCount();
+			if (predCount == 0) {
+				calculator.cost = Double.POSITIVE_INFINITY;
+				return calculator;
+			}
+			for (int i = 0; i < predCount; i++) {
+				if (!(endBlock.getPred(i) instanceof Return)) {
 					calculator.cost = Double.POSITIVE_INFINITY;
 					return calculator;
 				}
@@ -378,7 +384,7 @@ public class MethodInliningOptimization {
 		}
 
 		private void count(Node node) {
-			cost += GentleBindings.get_block_execfreq(node.ptr) * switch (node) {
+			cost += switch (node) {
 				case Call call -> {
 					if (((Address) call.getPtr()).getEntity().getGraph() == null) {
 						yield RUNTIME_CALL_COST;
