@@ -45,7 +45,7 @@ import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 
 public class ArithmeticOptimization extends NodeVisitor.Default {
 
-	private static final Logger LOGGER = new Logger(ArithmeticOptimization.class, Logger.LogLevel.DEBUG);
+	private static final Logger LOGGER = new Logger(ArithmeticOptimization.class);
 
 	private static final OptimizationList OPTIMIZATIONS = OptimizationList.builder()
 		.addStep(ArithmeticOptimization::timesZero,
@@ -645,9 +645,7 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		                 │ add: Add │
 		                 └──────────┘""")
 	public static Optional<MixedDistributivePattern.Match> mixedDistributive(Node node) {
-		Optional<MixedDistributivePattern.Match> match = MixedDistributivePattern.match(node);
-		LOGGER.warn("match for %s: %s", node, match);
-		return match;
+		return MixedDistributivePattern.match(node);
 	}
 
 	@FiAscii("""
