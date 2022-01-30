@@ -63,6 +63,12 @@ public class SsaReconstruction {
 	private IkeaNode findDef(IkeaNode use, IkeaBløck parent, Set<IkeaNode> brokenVariables, Set<IkeaBløck> F) {
 		if (use instanceof IkeaPhi phi) {
 			use = phi.parent(parent);
+			// Use last in block as the new def might be below us! This phi could point to the first node but a later
+			// node in the block changes the definition. We can start at the end as we can not refer to the same SSA
+			// value in two different states in the new block (i.e. you can not have two phis one using the original
+			// value and one further down, as it is the same SSA value).
+			// By starting at the end we ensure we do not miss a redefinition in the target block
+			use = use.block().nodes().get(use.block().nodes().size() - 1);
 		}
 		while (true) {
 			// Try to find last def before use in use block

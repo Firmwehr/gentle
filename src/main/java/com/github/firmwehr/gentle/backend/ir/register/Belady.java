@@ -388,7 +388,7 @@ public class Belady {
 
 		for (IkeaBløck inputBlock : controlFlow.inputBlocks(block)) {
 			IkeaNode nodeToCheck = node;
-			if (nodeToCheck instanceof IkeaPhi phi) {
+			if (nodeToCheck instanceof IkeaPhi phi && phi.block().equals(block)) {
 				nodeToCheck = phi.parent(inputBlock);
 			}
 
