@@ -78,18 +78,4 @@ public final class Util {
 	public static boolean isAllocCall(Call call) {
 		return ((Address) call.getPtr()).getEntity().equals(StdLibEntity.ALLOCATE.getEntity());
 	}
-
-	public static Relation invert(Relation relation) {
-		return switch (relation) {
-			case False -> Relation.True;
-			case Equal -> Relation.UnorderedLessGreater;
-			case Less -> Relation.GreaterEqual;
-			case Greater -> Relation.LessEqual;
-			case LessEqual -> Relation.Greater;
-			case GreaterEqual -> Relation.Less;
-			case LessGreater, UnorderedLessGreater -> Relation.Equal;
-			case True -> Relation.False;
-			default -> throw new InternalCompilerException("Unknown relation " + relation);
-		};
-	}
 }

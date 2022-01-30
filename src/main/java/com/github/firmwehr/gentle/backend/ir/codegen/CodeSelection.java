@@ -296,7 +296,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		IkeaCmp cmp = visitFromCond((Cmp) node.getSelector(), true);
 
 		if (cmp.wasInverted()) {
-			relation = Util.invert(relation);
+			relation = relation.inversed();
 		}
 
 		IkeaJcc ikeaJcc = new IkeaJcc(blocks.get(trueBlock), blocks.get(falseBlock), node, relation, cmp);

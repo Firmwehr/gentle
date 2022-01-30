@@ -93,7 +93,7 @@ public class BooleanOptimization extends NodeVisitor.Default {
 
 			// setxx has a hardcoded meaning and true is 1!
 			if (!trueNode.getTarval().isOne()) {
-				match.cmp().setRelation(Util.invert(match.cmp().getRelation()));
+				match.cmp().setRelation(match.cmp().getRelation().negated());
 				Const tmp = trueNode;
 				trueNode = falseNode;
 				falseNode = tmp;
