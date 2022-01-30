@@ -91,7 +91,8 @@ public class Belady {
 			}
 
 			// We need all our inputs in registers here
-			displace(new HashSet<>(node.inputs()), currentBlockWorkset, node, true);
+			List<IkeaNode> inputs = node.inputs().stream().filter(it -> !it.registerIgnore()).toList();
+			displace(inputs, currentBlockWorkset, node, true);
 
 			if (!node.registerIgnore()) {
 				displace(node.results(), currentBlockWorkset, node, false);
