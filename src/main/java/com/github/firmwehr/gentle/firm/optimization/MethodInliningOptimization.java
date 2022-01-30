@@ -354,22 +354,42 @@ public class MethodInliningOptimization {
 
 		static CostCalculator calculate(Graph graph) {
 			CostCalculator calculator = new CostCalculator(graph);
-			// if the End block does not only have Return preds, we rather not inline that method
-			// as it might be an infinite loop => not worth
-			Node endBlock = graph.getEndBlock();
-			int predCount = endBlock.getPredCount();
-			if (predCount == 0) {
+			// if the End block does not have all blocks as (indirect) predecessor
+			// we found an infinite loop that can't be properly inlined
+			// due to its structure
+			Set<Node> blocks = findUnreachableBlocks(graph);
+			if (!blocks.isEmpty()) {
+				LOGGER.debug("infinite loop detected in %s", graph);
 				calculator.cost = Double.POSITIVE_INFINITY;
 				return calculator;
 			}
-			for (int i = 0; i < predCount; i++) {
-				if (!(endBlock.getPred(i) instanceof Return)) {
-					calculator.cost = Double.POSITIVE_INFINITY;
-					return calculator;
-				}
-			}
 			graph.walk(calculator);
 			return calculator;
+		}
+
+		private static Set<Node> findUnreachableBlocks(Graph graph) {
+			Set<Node> blocks = new HashSet<>();
+			graph.walkBlocks(blocks::add);
+			Node endBlock = graph.getEndBlock();
+			Queue<Node> workList = new ArrayDeque<>();
+			graph.incVisited();
+			workList.offer(endBlock);
+			while (!workList.isEmpty()) {
+				Node next = workList.remove();
+				if (next.visited()) {
+					continue;
+				}
+				next.markVisited();
+				blocks.remove(next);
+				for (Node pred : next.getPreds()) {
+					if (pred instanceof Block) {
+						workList.offer(pred);
+					} else {
+						workList.offer(pred.getBlock());
+					}
+				}
+			}
+			return blocks;
 		}
 
 		public double cost() {
