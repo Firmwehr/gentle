@@ -81,7 +81,7 @@ public class Belady {
 		LOGGER.debug("  %s", startWorksets.get(block));
 
 		// This will become out end workset
-		Set<WorksetNode> currentBlockWorkset = new HashSet<>(startWorksets.get(block));
+		Set<WorksetNode> currentBlockWorkset = cloneWorkset(startWorksets.get(block));
 
 		for (IkeaNode node : block.nodes()) {
 			// Not an instruction, only relevant for deciding our start worksets and wiring them up correctly
@@ -216,7 +216,7 @@ public class Belady {
 			return new HashSet<>();
 		}
 		if (block.parents().size() == 1) {
-			return new HashSet<>(endWorksets.get(block.parents().get(0).parent()));
+			return cloneWorkset(endWorksets.get(block.parents().get(0).parent()));
 		}
 
 		return magicStartWorkset(block);
@@ -577,14 +577,25 @@ public class Belady {
 		for (IkeaBløck block : controlFlow.getAllBlocks()) {
 			for (IkeaNode node : block.nodes()) {
 				if (node instanceof IkeaReload reload) {
-					int index = slotIndices.computeIfAbsent(node, ignored -> slotIndices.size());
+					int index = slotIndices.computeIfAbsent(node.inputs().get(0), ignored -> slotIndices.size());
 					reload.spillSlot().set(index);
 				} else if (node instanceof IkeaSpill spill) {
-					int index = slotIndices.computeIfAbsent(node, ignored -> slotIndices.size());
+					int index = slotIndices.computeIfAbsent(node.inputs().get(0), ignored -> slotIndices.size());
 					spill.spillSlot().set(index);
 				}
 			}
 		}
+	}
+
+
+	private Set<WorksetNode> cloneWorkset(Set<WorksetNode> workset) {
+		Set<WorksetNode> newWorkset = new HashSet<>();
+
+		for (WorksetNode node : workset) {
+			newWorkset.add(node.copy());
+		}
+
+		return newWorkset;
 	}
 
 	private enum PredecessorAvailability {
@@ -680,8 +691,13 @@ public class Belady {
 		private NodeDistance distance;
 
 		public WorksetNode(IkeaNode node) {
+			this(node, false, new UnknownDist());
+		}
+
+		private WorksetNode(IkeaNode node, boolean spilled, NodeDistance distance) {
 			this.node = node;
-			this.distance = new UnknownDist();
+			this.spilled = spilled;
+			this.distance = distance;
 		}
 
 		public void setSpilled(boolean spilled) {
@@ -702,6 +718,10 @@ public class Belady {
 
 		public IkeaNode node() {
 			return node;
+		}
+
+		public WorksetNode copy() {
+			return new WorksetNode(node, spilled, distance);
 		}
 
 		@Override
