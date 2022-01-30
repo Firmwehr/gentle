@@ -8,13 +8,11 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPerm;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaProj;
-import com.github.firmwehr.gentle.util.Mut;
 import com.github.firmwehr.gentle.util.Pair;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -75,12 +73,15 @@ public class LowerPerms {
 		// Insert register copies
 		int insertionIndex = perm.block().nodes().indexOf(perm);
 		for (Pair<X86Register, X86Register> pair : transferGraph.generateMoveSequence()) {
+			IkeaNode inNode = registerMap.get(pair.first());
+
 			IkeaMovRegister move =
-				new IkeaMovRegister(new Mut<>(Optional.of(pair.second())), perm.block(), ikeaGraph, List.of(),
-					ikeaGraph.nextId());
+				new IkeaMovRegister(ikeaGraph.nextId(), perm.block(), ikeaGraph, inNode.size(), List.of());
+
+			move.register(pair.second());
 
 			perm.block().nodes().add(insertionIndex++, move);
-			ikeaGraph.addNode(move, List.of(registerMap.get(pair.first())));
+			ikeaGraph.addNode(move, List.of(inNode));
 			registerMap.put(pair.second(), move);
 		}
 

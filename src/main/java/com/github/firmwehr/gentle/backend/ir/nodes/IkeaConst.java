@@ -39,7 +39,7 @@ public final class IkeaConst extends IkeaNode {
 
 	@Override
 	public String display() {
-		return "IkeaConst " + value.asLong() + " (" + id() + ")";
+		return getClass().getSimpleName() + " " + value.asLong() + " (" + id() + ")";
 	}
 
 	public TargetValue value() {

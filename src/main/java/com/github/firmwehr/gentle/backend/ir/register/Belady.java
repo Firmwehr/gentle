@@ -9,7 +9,6 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaReload;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSpill;
 import com.github.firmwehr.gentle.firm.model.LoopTree;
 import com.github.firmwehr.gentle.output.Logger;
-import com.github.firmwehr.gentle.util.Mut;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -514,8 +513,8 @@ public class Belady {
 			for (IkeaNode reloadBefore : info.reloadBefore()) {
 				int insertionPoint = reloadBefore.block().nodes().indexOf(reloadBefore) - 1;
 				IkeaReload reload =
-					new IkeaReload(new Mut<>(Optional.empty()), reloadBefore.block(), reloadBefore.graph(), List.of(),
-						new Mut<>(-1), reloadBefore.graph().nextId());
+					new IkeaReload(reloadBefore.graph().nextId(), reloadBefore.block(), reloadBefore.graph(),
+						info.valueToSpill().size(), List.of());
 				reloadBefore.block().nodes().add(insertionPoint, reload);
 				// TODO: What do we point to here?
 				reloadBefore.graph().addNode(reload, List.of(info.valueToSpill()));
@@ -551,9 +550,8 @@ public class Belady {
 
 	private void spillNode(SpillInfo spillInfo) {
 		for (IkeaNode spillAfter : spillInfo.toSpillAfter()) {
-			IkeaSpill spill =
-				new IkeaSpill(new Mut<>(Optional.empty()), spillAfter.block(), spillAfter.graph(), List.of(),
-					new Mut<>(-1), spillAfter.graph().nextId());
+			IkeaSpill spill = new IkeaSpill(spillAfter.graph().nextId(), spillAfter.block(), spillAfter.graph(),
+				spillInfo.valueToSpill().size(), List.of());
 
 			int insertPoint = spillAfter.block().nodes().indexOf(spillAfter) + 1;
 			spillAfter.block().nodes().add(insertPoint, spill);
@@ -578,10 +576,10 @@ public class Belady {
 			for (IkeaNode node : block.nodes()) {
 				if (node instanceof IkeaReload reload) {
 					int index = slotIndices.computeIfAbsent(node.inputs().get(0), ignored -> slotIndices.size());
-					reload.spillSlot().set(index);
+					reload.spillSlot(index);
 				} else if (node instanceof IkeaSpill spill) {
 					int index = slotIndices.computeIfAbsent(node.inputs().get(0), ignored -> slotIndices.size());
-					spill.spillSlot().set(index);
+					spill.spillSlot(index);
 				}
 			}
 		}

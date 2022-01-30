@@ -1,23 +1,28 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
+import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
 import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
-import com.github.firmwehr.gentle.backend.ir.register.X86Register;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
-import com.github.firmwehr.gentle.util.Mut;
 import firm.nodes.Node;
 
 import java.util.List;
-import java.util.Optional;
 
-public record IkeaNeg(
-	Mut<Optional<X86Register>> register,
-	IkeaBløck block,
-	IkeaGraph graph,
-	List<Node> underlyingFirmNodes,
-	int id
-) extends IkeaNode {
+public class IkeaNeg extends IkeaNode {
+
+	/**
+	 * @param id The id of the node.
+	 * @param block The parent block of the node.
+	 * @param graph The associated graph.
+	 * @param size The register size of the resulting value.
+	 * @param firmNodes A list of firm nodes that are part of this ikea node.
+	 */
+	public IkeaNeg(
+		int id, IkeaBløck block, IkeaGraph graph, IkeaBøx.IkeaRegisterSize size, List<Node> firmNodes
+	) {
+		super(id, block, graph, size, firmNodes);
+	}
 
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
@@ -34,18 +39,4 @@ public record IkeaNeg(
 		return IkeaRegisterRequirement.gpRegister();
 	}
 
-	@Override
-	public boolean equals(Object o) {
-		return this == o;
-	}
-
-	@Override
-	public int hashCode() {
-		return System.identityHashCode(this);
-	}
-
-	@Override
-	public String toString() {
-		return getClass().getSimpleName() + " (" + id() + ")";
-	}
 }

@@ -4,13 +4,11 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaCopy;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.output.Logger;
-import com.github.firmwehr.gentle.util.Mut;
 import com.google.common.collect.Sets;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Optional;
 import java.util.Set;
 
 public class Spillprepare {
@@ -71,8 +69,8 @@ public class Spillprepare {
 
 				// TODO: Use SSA reconstruction code and use copy in rest!
 				// FIXME: keep virtual register allocator
-				IkeaCopy copy = new IkeaCopy(new Mut<>(Optional.empty()), first.block(), first.graph(), List.of(),
-					first.graph().nextId());
+				IkeaCopy copy =
+					new IkeaCopy(first.graph().nextId(), first.block(), first.graph(), first.size(), List.of());
 				copy.graph().addNode(copy, List.of(first));
 				copy.graph().setInput(first, j, copy);
 				copies.add(copy);
@@ -106,9 +104,7 @@ public class Spillprepare {
 				continue;
 			}
 
-			IkeaCopy copy =
-				new IkeaCopy(new Mut<>(Optional.empty()), node.block(), node.graph(), List.of(),
-					node.graph().nextId());
+			IkeaCopy copy = new IkeaCopy(node.graph().nextId(), node.block(), node.graph(), in.size(), List.of());
 			copy.graph().addNode(copy, List.of(in));
 			copies.add(copy);
 			copy.graph().setInput(node, i, copy);

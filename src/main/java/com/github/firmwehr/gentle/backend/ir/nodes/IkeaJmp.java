@@ -1,7 +1,7 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
-import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
+import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
 import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
@@ -14,9 +14,9 @@ public final class IkeaJmp extends IkeaNode {
 	private final IkeaBløck target;
 
 	public IkeaJmp(
-		int id, IkeaBløck block, IkeaGraph graph, IkeaBøx.IkeaRegisterSize size, List<Node> firmNodes, IkeaBløck target
+		int id, IkeaBløck block, IkeaGraph graph, List<Node> firmNodes, IkeaBløck target
 	) {
-		super(id, block, graph, size, firmNodes);
+		super(id, block, graph, IkeaRegisterSize.ILLEGAL, firmNodes);
 		this.target = target;
 	}
 

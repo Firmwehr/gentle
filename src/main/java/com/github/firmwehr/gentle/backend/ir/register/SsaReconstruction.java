@@ -5,7 +5,6 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
-import com.github.firmwehr.gentle.util.Mut;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -80,9 +79,9 @@ public class SsaReconstruction {
 
 			// No direct def found, and we are in a frontier block: insert phi
 			if (F.contains(use.block())) {
-				IkeaPhi phi =
-					new IkeaPhi(new Mut<>(Optional.empty()), use.block(), use.graph(), List.of(),
-						use.graph().nextId());
+				// TODO: This size calculation is a bit crude...
+				IkeaPhi phi = new IkeaPhi(use.graph().nextId(), use.block(), use.graph(),
+					brokenVariables.iterator().next().size(), List.of());
 				use.block().nodes().add(0, phi);
 				List<IkeaNode> phiParents = new ArrayList<>();
 

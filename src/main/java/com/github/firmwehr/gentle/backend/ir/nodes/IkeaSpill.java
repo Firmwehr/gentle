@@ -1,24 +1,31 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
+import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
 import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
-import com.github.firmwehr.gentle.backend.ir.register.X86Register;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
-import com.github.firmwehr.gentle.util.Mut;
 import firm.nodes.Node;
 
 import java.util.List;
-import java.util.Optional;
 
-public record IkeaSpill(
-	Mut<Optional<X86Register>> register,
-	IkeaBløck block,
-	IkeaGraph graph,
-	List<Node> underlyingFirmNodes,
-	Mut<Integer> spillSlot,
-	int id
-) extends IkeaNode {
+public class IkeaSpill extends IkeaNode {
+
+	private int spillSlot;
+
+	public IkeaSpill(
+		int id, IkeaBløck block, IkeaGraph graph, IkeaBøx.IkeaRegisterSize size, List<Node> firmNodes
+	) {
+		super(id, block, graph, size, firmNodes);
+	}
+
+	public int spillSlot() {
+		return spillSlot;
+	}
+
+	public void spillSlot(int spillSlot) {
+		this.spillSlot = spillSlot;
+	}
 
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
@@ -36,17 +43,7 @@ public record IkeaSpill(
 	}
 
 	@Override
-	public boolean equals(Object o) {
-		return this == o;
-	}
-
-	@Override
-	public int hashCode() {
-		return System.identityHashCode(this);
-	}
-
-	@Override
-	public String toString() {
-		return "IkeaSpill " + spillSlot.get() + " (" + id() + ")";
+	public String display() {
+		return getClass().getSimpleName() + " " + spillSlot + " (" + id() + ")";
 	}
 }

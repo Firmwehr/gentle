@@ -1,16 +1,15 @@
 package com.github.firmwehr.gentle.backend.ir.register;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
+import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaProj;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
-import com.github.firmwehr.gentle.util.Mut;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 public class CalleeSavedPrepare {
@@ -32,9 +31,9 @@ public class CalleeSavedPrepare {
 		List<IkeaNode> projs = new ArrayList<>();
 
 		for (X86Register register : CALLEE_SAVED) {
-			Mut<Optional<X86Register>> reg = new Mut<>(Optional.of(register));
-			IkeaProj proj = new IkeaProj(reg, start, graph, List.of(), 0, graph.nextId());
-			proj.setRegisterRequirement(IkeaRegisterRequirement.singleRegister(register));
+			IkeaProj proj = new IkeaProj(graph.nextId(), start, graph, IkeaBøx.IkeaRegisterSize.BITS_64, List.of(), 0);
+			proj.register(register);
+			proj.registerRequirement(IkeaRegisterRequirement.singleRegister(register));
 
 			start.nodes().add(proj);
 			graph.addNode(proj, List.of());

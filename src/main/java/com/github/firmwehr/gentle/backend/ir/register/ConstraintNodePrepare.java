@@ -39,8 +39,7 @@ public class ConstraintNodePrepare {
 
 	private void addPermForNode(IkeaNode node) {
 		List<IkeaNode> toPerm = List.copyOf(liveliness.getLiveBefore(node));
-		IkeaPerm perm =
-			new IkeaPerm(new Mut<>(Optional.empty()), node.block(), node.graph(), List.of(), node.graph().nextId());
+		IkeaPerm perm = new IkeaPerm(node.graph().nextId(), node.block(), node.graph(), List.of());
 		node.graph().addNode(perm, toPerm);
 		int nodeIndex = node.block().nodes().indexOf(node);
 		node.block().nodes().add(nodeIndex, perm);
@@ -56,8 +55,8 @@ public class ConstraintNodePrepare {
 		List<IkeaProj> projs = new ArrayList<>();
 		for (int i = 0; i < toPerm.size(); i++) {
 			IkeaNode ikeaNode = toPerm.get(i);
-			IkeaProj proj = new IkeaProj(new Mut<>(Optional.empty()), perm.block(), perm.graph(), List.of(), i,
-				node.graph().nextId());
+			IkeaProj proj =
+				new IkeaProj(node.graph().nextId(), perm.block(), perm.graph(), ikeaNode.size(), List.of(), i);
 			perm.graph().addNode(proj, List.of(perm));
 			node.block().nodes().add(nodeIndex++, proj);
 			projs.add(proj);
@@ -68,7 +67,7 @@ public class ConstraintNodePrepare {
 		for (int i = 0; i < node.inputs().size(); i++) {
 			IkeaProj input = (IkeaProj) node.inputs().get(i);
 			IkeaRegisterRequirement requirement = node.inRequirements().get(i);
-			input.setRegisterRequirement(requirement);
+			input.registerRequirement(requirement);
 		}
 
 		// Copy in requirements to perm. This ensures e.g. a call with a requirement of "EAX" for a register will have
@@ -96,7 +95,7 @@ public class ConstraintNodePrepare {
 			// instruction can use the same register twice as input
 			X86Register register = entry.assignedRegister()
 				.orElseThrow(() -> new InternalCompilerException("No out register assigned for " + entry));
-			projs.get(i).register().set(Optional.of(register));
+			projs.get(i).register(register);
 		}
 
 		// We might have screwed these things over royally

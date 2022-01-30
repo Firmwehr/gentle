@@ -124,7 +124,7 @@ public class VcgDumper {
 			node.underlyingFirmNodes().stream().map(Objects::toString).collect(Collectors.joining("\n")).indent(2);
 
 		if (!node.registerIgnore()) {
-			infoText += "Reg: " + node.register().get().map(Enum::name).orElse("<none>");
+			infoText += "Reg: " + node.register().map(Enum::name).orElse("<none>");
 			if (node.registerRequirement().limited()) {
 				infoText += "\n  limited to: " +
 					node.registerRequirement().limitedTo().stream().map(Enum::name).collect(Collectors.joining(", "));

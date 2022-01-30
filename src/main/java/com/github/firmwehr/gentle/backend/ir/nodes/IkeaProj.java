@@ -37,17 +37,13 @@ public final class IkeaProj extends IkeaNode {
 		return regRequirement;
 	}
 
-	public IkeaRegisterRequirement getRegRequirement() {
-		return regRequirement;
-	}
-
-	public void setRegRequirement(IkeaRegisterRequirement regRequirement) {
+	public void registerRequirement(IkeaRegisterRequirement regRequirement) {
 		this.regRequirement = regRequirement;
 	}
 
 	@Override
 	public String display() {
-		return "IkeaProj " + index;
+		return getClass().getSimpleName() + " " + index + " (" + id() + ")";
 	}
 
 	public int index() {
