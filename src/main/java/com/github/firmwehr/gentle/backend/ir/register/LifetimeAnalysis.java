@@ -37,8 +37,7 @@ public class LifetimeAnalysis {
 		LOGGER.info("Building lifetimes");
 		Set<IkeaBløck> seen = new HashSet<>();
 
-		Queue<IkeaBløck> worklist = new ArrayDeque<>();
-		worklist.add(controlFlowGraph.getEnd());
+		Queue<IkeaBløck> worklist = new ArrayDeque<>(controlFlowGraph.getEnds());
 
 		// LIVE_out[final] = ∅, rest also initialized to this for now
 		for (IkeaBløck block : controlFlowGraph.getAllBlocks()) {

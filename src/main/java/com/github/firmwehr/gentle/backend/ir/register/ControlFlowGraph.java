@@ -55,12 +55,14 @@ public class ControlFlowGraph {
 			.orElseThrow(() -> new InternalCompilerException("Control flow graph has no start node: " + graph));
 	}
 
-	public IkeaBløck getEnd() {
-		return graph.nodes()
-			.stream()
-			.filter(it -> graph.outDegree(it) == 0)
-			.findFirst()
-			.orElseThrow(() -> new InternalCompilerException("Control flow graph has no end node: " + graph));
+	public List<IkeaBløck> getEnds() {
+		List<IkeaBløck> ends = graph.nodes().stream().filter(it -> graph.outDegree(it) == 0).toList();
+
+		if (ends.isEmpty()) {
+			throw new InternalCompilerException("Control flow graph has no end node: " + graph);
+		}
+
+		return ends;
 	}
 
 	public List<IkeaBløck> reversePostOrder() {

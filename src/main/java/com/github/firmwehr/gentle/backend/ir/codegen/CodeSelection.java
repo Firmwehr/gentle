@@ -29,6 +29,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
 import com.github.firmwehr.gentle.backend.ir.register.Belady;
+import com.github.firmwehr.gentle.backend.ir.register.CalleeSavedPrepare;
 import com.github.firmwehr.gentle.backend.ir.register.ConstraintNodePrepare;
 import com.github.firmwehr.gentle.backend.ir.register.ControlFlowGraph;
 import com.github.firmwehr.gentle.backend.ir.register.Dominance;
@@ -181,6 +182,11 @@ public class CodeSelection extends NodeVisitor.Default {
 		LoopTree loopTree = LoopTree.forGraph(graph);
 
 		GraphDumper.dumpGraph(controlFlowGraph, "backend-init");
+
+		CalleeSavedPrepare calleeSavedPrepare = new CalleeSavedPrepare(ikeaGraph, controlFlowGraph);
+		calleeSavedPrepare.prepare();
+
+		GraphDumper.dumpGraph(controlFlowGraph, "backend-calleeprepare");
 
 		// 1. Prepare for spilling
 		Spillprepare prepare = new Spillprepare(liveliness, dominance, uses);

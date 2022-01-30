@@ -3,6 +3,7 @@ package com.github.firmwehr.gentle.backend.ir;
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
 import com.google.common.graph.MutableNetwork;
 import com.google.common.graph.NetworkBuilder;
 
@@ -124,6 +125,24 @@ public class IkeaGraph {
 		}
 		for (int i = 0; i < inputs.size(); i++) {
 			network.addEdge(phi, inputs.get(i), new IkeaEdge(phi, inputs.get(i), i));
+		}
+	}
+
+	/**
+	 * Overwrites an existing return node to account for callee-saved values.
+	 *
+	 * @param ret the return node to overwrite
+	 * @param inputs the return inputs
+	 */
+	public void overwriteRet(IkeaRet ret, List<IkeaNode> inputs) {
+		if (!network.nodes().contains(ret)) {
+			throw new InternalCompilerException("Return was not already part of graph");
+		}
+		if (getInputs(ret).size() > 1) {
+			throw new InternalCompilerException("Return has too many inputs already");
+		}
+		for (int i = 0; i < inputs.size(); i++) {
+			network.addEdge(ret, inputs.get(i), new IkeaEdge(ret, inputs.get(i), i));
 		}
 	}
 

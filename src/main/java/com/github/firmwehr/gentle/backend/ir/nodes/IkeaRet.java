@@ -8,6 +8,7 @@ import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import com.github.firmwehr.gentle.util.Mut;
 import firm.nodes.Node;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,7 +29,10 @@ public record IkeaRet(
 
 	@Override
 	public List<IkeaRegisterRequirement> inRequirements() {
-		return graph.getInputs(this).stream().map(node -> singleRegister(X86Register.RAX)).toList();
+		List<IkeaNode> inputs = graph.getInputs(this);
+		List<IkeaRegisterRequirement> requirements = new ArrayList<>();
+		
+		return inputs.stream().map(node -> singleRegister(X86Register.RAX)).toList();
 	}
 
 	@Override
