@@ -12,6 +12,7 @@ import firm.nodes.Node;
 import java.util.List;
 import java.util.Optional;
 
+// TODO: replace with dummy, needs to be integrated in IkeaNode
 public record IkeaMovLoadEx(
 	Mut<Optional<X86Register>> register,
 	IkeaBløck block,
@@ -19,7 +20,7 @@ public record IkeaMovLoadEx(
 	List<Node> underlyingFirmNodes,
 	BoxScheme scheme,
 	int id
-) implements IkeaNode {
+) extends IkeaNode {
 
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {

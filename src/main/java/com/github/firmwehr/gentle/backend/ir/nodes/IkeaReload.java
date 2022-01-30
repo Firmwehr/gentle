@@ -18,7 +18,7 @@ public record IkeaReload(
 	List<Node> underlyingFirmNodes,
 	Mut<Integer> spillSlot,
 	int id
-) implements IkeaNode {
+) extends IkeaNode {
 
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {

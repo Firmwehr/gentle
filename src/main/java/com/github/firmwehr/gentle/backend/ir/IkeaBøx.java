@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.backend.ir;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
 import firm.Mode;
+import firm.nodes.Node;
 
 public sealed interface IkeaBøx permits IkeaVirtualRegister, IkeaPhysicalRegister, IkeaUnassignedBøx, IkeaImmediate {
 
@@ -21,6 +22,10 @@ public sealed interface IkeaBøx permits IkeaVirtualRegister, IkeaPhysicalRegist
 		IkeaRegisterSize(String newRegisterSuffix, String oldRegisterSuffix) {
 			this.newRegisterSuffix = newRegisterSuffix;
 			this.oldRegisterSuffix = oldRegisterSuffix;
+		}
+
+		public static IkeaRegisterSize forMode(Node node) {
+			return forMode(node.getMode());
 		}
 
 		public static IkeaRegisterSize forMode(Mode mode) {

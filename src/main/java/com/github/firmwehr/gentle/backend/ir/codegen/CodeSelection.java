@@ -2,11 +2,8 @@ package com.github.firmwehr.gentle.backend.ir.codegen;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
-import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
-import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
 import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
 import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
-import com.github.firmwehr.gentle.backend.ir.IkeaVirtualRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.BoxScheme;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaAdd;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaArgNode;
@@ -48,7 +45,6 @@ import com.github.firmwehr.gentle.util.GraphDumper;
 import com.github.firmwehr.gentle.util.Mut;
 import firm.BackEdges;
 import firm.Graph;
-import firm.MethodType;
 import firm.Mode;
 import firm.Relation;
 import firm.nodes.Add;
@@ -100,7 +96,6 @@ public class CodeSelection extends NodeVisitor.Default {
 	private final Graph graph;
 	private final IkeaGraph ikeaGraph;
 	private final CodePreselection preselection;
-	private int regCount;
 
 	public CodeSelection(Graph graph, CodePreselection preselection) {
 		this.graph = graph;
@@ -110,7 +105,6 @@ public class CodeSelection extends NodeVisitor.Default {
 		this.blocks = new HashMap<>();
 		this.phiBär = new HashMap<>();
 		this.nodes = new HashMap<>();
-		this.regCount = ((MethodType) this.graph.getEntity().getType()).getNParams();
 	}
 
 	public List<IkeaBløck> convertBlocks() {
@@ -119,13 +113,19 @@ public class CodeSelection extends NodeVisitor.Default {
 		GraphDumper.dumpGraph(graph, "critical-edges");
 
 		BackEdges.enable(graph);
+
+		// prepopulate block mappings
 		graph.walkBlocks(block -> blocks.put(block, new IkeaBløck(new ArrayList<>(), new ArrayList<>(), block)));
+
+		// collect phis
 		graph.walkTopological(new Default() {
 			@Override
 			public void visit(Phi node) {
+				// skip memory phis
 				if (node.getMode().equals(Mode.getM())) {
 					return;
 				}
+
 				IkeaBløck block = blocks.get((Block) node.getBlock());
 				IkeaPhi ikeaPhi = new IkeaPhi(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 				nodes.put(node, ikeaPhi);
@@ -134,7 +134,11 @@ public class CodeSelection extends NodeVisitor.Default {
 				phiBär.computeIfAbsent((Block) node.getBlock(), ignore -> new ArrayList<>()).add(node);
 			}
 		});
+
+		// generate instructions
 		graph.walkTopological(this);
+
+		// link phis
 		graph.walkBlocks(block -> {
 			for (int i = 0, c = block.getPredCount(); i < c; i++) {
 				Block pred = (Block) block.getPred(i).getBlock();
@@ -214,10 +218,6 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	private Mut<Optional<X86Register>> noReg() {
 		return new Mut<>(Optional.empty());
-	}
-
-	private IkeaBøx nextRegister(Mode mode) {
-		return new IkeaVirtualRegister(this.regCount++, IkeaRegisterSize.forMode(mode));
 	}
 
 	@Override
@@ -550,7 +550,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		IkeaMovStore ikeaMovStore = new IkeaMovStore(noReg(), block, ikeaGraph, List.of(node), ikeaGraph.nextId());
 		nodes.put(node, ikeaMovStore);
 		block.nodes().add(ikeaMovStore);
-		ikeaGraph.addNode(value, List.of(nodes.get(node.getPtr()), value));
+		ikeaGraph.addNode(ikeaMovStore, List.of(nodes.get(node.getPtr()), value));
 	}
 
 	@Override

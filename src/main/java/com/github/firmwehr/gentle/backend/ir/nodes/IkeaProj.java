@@ -1,31 +1,25 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
+import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
 import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
-import com.github.firmwehr.gentle.backend.ir.register.X86Register;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
-import com.github.firmwehr.gentle.util.Mut;
 import firm.nodes.Node;
 
 import java.util.List;
-import java.util.Optional;
 
-public record IkeaProj(
-	Mut<Optional<X86Register>> register,
-	IkeaBløck block,
-	IkeaGraph graph,
-	List<Node> underlyingFirmNodes,
-	int index,
-	Mut<IkeaRegisterRequirement> regRequirement,
-	int id
-) implements IkeaNode {
+public final class IkeaProj extends IkeaNode {
+
+	private final int index;
+
+	private IkeaRegisterRequirement regRequirement;
 
 	public IkeaProj(
-		Mut<Optional<X86Register>> register, IkeaBløck block, IkeaGraph graph, List<Node> underlyingFirmNodes,
-		int index, int id
+		int id, IkeaBløck block, IkeaGraph graph, IkeaBøx.IkeaRegisterSize size, List<Node> firmNodes, int index
 	) {
-		this(register, block, graph, underlyingFirmNodes, index, new Mut<>(IkeaRegisterRequirement.gpRegister()), id);
+		super(id, block, graph, size, firmNodes);
+		this.index = index;
 	}
 
 	@Override
@@ -40,25 +34,23 @@ public record IkeaProj(
 
 	@Override
 	public IkeaRegisterRequirement registerRequirement() {
-		return regRequirement.get();
+		return regRequirement;
+	}
+
+	public IkeaRegisterRequirement getRegRequirement() {
+		return regRequirement;
+	}
+
+	public void setRegRequirement(IkeaRegisterRequirement regRequirement) {
+		this.regRequirement = regRequirement;
 	}
 
 	@Override
-	public boolean equals(Object o) {
-		return this == o;
-	}
-
-	@Override
-	public int hashCode() {
-		return System.identityHashCode(this);
-	}
-
-	public void setRegisterRequirement(IkeaRegisterRequirement requirement) {
-		regRequirement.set(requirement);
-	}
-
-	@Override
-	public String toString() {
+	public String display() {
 		return "IkeaProj " + index;
+	}
+
+	public int index() {
+		return index;
 	}
 }

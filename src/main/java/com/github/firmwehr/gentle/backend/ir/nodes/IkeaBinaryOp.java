@@ -4,27 +4,22 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
 import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
-import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
 import firm.nodes.Node;
 
 import java.util.List;
 
-public final class IkeaConv extends IkeaNode {
+// TODO: javadoc. this is the most common case, so we simply create a new base class for it
+public abstract class IkeaBinaryOp extends IkeaNode {
 
-	public IkeaConv(
+	protected IkeaBinaryOp(
 		int id, IkeaBløck block, IkeaGraph graph, IkeaBøx.IkeaRegisterSize size, List<Node> firmNodes
 	) {
 		super(id, block, graph, size, firmNodes);
 	}
 
 	@Override
-	public <T> T accept(IkeaVisitor<T> visitor) {
-		return visitor.visit(this);
-	}
-
-	@Override
 	public List<IkeaRegisterRequirement> inRequirements() {
-		return List.of(IkeaRegisterRequirement.gpRegister());
+		return List.of(IkeaRegisterRequirement.gpRegister(), IkeaRegisterRequirement.gpRegister());
 	}
 
 	@Override

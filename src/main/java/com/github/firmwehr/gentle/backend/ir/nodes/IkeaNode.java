@@ -2,11 +2,11 @@ package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
+import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
 import com.github.firmwehr.gentle.backend.ir.IkeaGraph;
 import com.github.firmwehr.gentle.backend.ir.register.IkeaRegisterRequirement;
 import com.github.firmwehr.gentle.backend.ir.register.X86Register;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
-import com.github.firmwehr.gentle.util.Mut;
 import firm.nodes.Node;
 
 import java.util.ArrayList;
@@ -15,38 +15,133 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public interface IkeaNode {
+/**
+ * Common base class for all Ikea nodes
+ */
+public abstract class IkeaNode {
 
-	Mut<Optional<X86Register>> register();
+	private final int id;
+	private final IkeaBløck block;
+	private final IkeaGraph graph;
+	private final IkeaBøx.IkeaRegisterSize size;
+	private final List<Node> firmNodes;
+	private Optional<X86Register> register = Optional.empty();
 
-	default X86Register uncheckedRegister() {
-		return register().get()
-			.orElseThrow(() -> new InternalCompilerException("Expected register for " + this + " to be present!"));
+	/**
+	 * @param id The id of the node.
+	 * @param block The parent block of the node.
+	 * @param graph The associated graph.
+	 * @param size The register size of the resulting value.
+	 * @param firmNodes A list of firm nodes that are part of this ikea node.
+	 */
+	protected IkeaNode(int id, IkeaBløck block, IkeaGraph graph, IkeaBøx.IkeaRegisterSize size, List<Node> firmNodes) {
+		this.id = id;
+		this.block = block;
+		this.graph = graph;
+		this.size = size;
+		this.firmNodes = List.copyOf(firmNodes);
 	}
 
-	default boolean registerIgnore() {
+	@Override
+	public final boolean equals(Object o) {
+		return this == o;
+	}
+
+	@Override
+	public final int hashCode() {
+		return System.identityHashCode(this);
+	}
+
+	// TODO: final can be removed, once refactoring is complete
+	@Override
+	public final String toString() {
+		return display();
+	}
+
+	/**
+	 * @return Currently assigned register.
+	 */
+	public final Optional<X86Register> register() {
+		return register;
+	}
+
+	/**
+	 * @param register The new target register.
+	 */
+	public final void register(X86Register register) {
+		this.register = Optional.of(register);
+	}
+
+	/**
+	 * Fetches the target register by unwarpping the containing Optional.
+	 *
+	 * @return Result register
+	 *
+	 * @throws InternalCompilerException If no register has been assigned.
+	 */
+	public final X86Register uncheckedRegister() {
+		return register.orElseThrow(
+			() -> new InternalCompilerException("Expected register for " + this + " to be present!"));
+	}
+
+	/**
+	 * I don't know, u tell me
+	 *
+	 * @return
+	 */
+	public final boolean registerIgnore() {
 		return registerRequirement().limitedTo().isEmpty();
 	}
 
-	default boolean isTuple() {
+	/**
+	 * I don't know, u tell me
+	 *
+	 * @return
+	 */
+	public boolean isTuple() {
 		return false;
 	}
 
-	int id();
+	/**
+	 * @return Internal id in ikea graph.
+	 */
+	public final int id() {
+		return id;
+	}
 
-	IkeaBløck block();
+	/**
+	 * @return Parent block.
+	 */
+	public final IkeaBløck block() {
+		return block;
+	}
 
-	IkeaGraph graph();
+	/**
+	 * @return Containing ikea graph.
+	 */
+	public final IkeaGraph graph() {
+		return graph;
+	}
 
-	List<Node> underlyingFirmNodes();
+	/**
+	 * @return Size of resulting value.
+	 */
+	public final IkeaBøx.IkeaRegisterSize size() {
+		return size;
+	}
 
-	<T> T accept(IkeaVisitor<T> visitor);
+	public final List<Node> underlyingFirmNodes() {
+		return firmNodes;
+	}
 
-	default List<IkeaNode> inputs() {
+	public final List<IkeaNode> inputs() {
 		return graph().getInputs(this);
 	}
 
-	default List<IkeaNode> results() {
+	public abstract <T> T accept(IkeaVisitor<T> visitor);
+
+	// TODO: this can probably be done way better with subclass
+	public final List<IkeaNode> results() {
 		List<IkeaNode> results = graph().getOutputs(this)
 			.stream()
 			.filter(it -> it instanceof IkeaProj)
@@ -60,11 +155,25 @@ public interface IkeaNode {
 		return results;
 	}
 
-	List<IkeaRegisterRequirement> inRequirements();
+	/**
+	 * Used by VCG graph printing.
+	 *
+	 * @return Human readable string vor VCG graph.
+	 */
+	public String display() {
+		return getClass().getSimpleName() + " (" + id() + ")";
+	}
 
-	default Set<X86Register> clobbered() {
+	/**
+	 * @return Set of registers that will be clobbered by this operation.
+	 */
+	public Set<X86Register> clobbered() {
 		return Set.of();
 	}
 
-	IkeaRegisterRequirement registerRequirement();
+	// TODO: explain
+	public abstract List<IkeaRegisterRequirement> inRequirements();
+
+	// TODO: explain
+	public abstract IkeaRegisterRequirement registerRequirement();
 }

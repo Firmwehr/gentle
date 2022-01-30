@@ -1,6 +1,8 @@
 package com.github.firmwehr.gentle.backend.ir.register;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 
 import java.util.EnumSet;
 import java.util.Map;
@@ -34,8 +36,16 @@ public enum X86Register {
 		this.names = names;
 	}
 
+	public String nameForSize(IkeaNode node) {
+		return nameForSize(node.size());
+	}
+
 	public String nameForSize(IkeaBøx.IkeaRegisterSize size) {
-		return names.get(size);
+		String s = names.get(size);
+		if (s == null) {
+			throw new InternalCompilerException("tried to retrieve register for non-register");
+		}
+		return s;
 	}
 
 	public static Set<X86Register> all() {

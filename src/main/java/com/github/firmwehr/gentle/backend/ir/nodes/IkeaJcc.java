@@ -12,16 +12,16 @@ import firm.nodes.Node;
 import java.util.List;
 import java.util.Optional;
 
-public record IkeaJcc(
-	Mut<Optional<X86Register>> register,
-	IkeaBløck block,
-	IkeaGraph graph,
-	List<Node> underlyingFirmNodes,
-	Relation relation,
-	IkeaBløck trueTarget,
-	IkeaBløck falseTarget,
-	int id
-) implements IkeaNode {
+public record IkeaJcc( // TODO: this looks complicated
+                       Mut<Optional<X86Register>> register,
+                       IkeaBløck block,
+                       IkeaGraph graph,
+                       List<Node> underlyingFirmNodes,
+                       Relation relation,
+                       IkeaBløck trueTarget,
+                       IkeaBløck falseTarget,
+                       int id
+) extends IkeaNode {
 
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {

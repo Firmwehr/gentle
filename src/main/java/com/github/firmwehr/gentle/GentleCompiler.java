@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.codegen.CodePreselection;
 import com.github.firmwehr.gentle.backend.ir.codegen.CodePreselectionMatcher;
 import com.github.firmwehr.gentle.backend.ir.codegen.CodeSelection;
+import com.github.firmwehr.gentle.backend.ir.visit.GentleCodegenVisitor;
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandDispatcher;
 import com.github.firmwehr.gentle.cli.CompilerArguments;
@@ -39,6 +40,7 @@ import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 public class GentleCompiler {
@@ -244,9 +246,10 @@ public class GentleCompiler {
 
 			CodeSelection codeSelection = new CodeSelection(graph, codePreselection);
 			List<IkeaBløck> blocks = codeSelection.convertBlocks();
-			//			DjungelskogVisitor visitor = new DjungelskogVisitor(debugStore);
-			//			String res = visitor.visit(graph, blocks);
-			//			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+
+			GentleCodegenVisitor visitor = new GentleCodegenVisitor();
+			String res = visitor.visit(graph, blocks);
+			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
 		}
 
 		LOGGER.info("code preselection matched %s subtrees in total across all graphs", preselectionCount);

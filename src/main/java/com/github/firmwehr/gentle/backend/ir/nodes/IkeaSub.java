@@ -17,7 +17,7 @@ public record IkeaSub(
 	IkeaGraph graph,
 	List<Node> underlyingFirmNodes,
 	int id
-) implements IkeaNode {
+) extends IkeaNode {
 
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {

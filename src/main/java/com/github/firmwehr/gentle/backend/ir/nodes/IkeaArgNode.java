@@ -18,7 +18,7 @@ public record IkeaArgNode(
 	List<Node> underlyingFirmNodes,
 	int index,
 	int id
-) implements IkeaNode {
+) extends IkeaNode {
 
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
