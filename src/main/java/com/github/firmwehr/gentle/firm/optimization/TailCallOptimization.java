@@ -28,6 +28,9 @@ import java.util.Set;
 public class TailCallOptimization {
 	private static final Logger LOGGER = new Logger(TailCallOptimization.class, Logger.LogLevel.DEBUG);
 
+	/**
+	 * Basic Tail Call Optimization (TCO). Turns recursive calls in returns into loops.
+	 */
 	public static GraphOptimizationStep<Graph, Boolean> tailCallOptimization() {
 		return GraphOptimizationStep.<Graph, Boolean>builder()
 			.withDescription("TailCallOptimization")
@@ -45,6 +48,10 @@ public class TailCallOptimization {
 					return false;
 				}
 
+				/*
+				We will now replace each tail calls return by a jump. The target of this new jump
+				needs to be a new block. We can't jump into the graphs start block itself.
+				 */
 				LOGGER.debugHeader("Creating a jump to replace each tail call...");
 
 				List<Node> loopJumps = new ArrayList<>();
@@ -52,6 +59,9 @@ public class TailCallOptimization {
 				loopJumps.add(jumpFromStart);
 				Optional<Jmp> selfJmp = Optional.empty();
 
+				/*
+				Before creating the loop header, we collect all the jumps to it and pass them to its factory method.
+				 */
 				for (TailCall tailCall : tailCalls) {
 					Jmp jump = (Jmp) graph.newJmp(tailCall.ret().getBlock());
 					loopJumps.add(jump);
@@ -75,8 +85,8 @@ public class TailCallOptimization {
 
 				/*
 				Code in the start block that depends on the input memory or arguments must be moved into the loop
-				header
-				where we will create some phis to use as inputs instead.
+				header. When we jump into the loop header from a tail call site, we want to use the arguments passed to
+				the tail call as the new parameters. For this purpose we will create some phis in the loop header.
 				 */
 				LOGGER.debugHeader("Moving code that depends on start node from start block to loop header...");
 				Set<Node> nodesToMove = new HashSet<>(successorsInBlock(inputs.mem(), graph.getStartBlock()));
@@ -84,7 +94,6 @@ public class TailCallOptimization {
 					nodesToMove.addAll(successorsInBlock(arg, graph.getStartBlock()));
 				}
 				for (Node nodeToMove : nodesToMove) {
-					LOGGER.debug("Moving %s to %s", nodeToMove, loopHeader);
 					nodeToMove.setBlock(loopHeader);
 				}
 
@@ -145,8 +154,6 @@ public class TailCallOptimization {
 						}
 					});
 				}
-			} else {
-				LOGGER.debug("Ignoring Start out node %s", node);
 			}
 		}
 
@@ -157,10 +164,18 @@ public class TailCallOptimization {
 	}
 
 	// TODO: Fix awful implementation full of allocations
+
+	/**
+	 * Finds dependants of a node that are in the same block as the given node.
+	 *
+	 * @param arg The node to start searching from.
+	 * @param block The block to search in.
+	 *
+	 * @return a set of nodes n that (transitively) depend on arg where n.getBlock().equals(block)
+	 */
 	private static Set<Node> successorsInBlock(Node arg, Block block) {
 		Set<Node> successorsInBlock = new HashSet<>();
 		Util.outsStream(arg).forEach((node) -> {
-			LOGGER.debug("Investigating %s in block %s...", node, node.getBlock());
 			if (node.getBlock() != null && node.getBlock().equals(block)) {
 				successorsInBlock.add(node);
 				successorsInBlock.addAll(successorsInBlock(node, block));
@@ -169,8 +184,7 @@ public class TailCallOptimization {
 		return successorsInBlock;
 	}
 
-	// Right now this generates redundant phis for arguments that are not modified in the recursive call.
-	// Let's hope someone cleans up after us :^)
+	// TODO: Fix this, includes a bunch of unnecessary edges.
 	private static void generatePhi(Node node, Proj argLike, List<Node> otherInputs) {
 		List<Node> ins = new ArrayList<>();
 		ins.add(argLike);
@@ -184,14 +198,12 @@ public class TailCallOptimization {
 		LOGGER.debug("Created new phi: %s", phi);
 	}
 
-	// TODO: Check edge cases, e.g. returning a local variable assigned in a block
 	private static List<TailCall> findTailCalls(Graph graph) {
 		LOGGER.debugHeader("Looking for tails calls in %d returns...", graph.getEndBlock().getPredCount());
 		List<TailCall> tailCalls = new ArrayList<>();
 		Block end = graph.getEndBlock();
 
 		for (Node endPred : end.getPreds()) {
-			LOGGER.debug("Examining node %s", endPred);
 			matchTailCall(endPred).map((match) -> new TailCall(match.ret(), match.call())).ifPresent((tc) -> {
 				LOGGER.debug("%s is in a fact a tail call", endPred);
 				tailCalls.add(tc);
