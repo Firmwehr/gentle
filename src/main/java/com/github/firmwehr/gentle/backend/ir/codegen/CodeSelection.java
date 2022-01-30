@@ -190,6 +190,8 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		CalleeSavedPrepare calleeSavedPrepare = new CalleeSavedPrepare(ikeaGraph, controlFlowGraph);
 		calleeSavedPrepare.prepare();
+		liveliness.recompute();
+		dominance.recompute();
 
 		GraphDumper.dumpGraph(controlFlowGraph, "backend-calleeprepare");
 

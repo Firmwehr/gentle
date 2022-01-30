@@ -99,7 +99,7 @@ public class VcgDumper {
 	private String formatBlock(IkeaBløck block) {
 		StringBuilder result = new StringBuilder("graph: {");
 		result.append("\n  title: " + '"').append(blockTitle(block)).append('"');
-		result.append("\n  label: " + '"').append(block.origin()).append('"');
+		result.append("\n  label: " + '"').append("Block ").append(block.origin().getNr()).append('"');
 		result.append("\n  status: clustered");
 		result.append("\n  color: ").append(VcgColor.BLOCK.id());
 		result.append("\n");
