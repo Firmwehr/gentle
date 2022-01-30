@@ -86,13 +86,16 @@ public class Belady {
 			// Not an instruction, only relevant for deciding our start worksets and wiring them up correctly
 			// Not keeping track of our phi inputs might cause additional register demand when translating phis, but
 			// due to exchange instructions on x86 this should be fine :^)
-			if (node instanceof IkeaPhi || node.registerIgnore()) {
+			if (node instanceof IkeaPhi) {
 				continue;
 			}
 
 			// We need all our inputs in registers here
 			displace(new HashSet<>(node.inputs()), currentBlockWorkset, node, true);
-			displace(node.results(), currentBlockWorkset, node, false);
+
+			if (!node.registerIgnore()) {
+				displace(node.results(), currentBlockWorkset, node, false);
+			}
 		}
 
 		endWorksets.put(block, currentBlockWorkset);
@@ -108,6 +111,10 @@ public class Belady {
 
 		int demand = newValues.size();
 		for (IkeaNode value : newValues) {
+			if (value.registerIgnore()) {
+				throw new InternalCompilerException("Tried to make room for register ignore node");
+			}
+
 			WorksetNode worksetValue = new WorksetNode(value);
 			// Needs a reload!
 			if (!currentWorkset.contains(worksetValue) && isUsage) {
@@ -514,10 +521,10 @@ public class Belady {
 				int insertionPoint = reloadBefore.block().nodes().indexOf(reloadBefore) - 1;
 				IkeaReload reload =
 					new IkeaReload(reloadBefore.graph().nextId(), reloadBefore.block(), reloadBefore.graph(),
-						info.valueToSpill().size(), List.of());
+						info.valueToSpill().size(), List.of(), info.valueToSpill());
 				reloadBefore.block().nodes().add(insertionPoint, reload);
 				// TODO: What do we point to here?
-				reloadBefore.graph().addNode(reload, List.of(info.valueToSpill()));
+				//				reloadBefore.graph().addNode(reload, List.of(info.valueToSpill()));
 
 				ssaReconstruction.addDef(reload);
 			}
@@ -575,10 +582,10 @@ public class Belady {
 		for (IkeaBløck block : controlFlow.getAllBlocks()) {
 			for (IkeaNode node : block.nodes()) {
 				if (node instanceof IkeaReload reload) {
-					int index = slotIndices.computeIfAbsent(node.inputs().get(0), ignored -> slotIndices.size());
+					int index = slotIndices.computeIfAbsent(reload.originalValue(), ignored -> slotIndices.size());
 					reload.spillSlot(index);
 				} else if (node instanceof IkeaSpill spill) {
-					int index = slotIndices.computeIfAbsent(node.inputs().get(0), ignored -> slotIndices.size());
+					int index = slotIndices.computeIfAbsent(spill.inputs().get(0), ignored -> slotIndices.size());
 					spill.spillSlot(index);
 				}
 			}

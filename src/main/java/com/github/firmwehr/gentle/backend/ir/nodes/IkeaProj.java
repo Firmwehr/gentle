@@ -12,14 +12,27 @@ import java.util.List;
 public final class IkeaProj extends IkeaNode {
 
 	private final int index;
+	private final String nameForIndex;
 
-	private IkeaRegisterRequirement regRequirement;
+	private IkeaRegisterRequirement registerRequirement;
 
 	public IkeaProj(
-		int id, IkeaBløck block, IkeaGraph graph, IkeaBøx.IkeaRegisterSize size, List<Node> firmNodes, int index
+		int id,
+		IkeaBløck block,
+		IkeaGraph graph,
+		IkeaBøx.IkeaRegisterSize size,
+		List<Node> firmNodes,
+		int index,
+		String nameForIndex
 	) {
 		super(id, block, graph, size, firmNodes);
 		this.index = index;
+		this.nameForIndex = nameForIndex;
+		this.registerRequirement = IkeaRegisterRequirement.gpRegister();
+	}
+
+	public String nameForIndex() {
+		return nameForIndex;
 	}
 
 	@Override
@@ -34,16 +47,16 @@ public final class IkeaProj extends IkeaNode {
 
 	@Override
 	public IkeaRegisterRequirement registerRequirement() {
-		return regRequirement;
+		return registerRequirement;
 	}
 
 	public void registerRequirement(IkeaRegisterRequirement regRequirement) {
-		this.regRequirement = regRequirement;
+		this.registerRequirement = regRequirement;
 	}
 
 	@Override
 	public String display() {
-		return getClass().getSimpleName() + " " + index + " (" + id() + ")";
+		return getClass().getSimpleName() + " " + index + ": " + nameForIndex() + " (" + id() + ")";
 	}
 
 	public int index() {

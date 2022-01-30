@@ -92,7 +92,7 @@ public class Uses {
 
 			// Found the first or closer use :)
 			if (foundUse == null || useIndex < foundUse.distance()) {
-				foundUse = new NextUse(def, use, fromIndex - useIndex, fromLoopDepth);
+				foundUse = new NextUse(def, use, useIndex - fromIndex, fromLoopDepth);
 			}
 		}
 

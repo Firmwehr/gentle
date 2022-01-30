@@ -56,7 +56,8 @@ public class ConstraintNodePrepare {
 		for (int i = 0; i < toPerm.size(); i++) {
 			IkeaNode ikeaNode = toPerm.get(i);
 			IkeaProj proj =
-				new IkeaProj(node.graph().nextId(), perm.block(), perm.graph(), ikeaNode.size(), List.of(), i);
+				new IkeaProj(node.graph().nextId(), perm.block(), perm.graph(), ikeaNode.size(), List.of(), i,
+					Integer.toString(i));
 			perm.graph().addNode(proj, List.of(perm));
 			node.block().nodes().add(nodeIndex++, proj);
 			projs.add(proj);
@@ -238,10 +239,14 @@ public class ConstraintNodePrepare {
 	}
 
 	public static class BipartiteEntry {
+		private final IkeaNode underlying;
 		private final Set<X86Register> allowedRegisters;
 		private X86Register assignedRegister;
 
-		private BipartiteEntry(Set<X86Register> allowedRegisters, X86Register assignedRegister) {
+		private BipartiteEntry(
+			Set<X86Register> allowedRegisters, X86Register assignedRegister, IkeaNode underlying
+		) {
+			this.underlying = underlying;
 			this.allowedRegisters = allowedRegisters;
 			this.assignedRegister = assignedRegister;
 		}
@@ -249,7 +254,7 @@ public class ConstraintNodePrepare {
 		private static BipartiteEntry forNode(IkeaProj proj) {
 			X86Register assignedRegister =
 				proj.registerRequirement().limited() ? proj.registerRequirement().limitedTo().iterator().next() : null;
-			return new BipartiteEntry(proj.registerRequirement().limitedTo(), assignedRegister);
+			return new BipartiteEntry(proj.registerRequirement().limitedTo(), assignedRegister, proj);
 		}
 
 		public Set<X86Register> allowedRegisters() {
@@ -268,7 +273,7 @@ public class ConstraintNodePrepare {
 		public String toString() {
 			return "BipartiteEntry{" + "allowedRegisters=" +
 				(allowedRegisters.size() == X86Register.registerCount() ? "all" : allowedRegisters) +
-				", assignedRegister=" + assignedRegister + '}';
+				", assignedRegister=" + assignedRegister + ", underlying=" + underlying + '}';
 		}
 	}
 }

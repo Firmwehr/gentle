@@ -12,11 +12,13 @@ import java.util.List;
 public class IkeaReload extends IkeaNode {
 
 	private int spillSlot;
+	private final IkeaNode originalValue;
 
 	public IkeaReload(
-		int id, IkeaBløck block, IkeaGraph graph, IkeaRegisterSize size, List<Node> firmNodes
+		int id, IkeaBløck block, IkeaGraph graph, IkeaRegisterSize size, List<Node> firmNodes, IkeaNode originalValue
 	) {
 		super(id, block, graph, size, firmNodes);
+		this.originalValue = originalValue;
 	}
 
 	public int spillSlot() {
@@ -25,6 +27,10 @@ public class IkeaReload extends IkeaNode {
 
 	public void spillSlot(int spillSlot) {
 		this.spillSlot = spillSlot;
+	}
+
+	public IkeaNode originalValue() {
+		return originalValue;
 	}
 
 	@Override

@@ -30,6 +30,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
 import com.github.firmwehr.gentle.backend.ir.register.Belady;
+import com.github.firmwehr.gentle.backend.ir.register.CalleeSavedPrepare;
 import com.github.firmwehr.gentle.backend.ir.register.ConstraintNodePrepare;
 import com.github.firmwehr.gentle.backend.ir.register.ControlFlowGraph;
 import com.github.firmwehr.gentle.backend.ir.register.Dominance;
@@ -187,10 +188,10 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		GraphDumper.dumpGraph(controlFlowGraph, "backend-init");
 
-		//		CalleeSavedPrepare calleeSavedPrepare = new CalleeSavedPrepare(ikeaGraph, controlFlowGraph);
-		//		calleeSavedPrepare.prepare();
-		//
-		//		GraphDumper.dumpGraph(controlFlowGraph, "backend-calleeprepare");
+		CalleeSavedPrepare calleeSavedPrepare = new CalleeSavedPrepare(ikeaGraph, controlFlowGraph);
+		calleeSavedPrepare.prepare();
+
+		GraphDumper.dumpGraph(controlFlowGraph, "backend-calleeprepare");
 
 		// 1. Prepare for spilling
 		Spillprepare prepare = new Spillprepare(liveliness, dominance, uses);
@@ -391,7 +392,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		ikeaGraph.addNode(ikeaDiv, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
 
 		IkeaProj divProj =
-			new IkeaProj(ikeaGraph.nextId(), block, ikeaGraph, forMode(node.getResmode()), List.of(node), 0);
+			new IkeaProj(ikeaGraph.nextId(), block, ikeaGraph, forMode(node.getResmode()), List.of(node), 0, "div");
 		block.nodes().add(divProj);
 		nodes.put(node, divProj);
 		ikeaGraph.addNode(divProj, List.of(ikeaDiv));
@@ -473,7 +474,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		ikeaGraph.addNode(ikeaDiv, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
 
 		IkeaProj modProj =
-			new IkeaProj(ikeaGraph.nextId(), block, ikeaGraph, forMode(node.getResmode()), List.of(node), 1);
+			new IkeaProj(ikeaGraph.nextId(), block, ikeaGraph, forMode(node.getResmode()), List.of(node), 1, "mod");
 		nodes.put(node, modProj);
 		block.nodes().add(modProj);
 		ikeaGraph.addNode(modProj, List.of(ikeaDiv));

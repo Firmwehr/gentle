@@ -69,6 +69,9 @@ public abstract class IkeaNode {
 	 * @param register The new target register.
 	 */
 	public final void register(X86Register register) {
+		if (this.registerIgnore()) {
+			throw new InternalCompilerException("Tried to assign register to regignore value");
+		}
 		this.register = Optional.of(register);
 	}
 
@@ -85,9 +88,7 @@ public abstract class IkeaNode {
 	}
 
 	/**
-	 * I don't know, u tell me
-	 *
-	 * @return
+	 * @return true if this node should be ignored for register allocation
 	 */
 	public final boolean registerIgnore() {
 		return registerRequirement().limitedTo().isEmpty();
