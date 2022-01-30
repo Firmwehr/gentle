@@ -129,7 +129,8 @@ public class Uses {
 				continue;
 			}
 
-			Optional<NextUse> childUse = nextUse(liveliness, loopTree, def, outputBlock.nodes().get(0), excludeFrom);
+			Optional<NextUse> childUse =
+				nextUse(liveliness, loopTree, def, outputBlock.nodes().get(0), excludeFrom, visitedBlocks);
 			// The variable was live in, there *must* be a use somewhere! Maybe we found a loop and aborted traversal
 			// into an already visited block?
 			if (childUse.isEmpty()) {

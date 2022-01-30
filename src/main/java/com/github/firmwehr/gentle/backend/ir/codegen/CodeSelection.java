@@ -179,6 +179,35 @@ public class CodeSelection extends NodeVisitor.Default {
 		orderedBlocks.remove(blocks.get(graph.getStartBlock()));
 		orderedBlocks.add(0, blocks.get(graph.getStartBlock()));
 
+		for (IkeaBløck block : orderedBlocks) {
+			List<IkeaNode> ikeaNodes = block.nodes();
+			for (int nodeIndex = 0; nodeIndex < ikeaNodes.size(); nodeIndex++) {
+				IkeaNode node = ikeaNodes.get(nodeIndex);
+				List<IkeaNode> inputs = node.inputs();
+				for (int inputIndex = 0; inputIndex < inputs.size(); inputIndex++) {
+					IkeaNode input = inputs.get(inputIndex);
+
+					if (input instanceof IkeaConst constNode) {
+						IkeaConst newConst = new IkeaConst(ikeaGraph.nextId(), block, ikeaGraph, input.size(),
+							input.underlyingFirmNodes(), constNode.value());
+						ikeaGraph.addNode(newConst, List.of());
+						ikeaGraph.setInput(node, inputIndex, newConst);
+						block.nodes().add(nodeIndex, newConst);
+						nodeIndex++;
+					}
+				}
+			}
+		}
+
+		List<IkeaNode> argNodes = new ArrayList<>();
+		for (IkeaBløck block : orderedBlocks) {
+			block.nodes().removeIf(node -> ikeaGraph.getOutputEdges(node).isEmpty() && node instanceof IkeaConst);
+			List<IkeaNode> myArgNodes = block.nodes().stream().filter(it -> it instanceof IkeaArgNode).toList();
+			block.nodes().removeAll(myArgNodes);
+			argNodes.addAll(myArgNodes);
+		}
+		orderedBlocks.get(0).nodes().addAll(0, argNodes);
+
 		// 0. Setup magic stuff
 		ControlFlowGraph controlFlowGraph = ControlFlowGraph.forBlocks(orderedBlocks);
 		Dominance dominance = Dominance.forCfg(controlFlowGraph);
@@ -210,6 +239,8 @@ public class CodeSelection extends NodeVisitor.Default {
 		// 3. Constraint handling
 		ConstraintNodePrepare constraintNodePrepare = new ConstraintNodePrepare(liveliness, uses, dominance);
 		constraintNodePrepare.prepare(controlFlowGraph);
+
+		GraphDumper.dumpGraph(controlFlowGraph, "backend-constrprepare");
 
 		// 4. Color
 		PerfectElimationOrderColorer colorer =
@@ -563,7 +594,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			nodes.put(node, mov);
 			block.nodes().add(mov);
 			// FIXME: This mess
-			ikeaGraph.addNode(value, List.of());
+			ikeaGraph.addNode(mov, List.of());
 			return;
 		}
 

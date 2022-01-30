@@ -44,6 +44,6 @@ public final class IkeaCall extends IkeaNode {
 	@Override
 	public Set<X86Register> clobbered() {
 		return Set.of(X86Register.R11, X86Register.R10, X86Register.R9, X86Register.R8, X86Register.RDI,
-			X86Register.RSI, X86Register.RDX, X86Register.RCX, X86Register.RAX, X86Register.RSP);
+			X86Register.RSI, X86Register.RDX, X86Register.RCX, X86Register.RAX);
 	}
 }

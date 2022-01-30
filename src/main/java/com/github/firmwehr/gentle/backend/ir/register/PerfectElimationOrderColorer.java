@@ -1,7 +1,9 @@
 package com.github.firmwehr.gentle.backend.ir.register;
 
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -35,7 +37,19 @@ public class PerfectElimationOrderColorer {
 
 		// Live-in is already colored
 		for (IkeaNode node : liveliness.getAllLiveIn(block)) {
-			assigned.add(node.uncheckedRegister());
+			if (node.register().isPresent()) {
+				assigned.add(node.uncheckedRegister());
+				continue;
+			}
+			// Phis introduce loops but I ~~think~~ *pray* this might work.
+			if (node.graph()
+				.getOutputs(node)
+				.stream()
+				.filter(it -> it.block().equals(block))
+				.anyMatch(it -> it instanceof IkeaPhi)) {
+				continue;
+			}
+			throw new InternalCompilerException("Expected to have a register for " + node);
 		}
 
 		for (IkeaNode node : block.nodes()) {
@@ -73,6 +87,8 @@ public class PerfectElimationOrderColorer {
 		Set<X86Register> free = X86Register.all();
 		free.removeAll(assigned);
 		free.retainAll(node.registerRequirement().limitedTo());
+		// TODO: The use of IkeaAdd (43) in printFromBuf should have been rewired by ssa reconstruction before
+		// IkeaCall(46)
 		return free.iterator().next();
 	}
 }

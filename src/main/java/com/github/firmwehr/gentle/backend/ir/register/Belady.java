@@ -3,6 +3,7 @@ package com.github.firmwehr.gentle.backend.ir.register;
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
 import com.github.firmwehr.gentle.backend.ir.IkeaParentBløck;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaConst;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaReload;
@@ -51,7 +52,6 @@ public class Belady {
 	}
 
 	public void spill(ControlFlowGraph graph) {
-		// TODO: Ignore nodes without output requirements (e.g. a jump or cmp)
 		for (IkeaBløck block : graph.reversePostOrder()) {
 			processBlock(block);
 		}
@@ -257,8 +257,10 @@ public class Belady {
 			}
 		}
 
-		List<IkeaNode> liveIn =
-			block.parents().stream().flatMap(it -> liveliness.getLiveIn(block, it.parent()).stream()).toList();
+		Set<IkeaNode> liveIn = block.parents()
+			.stream()
+			.flatMap(it -> liveliness.getLiveIn(block, it.parent()).stream())
+			.collect(Collectors.toSet());
 		for (IkeaNode node : liveIn) {
 			PredecessorAvailability availability = computePredecessorAvailability(block, node);
 
@@ -392,7 +394,7 @@ public class Belady {
 
 			Set<WorksetNode> parentEndWorkset = endWorksets.get(inputBlock);
 
-			if (parentEndWorkset == null || endWorksets.isEmpty()) {
+			if (parentEndWorkset == null || parentEndWorkset.isEmpty()) {
 				return PredecessorAvailability.UNKNOWN;
 			}
 
@@ -450,13 +452,15 @@ public class Belady {
 			for (WorksetNode node : startWorkset) {
 				IkeaNode ikeaNode = node.node();
 				// For phis we need to have a close look at the relevant predecessor
-				if (node.node() instanceof IkeaPhi phi) {
+				if (node.node() instanceof IkeaPhi phi && phi.block().equals(block)) {
 					ikeaNode = phi.parent(parentBlock);
 				}
 
 				// We need to reload, it is not in a register in our parent
 				if (!worksetContains(endWorkset, ikeaNode)) {
-					addReloadOnEdge(node.node(), block, parentBlock);
+					if (!(ikeaNode instanceof IkeaConst)) {
+						addReloadOnEdge(ikeaNode, block, parentBlock);
+					}
 				} else {
 					WorksetNode parentNode = worksetGet(endWorkset, ikeaNode);
 
@@ -554,6 +558,9 @@ public class Belady {
 		// No need to spill things twice
 		if (spillInfo.spilled()) {
 			return;
+		}
+		if (spillInfo.toSpillAfter().isEmpty()) {
+			throw new InternalCompilerException("No spills registered for " + spillInfo);
 		}
 		spillInfo.setSpilled(true);
 
