@@ -36,7 +36,7 @@ import java.util.Queue;
 import java.util.Set;
 
 public class MethodInliningOptimization {
-	private static final Logger LOGGER = new Logger(MethodInliningOptimization.class, Logger.LogLevel.DEBUG);
+	private static final Logger LOGGER = new Logger(MethodInliningOptimization.class);
 	// values carefully picked by having no clue
 	private static final double CALLER_INLINE_COST_THRESHOLD = 256;
 	private final CallGraph callGraph;
