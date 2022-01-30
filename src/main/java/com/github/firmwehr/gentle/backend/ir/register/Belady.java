@@ -131,12 +131,13 @@ public class Belady {
 				currentWorkset.remove(worksetValue);
 				LOGGER.debug("%s was already live before %s", value, currentInstruction);
 			}
-			// TODO: Is this clobber handling good enough?
-			additionalPressure += value.clobbered().size();
-			if (!value.clobbered().isEmpty()) {
-				LOGGER.debug("Increased %s pressure by %s clobbers", value, value.clobbered().size());
-			}
 			toInsert.add(worksetValue);
+		}
+		// TODO: Is this clobber handling good enough?
+		additionalPressure += currentInstruction.clobbered().size();
+		if (!currentInstruction.clobbered().isEmpty()) {
+			LOGGER.debug("Increased %s pressure by %s clobbers", currentInstruction,
+				currentInstruction.clobbered().size());
 		}
 
 		demand += additionalPressure;
@@ -175,9 +176,14 @@ public class Belady {
 				IkeaNode victimNode = victim.node();
 				currentWorkset.remove(victim);
 				LOGGER.debug("Spilling %s before %s", victim, currentInstruction);
-				IkeaNode spillAfter = currentInstruction.block()
-					.nodes()
-					.get(currentInstruction.block().nodes().indexOf(currentInstruction) - 1);
+				int currentInstructionIndex = currentInstruction.block().nodes().indexOf(currentInstruction);
+				SpillAfter spillAfter;
+				if (currentInstructionIndex > 0) {
+					spillAfter =
+						new SpillAfter(currentInstruction.block().nodes().get(currentInstructionIndex - 1), false);
+				} else {
+					spillAfter = new SpillAfter(currentInstruction, true);
+				}
 
 				if (victim.spilled() || victim.distance() instanceof Infinity) {
 					LOGGER.debug("Skipping spill for %s due to distance/spilled status", victim);
@@ -196,19 +202,22 @@ public class Belady {
 		spillInfo.reloadBefore().add(before);
 	}
 
-	private void addSpill(IkeaNode valueToSpill, IkeaNode after) {
+	private void addSpill(IkeaNode valueToSpill, SpillAfter after) {
 		SpillInfo spillInfo = spillInfos.computeIfAbsent(valueToSpill, SpillInfo::forNode);
 
-		for (Iterator<IkeaNode> iterator = spillInfo.toSpillAfter().iterator(); iterator.hasNext(); ) {
-			IkeaNode existingAfter = iterator.next();
+		for (Iterator<SpillAfter> iterator = spillInfo.toSpillAfter().iterator(); iterator.hasNext(); ) {
+			SpillAfter spillAfter = iterator.next();
+			IkeaNode existingAfter =
+				spillAfter.atStartOfBlock() ? spillAfter.node().block().nodes().get(0) : spillAfter.node();
+
 			// No need to spill if a spill already dominates us. We spill the same value and always walk past that
 			// spill.
-			if (dominance.dominates(existingAfter, after)) {
+			if (dominance.dominates(existingAfter, after.node())) {
 				LOGGER.debug("Spill for %s after %s was already dominated by %s", valueToSpill, after, existingAfter);
 				return;
 			}
 			// No need to keep the old spill if we dominate it!
-			if (dominance.dominates(after, existingAfter)) {
+			if (dominance.dominates(after.node(), existingAfter)) {
 				LOGGER.debug("Removed spill for %s after %s as it was dominated by %s", valueToSpill, existingAfter,
 					after);
 				iterator.remove();
@@ -475,12 +484,12 @@ public class Belady {
 		LOGGER.debug("Adding spill for %s on edge %s -> %s", node, block, parent);
 		// We have only one parent, we can spill at the entry to our block
 		if (controlFlow.inputBlocks(block).size() == 1) {
-			addSpill(node, block.nodes().get(0));
+			addSpill(node, new SpillAfter(block.nodes().get(0), true));
 			return;
 		}
 
 		// We have more than one parent, so we need to move the spill to the parent block
-		addSpill(node, parent.nodes().get(parent.nodes().size() - 1));
+		addSpill(node, new SpillAfter(parent.nodes().get(parent.nodes().size() - 1), false));
 	}
 
 	private void addReloadOnEdge(IkeaNode node, IkeaBløck block, IkeaBløck parent) {
@@ -496,8 +505,7 @@ public class Belady {
 
 	private void addPhiSpill(IkeaPhi phi, IkeaBløck block) {
 		LOGGER.debug("Spilling phi %s", phi);
-		// TODO: This might be one too low? We'd like to put that as the first instr in the block
-		addSpill(phi, block.nodes().get(0));
+		addSpill(phi, new SpillAfter(block.nodes().get(0), true));
 
 		for (IkeaParentBløck parent : block.parents()) {
 			addSpillOnEdge(phi.parent(parent.parent()), block, parent.parent());
@@ -519,7 +527,7 @@ public class Belady {
 			SsaReconstruction ssaReconstruction = new SsaReconstruction(dominance, uses);
 
 			for (IkeaNode reloadBefore : info.reloadBefore()) {
-				int insertionPoint = reloadBefore.block().nodes().indexOf(reloadBefore) - 1;
+				int insertionPoint = reloadBefore.block().nodes().indexOf(reloadBefore);
 				IkeaReload reload =
 					new IkeaReload(reloadBefore.graph().nextId(), reloadBefore.block(), reloadBefore.graph(),
 						info.valueToSpill().size(), List.of(), info.valueToSpill());
@@ -557,13 +565,15 @@ public class Belady {
 	}
 
 	private void spillNode(SpillInfo spillInfo) {
-		for (IkeaNode spillAfter : spillInfo.toSpillAfter()) {
-			IkeaSpill spill = new IkeaSpill(spillAfter.graph().nextId(), spillAfter.block(), spillAfter.graph(),
-				spillInfo.valueToSpill().size(), List.of());
+		for (SpillAfter spillAfter : spillInfo.toSpillAfter()) {
+			IkeaNode node = spillAfter.node();
+			IkeaSpill spill =
+				new IkeaSpill(node.graph().nextId(), node.block(), node.graph(), spillInfo.valueToSpill().size(),
+					List.of());
 
-			int insertPoint = spillAfter.block().nodes().indexOf(spillAfter) + 1;
-			spillAfter.block().nodes().add(insertPoint, spill);
-			spillAfter.graph().addNode(spill, List.of(spillInfo.valueToSpill()));
+			int insertPoint = spillAfter.atStartOfBlock() ? 0 : node.block().nodes().indexOf(node) + 1;
+			node.block().nodes().add(insertPoint, spill);
+			node.graph().addNode(spill, List.of(spillInfo.valueToSpill()));
 		}
 	}
 
@@ -628,9 +638,9 @@ public class Belady {
 		private boolean spilled;
 		private final IkeaNode valueToSpill;
 		private final Set<IkeaNode> reloadBefore;
-		private final Set<IkeaNode> toSpillAfter;
+		private final Set<SpillAfter> toSpillAfter;
 
-		private SpillInfo(IkeaNode valueToSpill, Set<IkeaNode> reloadBefore, Set<IkeaNode> toSpillAfter) {
+		private SpillInfo(IkeaNode valueToSpill, Set<IkeaNode> reloadBefore, Set<SpillAfter> toSpillAfter) {
 			this.valueToSpill = valueToSpill;
 			this.reloadBefore = reloadBefore;
 			this.toSpillAfter = toSpillAfter;
@@ -660,7 +670,7 @@ public class Belady {
 			return reloadBefore;
 		}
 
-		public Set<IkeaNode> toSpillAfter() {
+		public Set<SpillAfter> toSpillAfter() {
 			return toSpillAfter;
 		}
 
@@ -689,6 +699,12 @@ public class Belady {
 				"toSpillAfter=" + toSpillAfter + ']';
 		}
 
+	}
+
+	private record SpillAfter(
+		IkeaNode node,
+		boolean atStartOfBlock
+	) {
 	}
 
 	private static class WorksetNode {

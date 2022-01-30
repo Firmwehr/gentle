@@ -20,6 +20,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovRegister;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStore;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMovStoreEx;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPerm;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaPhi;
@@ -227,6 +228,7 @@ public class VcgDumper {
 			case IkeaMovStore ignored -> VcgColor.MEMORY;
 			case IkeaMovStoreEx ignored -> VcgColor.MEMORY;
 			case IkeaMul ignored -> VcgColor.NORMAL;
+			case IkeaNeg ignored -> VcgColor.NORMAL;
 			case IkeaPerm ignored -> VcgColor.SPECIAL;
 			case IkeaPhi ignored -> VcgColor.PHI;
 			case IkeaProj ignored -> VcgColor.SPECIAL;
