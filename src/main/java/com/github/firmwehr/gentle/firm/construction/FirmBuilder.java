@@ -102,7 +102,9 @@ public class FirmBuilder {
 			if (!CompilerArguments.get().noArithmeticOptimizations()) {
 				builder.addGraphStep(ArithmeticOptimization.arithmeticOptimization());
 			}
-			if (!CompilerArguments.get().noBooleanOptimizations()) {
+			// firm backend does not know how to deal with Mux, so we can only enable this optimization
+			// if we don't use the firm backend
+			if (!CompilerArguments.get().compileFirm() && !CompilerArguments.get().noBooleanOptimizations()) {
 				builder.addGraphStep(BooleanOptimization.booleanOptimization());
 			}
 			if (!CompilerArguments.get().noEscapeAnalysis()) {
@@ -120,7 +122,6 @@ public class FirmBuilder {
 			if (!CompilerArguments.get().noInlining()) {
 				builder.addCallGraphStep(MethodInliningOptimization.methodInlineOptimization());
 			}
-
 			builder.freeUnusedGraphs(!CompilerArguments.get().noFreeUnusedGraphs());
 		} else {
 			LOGGER.info("optimization level set to 0, all optional optimization will be disabled");
