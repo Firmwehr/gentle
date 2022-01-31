@@ -204,9 +204,9 @@ public class TailCallOptimization {
 		Block end = graph.getEndBlock();
 
 		for (Node endPred : end.getPreds()) {
-			matchTailCall(endPred).map((match) -> new TailCall(match.ret(), match.call())).ifPresent((tc) -> {
+			matchTailCall(endPred).ifPresent((match) -> {
 				LOGGER.debug("%s is in a fact a tail call", endPred);
-				tailCalls.add(tc);
+				tailCalls.add(new TailCall(match.ret(), match.call()));
 			});
 		}
 
@@ -214,23 +214,30 @@ public class TailCallOptimization {
 	}
 
 	@FiAscii("""
-		            ┌──────────┐                       While it is technically possible
-		            │call: Call├────┐                  that a call returns multiple values,
-		            └┬─────────┘    │                  the gentle frontend does not generate
-		             │              │                  such code. Therefore we only need to
-		┌────────────▼──────────┐  ┌▼──────────────┐   consider tail calls with a single
-		│memProj: Proj ; +memory│  │tupleProj: Proj│   return value.
-		└────────────┬──────────┘  └┬──────────────┘
-		             │              │
-		             │  ┌───────────▼────┐
-		             │  │resultProj: Proj│
-		             │  └─┬──────────────┘
-		             │    │
-		            ┌▼────▼─────┐
-		            │ret: Return│
-		            └───────────┘""")
+		           ┌────────────────┐  While it is technically possible
+		           │funcPtr: Address│  that a call returns multiple values,
+		           └┬───────────────┘  the gentle frontend does not generate
+		            │                  such code. Therefore we only need to
+		           ┌▼─────────┐        consider tail calls with a single
+		           │call: Call├─────┐   return value.
+		           └┬─────────┘     │
+		            │               │
+		┌───────────▼───────────┐  ┌▼──────────────┐
+		│memProj: Proj ; +memory│  │tupleProj: Proj│
+		└───────────┬───────────┘  └┬──────────────┘
+		            │               │
+		            │  ┌────────────▼───┐
+		            │  │resultProj: Proj│
+		            │  └┬───────────────┘
+		            │   │
+		           ┌▼───▼──────┐
+		           │ret: Return│
+		           └───────────┘""")
 	public static Optional<TailCallPattern.Match> matchTailCall(Node node) {
-		return TailCallPattern.match(node);
+		return TailCallPattern.match(node).filter((match) -> {
+			// Check whether match is a recursive tail call
+			return match.funcPtr().getEntity().equals(node.getGraph().getEntity());
+		});
 	}
 
 	private record TailCall(
