@@ -191,7 +191,8 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 
 	@Override
 	public String visit(IkeaSet set) {
-		String result = switch (set.getRelation()) {
+		String result = "";
+		result += switch (set.getRelation()) {
 			case Equal -> "sete";
 			case Less -> "setl";
 			case Greater -> "setg";
@@ -201,7 +202,8 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 			default -> throw new InternalCompilerException(":( Where do we use " + set.getRelation());
 		};
 
-		result += " %%r8%s\n".formatted(getRegisterSuffix(set.box()));
+		result += " %r8b\n";
+		result += "movsx %r8b, %r8\n"; // clear upper bits, setcc only sets lower 8 bits
 		result += storeFromTargetToStack(set.box(), "%r8") + "\n";
 
 		return result;
