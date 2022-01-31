@@ -45,7 +45,7 @@ public enum X86Register {
 		if (s == null) {
 			throw new InternalCompilerException("tried to retrieve register for non-register");
 		}
-		return s;
+		return "%" + s;
 	}
 
 	public static Set<X86Register> all() {

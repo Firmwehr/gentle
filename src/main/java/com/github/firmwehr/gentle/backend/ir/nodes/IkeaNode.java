@@ -88,6 +88,17 @@ public abstract class IkeaNode {
 	}
 
 	/**
+	 * Shortcut for {@code uncheckedRegister().nameForSize(node)}
+	 *
+	 * @return The x86 register name of this node, if it has a register.
+	 *
+	 * @throws InternalCompilerException If this node has not been assigned a register.
+	 */
+	public final String asRegisterName() {
+		return uncheckedRegister().nameForSize(this);
+	}
+
+	/**
 	 * @return true if this node should be ignored for register allocation
 	 */
 	public final boolean registerIgnore() {

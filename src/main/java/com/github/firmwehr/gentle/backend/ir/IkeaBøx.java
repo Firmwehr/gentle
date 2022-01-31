@@ -10,18 +10,22 @@ public sealed interface IkeaBøx permits IkeaVirtualRegister, IkeaPhysicalRegist
 
 	IkeaRegisterSize size();
 
+
 	enum IkeaRegisterSize {
-		BITS_64("", "q"),
-		BITS_32("d", "l"),
-		BITS_8("b", "b"),
-		ILLEGAL("ILLEGAL", "ILLEGAL");
+		BITS_64("", "q", 64),
+		BITS_32("d", "l", 32),
+		BITS_8("b", "b", 8),
+		ILLEGAL("ILLEGAL", "ILLEGAL", -1);
 
 		private final String newRegisterSuffix;
 		private final String oldRegisterSuffix;
 
-		IkeaRegisterSize(String newRegisterSuffix, String oldRegisterSuffix) {
+		private final int bits;
+
+		IkeaRegisterSize(String newRegisterSuffix, String oldRegisterSuffix, int bits) {
 			this.newRegisterSuffix = newRegisterSuffix;
 			this.oldRegisterSuffix = oldRegisterSuffix;
+			this.bits = bits;
 		}
 
 		public static IkeaRegisterSize forMode(Node node) {
