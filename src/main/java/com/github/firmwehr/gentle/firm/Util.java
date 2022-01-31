@@ -1,12 +1,10 @@
 package com.github.firmwehr.gentle.firm;
 
-import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.firm.construction.StdLibEntity;
 import com.github.firmwehr.gentle.output.Logger;
 import firm.BackEdges;
 import firm.Graph;
 import firm.Mode;
-import firm.Relation;
 import firm.nodes.Address;
 import firm.nodes.Call;
 import firm.nodes.Const;
