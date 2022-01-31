@@ -102,6 +102,9 @@ public class FirmBuilder {
 			if (!CompilerArguments.get().noArithmeticOptimizations()) {
 				builder.addGraphStep(ArithmeticOptimization.arithmeticOptimization());
 			}
+			if (!CompilerArguments.get().noBooleanOptimizations()) {
+				builder.addGraphStep(BooleanOptimization.booleanOptimization());
+			}
 			if (!CompilerArguments.get().noEscapeAnalysis()) {
 				builder.addGraphStep(EscapeAnalysisOptimization.escapeAnalysisOptimization());
 			}
@@ -117,8 +120,6 @@ public class FirmBuilder {
 			if (!CompilerArguments.get().noInlining()) {
 				builder.addCallGraphStep(MethodInliningOptimization.methodInlineOptimization());
 			}
-
-			builder.addGraphStep(BooleanOptimization.booleanOptimization());
 
 			builder.freeUnusedGraphs(!CompilerArguments.get().noFreeUnusedGraphs());
 		} else {
