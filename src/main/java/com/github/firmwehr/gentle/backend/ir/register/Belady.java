@@ -56,7 +56,7 @@ public class Belady {
 			processBlock(block);
 		}
 
-		for (IkeaBløck block : graph.getAllBlocks()) {
+		for (IkeaBløck block : graph.reversePostOrder()) {
 			fixBlockBorder(block);
 		}
 

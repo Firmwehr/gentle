@@ -105,7 +105,18 @@ public class ConstraintNodePrepare {
 	}
 
 	private boolean isConstrained(IkeaNode node) {
-		return node.inRequirements().stream().anyMatch(IkeaRegisterRequirement::limited) && !(node instanceof IkeaPhi);
+		if (node.registerIgnore()) {
+			return false;
+		}
+		if (node.inRequirements().stream().anyMatch(IkeaRegisterRequirement::limited) && !(node instanceof IkeaPhi)) {
+			return true;
+		}
+		if (node instanceof IkeaProj proj) {
+			if (proj.inputs().size() == 1 && proj.inputs().get(0) instanceof IkeaPerm) {
+				return false;
+			}
+		}
+		return node.registerRequirement().limited();
 	}
 
 	/**
