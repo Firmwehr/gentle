@@ -52,5 +52,4 @@ jobs:
         run: ./build
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git -C mjtest/tests reset --hard origin/master"
-      - run: "rm mjtest/tests/exec/ReallyEfficientFactorization.java"
       - run: "./mjtest/mjt.py compile-only compile ./run"
