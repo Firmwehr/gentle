@@ -288,8 +288,9 @@ public class Belady {
 				}
 				if (!(worksetNode.node() instanceof IkeaPhi)) {
 					PredecessorAvailability availability = computePredecessorAvailability(block, worksetNode.node());
-					if (availability != PredecessorAvailability.LIVE_IN_ALL) {
-						LOGGER.debug("Delayed node %s was not live in all preds, skipping it", worksetNode);
+					if (availability == PredecessorAvailability.MIXED ||
+						availability == PredecessorAvailability.SPILLED_IN_ALL) {
+						LOGGER.debug("Delayed node %s spilled in at least one pred, skipping it", worksetNode);
 						// Do not unnecessarily reload stuff
 						continue;
 					}
@@ -420,7 +421,18 @@ public class Belady {
 	 * @param block the block to fix up
 	 */
 	private void fixBlockBorder(IkeaBløck block) {
+		// FIXME: Add speculative reload on edge when taking delayed node
 		Set<WorksetNode> startWorkset = startWorksets.get(block);
+
+		Map<IkeaNode, IkeaBløck> phiInputs = new HashMap<>();
+		for (IkeaNode node : block.nodes()) {
+			if (node instanceof IkeaPhi phi) {
+				List<IkeaParentBløck> parents = block.parents();
+				for (IkeaParentBløck parent : parents) {
+					phiInputs.put(phi.parent(parent.parent()), parent.parent());
+				}
+			}
+		}
 
 		Set<IkeaBløck> inputBlocks = controlFlow.inputBlocks(block);
 		for (IkeaBløck parentBlock : inputBlocks) {
@@ -456,11 +468,17 @@ public class Belady {
 					ikeaNode = phi.parent(parentBlock);
 				}
 
+				// We receive this value on a different path, ignore it
+				if (phiInputs.containsKey(ikeaNode) && !phiInputs.get(ikeaNode).equals(parentBlock)) {
+					continue;
+				}
+
 				// We need to reload, it is not in a register in our parent
 				if (!worksetContains(endWorkset, ikeaNode)) {
-					if (!(ikeaNode instanceof IkeaConst)) {
-						addReloadOnEdge(ikeaNode, block, parentBlock);
+					if (ikeaNode instanceof IkeaConst) {
+						throw new InternalCompilerException("Tried to inherit ikea const?");
 					}
+					addReloadOnEdge(ikeaNode, block, parentBlock);
 				} else {
 					WorksetNode parentNode = worksetGet(endWorkset, ikeaNode);
 
