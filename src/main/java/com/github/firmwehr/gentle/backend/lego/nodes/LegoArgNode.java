@@ -5,6 +5,7 @@ import com.github.firmwehr.gentle.backend.lego.LegoGraph;
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.register.LegoRegisterRequirement;
 import com.github.firmwehr.gentle.backend.lego.visit.LegoVisitor;
+import com.google.common.base.Preconditions;
 import firm.nodes.Node;
 
 import java.util.List;
@@ -28,6 +29,14 @@ public class LegoArgNode extends LegoNode {
 	@Override
 	public List<LegoRegisterRequirement> inRequirements() {
 		return List.of();
+	}
+
+	/**
+	 * Returns the offset of this argument in the stack.
+	 */
+	public int stackOffset() {
+		Preconditions.checkState(!isPassedInRegister(), "Not on stack");
+		return (index - LegoCall.REGISTER_ORDER.size()) * 8 + 16;
 	}
 
 	@Override

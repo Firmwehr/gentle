@@ -24,9 +24,9 @@ import com.github.firmwehr.gentle.backend.lego.nodes.LegoPhi;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoProj;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoReload;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoRet;
-import com.github.firmwehr.gentle.backend.lego.nodes.LegoShl;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoSal;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoShr;
-import com.github.firmwehr.gentle.backend.lego.nodes.LegoShrs;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoSar;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSpill;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSub;
 
@@ -110,7 +110,7 @@ public interface LegoVisitor<T> {
 		return defaultVisit(sub);
 	}
 
-	default T visit(LegoShl shl) {
+	default T visit(LegoSal shl) {
 		return defaultVisit(shl);
 	}
 
@@ -118,7 +118,7 @@ public interface LegoVisitor<T> {
 		return defaultVisit(shr);
 	}
 
-	default T visit(LegoShrs shrs) {
+	default T visit(LegoSar shrs) {
 		return defaultVisit(shrs);
 	}
 

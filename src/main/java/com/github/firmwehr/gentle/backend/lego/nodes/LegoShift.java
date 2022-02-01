@@ -1,25 +1,27 @@
 package com.github.firmwehr.gentle.backend.lego.nodes;
 
-import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.LegoBøx;
 import com.github.firmwehr.gentle.backend.lego.LegoGraph;
+import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.register.LegoRegisterRequirement;
-import com.github.firmwehr.gentle.backend.lego.visit.LegoVisitor;
 import firm.nodes.Node;
 
 import java.util.List;
 
-public class LegoShl extends LegoNode {
+public abstract class LegoShift extends LegoNode {
 
-	public LegoShl(
-		int id, LegoPlate block, LegoGraph graph, LegoBøx.LegoRegisterSize size, List<Node> firmNodes
+	private final LegoConst shiftValue;
+
+	public LegoShift(
+		int id,
+		LegoPlate block,
+		LegoGraph graph,
+		LegoBøx.LegoRegisterSize size,
+		List<Node> firmNodes,
+		LegoConst shiftValue
 	) {
 		super(id, block, graph, size, firmNodes);
-	}
-
-	@Override
-	public <T> T accept(LegoVisitor<T> visitor) {
-		return visitor.visit(this);
+		this.shiftValue = shiftValue;
 	}
 
 	@Override
@@ -32,4 +34,7 @@ public class LegoShl extends LegoNode {
 		return LegoRegisterRequirement.gpRegister();
 	}
 
+	public LegoConst shiftValue() {
+		return shiftValue;
+	}
 }

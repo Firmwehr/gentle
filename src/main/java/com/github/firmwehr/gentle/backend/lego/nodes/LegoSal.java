@@ -9,27 +9,21 @@ import firm.nodes.Node;
 
 import java.util.List;
 
-public class LegoShrs extends LegoNode {
+public class LegoSal extends LegoShift {
 
-	public LegoShrs(
-		int id, LegoPlate block, LegoGraph graph, LegoBøx.LegoRegisterSize size, List<Node> firmNodes
+	public LegoSal(
+		int id,
+		LegoPlate block,
+		LegoGraph graph,
+		LegoBøx.LegoRegisterSize size,
+		List<Node> firmNodes,
+		LegoConst shiftValue
 	) {
-		super(id, block, graph, size, firmNodes);
+		super(id, block, graph, size, firmNodes, shiftValue);
 	}
 
 	@Override
 	public <T> T accept(LegoVisitor<T> visitor) {
 		return visitor.visit(this);
 	}
-
-	@Override
-	public List<LegoRegisterRequirement> inRequirements() {
-		return List.of(LegoRegisterRequirement.gpRegister());
-	}
-
-	@Override
-	public LegoRegisterRequirement registerRequirement() {
-		return LegoRegisterRequirement.gpRegister();
-	}
-
 }

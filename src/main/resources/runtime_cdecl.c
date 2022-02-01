@@ -15,7 +15,7 @@ void* allocate() {
 void println() {
     int64_t value;
     __asm__ __volatile__("movq 16(%%rbp), %0\n\t" : "=r" (value));
-    printf("%d\n", value);
+    printf("%d\n", (int) value);
 }
 
 void write() {

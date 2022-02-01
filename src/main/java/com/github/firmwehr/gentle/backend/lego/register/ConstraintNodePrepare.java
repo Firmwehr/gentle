@@ -110,12 +110,7 @@ public class ConstraintNodePrepare {
 		if (node.inRequirements().stream().anyMatch(LegoRegisterRequirement::limited) && !(node instanceof LegoPhi)) {
 			return true;
 		}
-		if (node instanceof LegoProj proj) {
-			if (proj.inputs().size() == 1 && proj.inputs().get(0) instanceof LegoPerm) {
-				return false;
-			}
-		}
-		return node.registerRequirement().limited();
+		return false;
 	}
 
 	/**

@@ -9,9 +9,9 @@ import firm.nodes.Node;
 
 import java.util.List;
 
-public class LegoShr extends LegoShift {
+public class LegoSar extends LegoShift {
 
-	public LegoShr(
+	public LegoSar(
 		int id,
 		LegoPlate block,
 		LegoGraph graph,

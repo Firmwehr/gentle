@@ -25,9 +25,9 @@ import com.github.firmwehr.gentle.backend.lego.nodes.LegoNode;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoPhi;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoProj;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoRet;
-import com.github.firmwehr.gentle.backend.lego.nodes.LegoShl;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoSal;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoShr;
-import com.github.firmwehr.gentle.backend.lego.nodes.LegoShrs;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoSar;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSub;
 import com.github.firmwehr.gentle.backend.lego.register.Belady;
 import com.github.firmwehr.gentle.backend.lego.register.CalleeSavedPrepare;
@@ -617,10 +617,10 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		LegoPlate block = blocks.get((Block) node.getBlock());
-		LegoShl legoShl = new LegoShl(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node));
-		nodes.put(node, legoShl);
-		block.nodes().add(legoShl);
-		legoGraph.addNode(legoShl, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
+		LegoSal legoSal = new LegoSal(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node), (LegoConst) nodes.get(node.getRight()));
+		nodes.put(node, legoSal);
+		block.nodes().add(legoSal);
+		legoGraph.addNode(legoSal, List.of(nodes.get(node.getLeft())));
 	}
 
 	@Override
@@ -631,10 +631,11 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		LegoPlate block = blocks.get((Block) node.getBlock());
-		LegoShr legoShr = new LegoShr(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node));
+		LegoShr legoShr = new LegoShr(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node),
+			(LegoConst) nodes.get(node.getRight()));
 		nodes.put(node, legoShr);
 		block.nodes().add(legoShr);
-		legoGraph.addNode(legoShr, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
+		legoGraph.addNode(legoShr, List.of(nodes.get(node.getLeft())));
 	}
 
 	@Override
@@ -645,10 +646,11 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		LegoPlate block = blocks.get((Block) node.getBlock());
-		LegoShrs legoShrs = new LegoShrs(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node));
-		nodes.put(node, legoShrs);
-		block.nodes().add(legoShrs);
-		legoGraph.addNode(legoShrs, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
+		LegoSar legoSar = new LegoSar(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node),
+			(LegoConst) nodes.get(node.getRight()));
+		nodes.put(node, legoSar);
+		block.nodes().add(legoSar);
+		legoGraph.addNode(legoSar, List.of(nodes.get(node.getLeft())));
 	}
 
 	@Override

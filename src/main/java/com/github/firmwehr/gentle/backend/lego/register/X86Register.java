@@ -55,4 +55,12 @@ public enum X86Register {
 	public static int registerCount() {
 		return values().length;
 	}
+
+	public static void main(String[] args) {
+		for (X86Register value : values()) {
+			for (LegoBøx.LegoRegisterSize size : LegoBøx.LegoRegisterSize.values()) {
+				System.out.println("%" + value.nameForSize(size));
+			}
+		}
+	}
 }
