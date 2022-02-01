@@ -1,6 +1,7 @@
 package com.github.firmwehr.gentle.firm.construction;
 
 import com.github.firmwehr.gentle.cli.CompilerArguments;
+import com.github.firmwehr.gentle.cli.Optimizations;
 import com.github.firmwehr.gentle.debug.DebugStore;
 import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
 import com.github.firmwehr.gentle.firm.optimization.BooleanOptimization;
@@ -89,42 +90,40 @@ public class FirmBuilder {
 			dumpGraph(graph, "lower-sel");
 		}
 
+		Optimizations opts = CompilerArguments.optimizations();
 		Optimizer.Builder builder = Optimizer.builder();
 
 		builder.addGraphStep(FirmGraphCleanup.firmGraphCleanup());
 
-		if (!CompilerArguments.get().noConstantFolding()) { // constant folding is mandatory to pass course
+		if (opts.constantFolding()) { // constant folding is mandatory to pass course
 			builder.addGraphStep(ConstantFolding.constantFolding());
 		}
 
-		var enableOptimizations = CompilerArguments.get().optimizerLevel().orElse(Integer.MAX_VALUE) > 0;
-		if (enableOptimizations) {
-			if (!CompilerArguments.get().noArithmeticOptimizations()) {
-				builder.addGraphStep(ArithmeticOptimization.arithmeticOptimization());
-			}
-			// firm backend does not know how to deal with Mux, so we can only enable this optimization
-			// if we don't use the firm backend
-			if (!CompilerArguments.get().compileFirm() && !CompilerArguments.get().noBooleanOptimizations()) {
-				builder.addGraphStep(BooleanOptimization.booleanOptimization());
-			}
-			if (!CompilerArguments.get().noEscapeAnalysis()) {
-				builder.addGraphStep(EscapeAnalysisOptimization.escapeAnalysisOptimization());
-			}
-			if (!CompilerArguments.get().noRemoveUnused()) {
-				builder.addCallGraphStep(UnusedParameterOptimization.unusedParameterOptimization());
-			}
-			if (!CompilerArguments.get().noRemovePureFunctions()) {
-				builder.addCallGraphStep(PureFunctionOptimization.pureFunctionOptimization());
-			}
-			if (!CompilerArguments.get().noGlobalValueNumbering()) {
-				builder.addGraphStep(GlobalValueNumbering.deduplicate());
-			}
-			if (!CompilerArguments.get().noInlining()) {
-				builder.addCallGraphStep(MethodInliningOptimization.methodInlineOptimization());
-			}
-			builder.freeUnusedGraphs(!CompilerArguments.get().noFreeUnusedGraphs());
-		} else {
-			LOGGER.info("optimization level set to 0, all optional optimization will be disabled");
+		if (opts.arithmeticOpt()) {
+			builder.addGraphStep(ArithmeticOptimization.arithmeticOptimization());
+		}
+		// firm backend does not know how to deal with Mux, so we can only enable this optimization
+		// if we don't use the firm backend
+		if (!CompilerArguments.get().compileFirm() && opts.booleanOpt()) {
+			builder.addGraphStep(BooleanOptimization.booleanOptimization());
+		}
+		if (opts.escapeAnalysis()) {
+			builder.addGraphStep(EscapeAnalysisOptimization.escapeAnalysisOptimization());
+		}
+		if (opts.removeUnused()) {
+			builder.addCallGraphStep(UnusedParameterOptimization.unusedParameterOptimization());
+		}
+		if (opts.removePureFunctions()) {
+			builder.addCallGraphStep(PureFunctionOptimization.pureFunctionOptimization());
+		}
+		if (opts.globalValueNumbering()) {
+			builder.addGraphStep(GlobalValueNumbering.deduplicate());
+		}
+		if (opts.inlining()) {
+			builder.addCallGraphStep(MethodInliningOptimization.methodInlineOptimization());
+		}
+		if (opts.removeUnusedGraphs()) {
+			builder.freeUnusedGraphs();
 		}
 
 		Optimizer optimizer = builder.build();
