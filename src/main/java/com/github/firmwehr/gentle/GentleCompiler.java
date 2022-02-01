@@ -1,10 +1,10 @@
 package com.github.firmwehr.gentle;
 
-import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
-import com.github.firmwehr.gentle.backend.ir.codegen.CodePreselection;
-import com.github.firmwehr.gentle.backend.ir.codegen.CodePreselectionMatcher;
-import com.github.firmwehr.gentle.backend.ir.codegen.CodeSelection;
-import com.github.firmwehr.gentle.backend.ir.visit.GentleCodegenVisitor;
+import com.github.firmwehr.gentle.backend.lego.LegoPlate;
+import com.github.firmwehr.gentle.backend.lego.codegen.CodePreselection;
+import com.github.firmwehr.gentle.backend.lego.codegen.CodePreselectionMatcher;
+import com.github.firmwehr.gentle.backend.lego.codegen.CodeSelection;
+import com.github.firmwehr.gentle.backend.lego.visit.GentleCodegenVisitor;
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandDispatcher;
 import com.github.firmwehr.gentle.cli.CompilerArguments;
@@ -245,7 +245,7 @@ public class GentleCompiler {
 			preselectionCount += codePreselection.replacedSubtrees();
 
 			CodeSelection codeSelection = new CodeSelection(graph, codePreselection);
-			List<IkeaBløck> blocks = codeSelection.convertBlocks();
+			List<LegoPlate> blocks = codeSelection.convertBlocks();
 
 			GentleCodegenVisitor visitor = new GentleCodegenVisitor();
 			String res = visitor.visit(graph, blocks);
