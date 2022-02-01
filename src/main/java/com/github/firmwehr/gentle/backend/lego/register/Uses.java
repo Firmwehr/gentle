@@ -130,7 +130,7 @@ public class Uses {
 			}
 
 			Optional<NextUse> childUse =
-				nextUse(liveliness, loopTree, def, outputBlock.nodes().get(0), excludeFrom, visitedBlocks);
+				nextUse(liveliness, loopTree, def, outputBlock.nodes().get(0), false, visitedBlocks);
 			// The variable was live in, there *must* be a use somewhere! Maybe we found a loop and aborted traversal
 			// into an already visited block?
 			if (childUse.isEmpty()) {
@@ -166,7 +166,6 @@ public class Uses {
 		// TODO: Does this happen?
 		if (foundUse == null) {
 			// I think this is fine... Happens if a node in our workset is dead :(
-			LOGGER.warn("Not a single use found for %s after %s", def, from);
 			return Optional.empty();
 		}
 

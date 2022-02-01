@@ -1,8 +1,8 @@
 package com.github.firmwehr.gentle.backend.lego.register;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
-import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.LegoParentBløck;
+import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.google.common.graph.Graph;
 import com.google.common.graph.GraphBuilder;
 import com.google.common.graph.MutableGraph;
@@ -43,8 +43,8 @@ public class ControlFlowGraph {
 		return Collections.unmodifiableSet(graph.successors(block));
 	}
 
-	public Set<LegoPlate> getAllBlocks() {
-		return Set.copyOf(graph.nodes());
+	public List<LegoPlate> getAllBlocks() {
+		return reversePostOrder();
 	}
 
 	public LegoPlate getStart() {

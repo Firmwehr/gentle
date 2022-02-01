@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.backend.lego.register;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoArgNode;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoNode;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoPerm;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoPhi;
@@ -16,6 +17,8 @@ import java.util.Optional;
 import java.util.Set;
 
 public class ConstraintNodePrepare {
+
+	private final Logger LOGGER = new Logger(ConstraintNodePrepare.class, Logger.LogLevel.DEBUG);
 
 	private final LifetimeAnalysis liveliness;
 	private final Uses uses;
@@ -38,7 +41,8 @@ public class ConstraintNodePrepare {
 	}
 
 	private void addPermForNode(LegoNode node) {
-		List<LegoNode> toPerm = List.copyOf(liveliness.getLiveBefore(node));
+		LOGGER.debug("Adding perm for node %s", node);
+		List<LegoNode> toPerm = List.copyOf(liveliness.getLiveBefore(node, dominance));
 		LegoPerm perm = new LegoPerm(node.graph().nextId(), node.block(), node.graph(), List.of());
 		node.graph().addNode(perm, toPerm);
 		int nodeIndex = node.block().nodes().indexOf(node);
@@ -110,7 +114,10 @@ public class ConstraintNodePrepare {
 		if (node.inRequirements().stream().anyMatch(LegoRegisterRequirement::limited) && !(node instanceof LegoPhi)) {
 			return true;
 		}
-		return false;
+		if (node instanceof LegoProj || node instanceof LegoArgNode) {
+			return false;
+		}
+		return node.registerRequirement().limited();
 	}
 
 	/**
@@ -135,6 +142,11 @@ public class ConstraintNodePrepare {
 		public List<BipartiteEntry> solve() {
 			while (iteration()) {
 				LOGGER.debugHeader("Change detected, running next bipartite iteration");
+			}
+			for (BipartiteEntry entry : entries) {
+				if (entry.assignedRegister().isEmpty()) {
+					throw new InternalCompilerException("Could not solve bipartite matching :/");
+				}
 			}
 			return entries;
 		}

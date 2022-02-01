@@ -123,21 +123,20 @@ public class Belady {
 				LOGGER.debug("Adding reload for %s before %s", value, currentInstruction);
 				addReload(value, currentInstruction);
 				worksetValue.setSpilled(true);
-			} else {
-				if (currentWorkset.contains(worksetValue) && !isUsage) {
-					throw new InternalCompilerException("Already knew a value I am introducing?");
-				}
+			} else if (currentWorkset.contains(worksetValue)) {
 				// Remove so it is not accidentally selected for spilling
 				currentWorkset.remove(worksetValue);
 				LOGGER.debug("%s was already live before %s", value, currentInstruction);
 			}
 			toInsert.add(worksetValue);
 		}
-		// TODO: Is this clobber handling good enough?
-		additionalPressure += currentInstruction.clobbered().size();
-		if (!currentInstruction.clobbered().isEmpty()) {
-			LOGGER.debug("Increased %s pressure by %s clobbers", currentInstruction,
-				currentInstruction.clobbered().size());
+		if (!isUsage) {
+			// TODO: Is this clobber handling good enough?
+			additionalPressure += currentInstruction.clobbered().size();
+			if (!currentInstruction.clobbered().isEmpty()) {
+				LOGGER.debug("Increased %s pressure by %s clobbers", currentInstruction,
+					currentInstruction.clobbered().size());
+			}
 		}
 
 		demand += additionalPressure;
@@ -158,6 +157,7 @@ public class Belady {
 				if (distance.isPresent()) {
 					node.setDistance(new Distance(distance.get()));
 				} else {
+					LOGGER.debug("No use found for %s after %s. Marking as infinite", node, currentInstruction);
 					// No use found...?
 					node.setDistance(new Infinity());
 				}
@@ -273,7 +273,7 @@ public class Belady {
 			}
 		}
 
-		int loopPressure = liveliness.getLoopPressure(loopTree, loopTree.getBlockElement(block.origin()));
+		int loopPressure = liveliness.getLoopPressure(loopTree, loopTree.getBlockElement(block.origin()), dominance);
 		int freeSlots = X86Register.registerCount() - starters.size();
 		int freePressureSlots = X86Register.registerCount() - (loopPressure - delayed.size());
 		freeSlots = Math.min(freeSlots, freePressureSlots);
@@ -457,6 +457,7 @@ public class Belady {
 					continue;
 				}
 
+				LOGGER.debug("Adding spill on edge as %s does not keep %s from %s", block, node, parentBlock);
 				addSpillOnEdge(node.node(), block, parentBlock);
 			}
 
@@ -476,7 +477,8 @@ public class Belady {
 				// We need to reload, it is not in a register in our parent
 				if (!worksetContains(endWorkset, legoNode)) {
 					if (legoNode instanceof LegoConst) {
-						throw new InternalCompilerException("Tried to inherit lego const?");
+						LOGGER.info("Trying to reload const at block border, ignoring...");
+						continue;
 					}
 					addReloadOnEdge(legoNode, block, parentBlock);
 				} else {
@@ -555,7 +557,7 @@ public class Belady {
 						info.valueToSpill().size(), List.of(), info.valueToSpill());
 				reloadBefore.block().nodes().add(insertionPoint, reload);
 				// TODO: What do we point to here?
-				//				reloadBefore.graph().addNode(reload, List.of(info.valueToSpill()));
+				reloadBefore.graph().addNode(reload, List.of());
 
 				ssaReconstruction.addDef(reload);
 			}
@@ -594,7 +596,7 @@ public class Belady {
 			LegoNode node = spillAfter.node();
 			LegoSpill spill =
 				new LegoSpill(node.graph().nextId(), node.block(), node.graph(), spillInfo.valueToSpill().size(),
-					List.of());
+					List.of(), spillInfo.valueToSpill());
 
 			int insertPoint = spillAfter.atStartOfBlock() ? 0 : node.block().nodes().indexOf(node) + 1;
 			node.block().nodes().add(insertPoint, spill);
@@ -621,7 +623,7 @@ public class Belady {
 					int index = slotIndices.computeIfAbsent(reload.originalValue(), ignored -> slotIndices.size());
 					reload.spillSlot(index);
 				} else if (node instanceof LegoSpill spill) {
-					int index = slotIndices.computeIfAbsent(spill.inputs().get(0), ignored -> slotIndices.size());
+					int index = slotIndices.computeIfAbsent(spill.originalValue(), ignored -> slotIndices.size());
 					spill.spillSlot(index);
 				}
 			}

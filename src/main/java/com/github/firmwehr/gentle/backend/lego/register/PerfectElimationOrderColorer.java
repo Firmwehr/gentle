@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoNode;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoPhi;
+import com.github.firmwehr.gentle.output.Logger;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -13,6 +14,8 @@ import java.util.Set;
  * SSA form in the meantime.
  */
 public class PerfectElimationOrderColorer {
+
+	private static final Logger LOGGER = new Logger(PerfectElimationOrderColorer.class, Logger.LogLevel.DEBUG);
 
 	private final ControlFlowGraph graph;
 	private final LifetimeAnalysis liveliness;
@@ -57,7 +60,7 @@ public class PerfectElimationOrderColorer {
 				// Can free it now, it was the last use - the value is dead now, jim
 				if (parent.register().isPresent() && uses.isLastUse(liveliness, parent, node)) {
 					assigned.remove(parent.uncheckedRegister());
-					assigned.removeAll(parent.clobbered());
+					LOGGER.debug("Freeing register %s from %s as it was last use", parent.uncheckedRegister(), parent);
 				}
 			}
 
@@ -67,14 +70,15 @@ public class PerfectElimationOrderColorer {
 			if (node.register().isEmpty()) {
 				node.register(freeRegister(assigned, node));
 				assigned.add(node.uncheckedRegister());
-				assigned.addAll(node.clobbered());
+				LOGGER.debug("Assigning register %s to %s", node.uncheckedRegister(), node);
 			} else {
 				assigned.add(node.register().get());
+				LOGGER.debug("Keeping assigned register %s for %s", node.uncheckedRegister(), node);
 			}
 
-			if (uses.isLastUse(liveliness, node, node)) {
+			if (node.graph().getOutputs(node).isEmpty()) {
 				assigned.remove(node.uncheckedRegister());
-				assigned.removeAll(node.clobbered());
+				LOGGER.debug("Freeing register %s for %s as it was never used", node.uncheckedRegister(), node);
 			}
 		}
 

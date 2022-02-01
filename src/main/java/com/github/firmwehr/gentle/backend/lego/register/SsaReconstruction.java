@@ -1,8 +1,8 @@
 package com.github.firmwehr.gentle.backend.lego.register;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
-import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.LegoParentBløck;
+import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoNode;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoPhi;
 
@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SsaReconstruction {
 
@@ -41,7 +42,9 @@ public class SsaReconstruction {
 	 * @param brokenVariable all variables that now have multiple definitions
 	 */
 	public void ssaReconstruction(LegoNode brokenVariable) {
-		Set<LegoPlate> F = new HashSet<>(dominance.getDominanceFrontier(brokenVariable.block()));
+		Set<LegoPlate> F = definitions.stream()
+			.flatMap(it -> dominance.getDominanceFrontier(it.block()).stream())
+			.collect(Collectors.toSet());
 
 		Set<LegoNode> uses = this.uses.uses(brokenVariable);
 

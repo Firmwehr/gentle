@@ -1,10 +1,13 @@
 package com.github.firmwehr.gentle.backend.lego.register;
 
-import com.github.firmwehr.gentle.backend.lego.LegoPlate;
+import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.lego.LegoParentBløck;
+import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoConst;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoNode;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoPhi;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoReload;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoSpill;
 import com.github.firmwehr.gentle.firm.model.LoopTree;
 import com.github.firmwehr.gentle.output.Logger;
 import com.google.common.collect.Lists;
@@ -72,21 +75,24 @@ public class LifetimeAnalysis {
 		return liveness.get(block).liveIn().values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
 	}
 
-	public int getLoopPressure(LoopTree loopTree, LoopTree.LoopElement loopElement) {
+	public int getLoopPressure(LoopTree loopTree, LoopTree.LoopElement loopElement, Dominance dominance) {
 		Map<Block, LegoPlate> blockMap = new HashMap<>();
 		for (LegoPlate block : controlFlowGraph.getAllBlocks()) {
 			blockMap.put(block.origin(), block);
 		}
 
-		return getLoopPressure(loopTree, loopElement, blockMap);
+		return getLoopPressure(loopTree, loopElement, blockMap, dominance);
 	}
 
-	private int getLoopPressure(LoopTree loopTree, LoopTree.LoopElement loopElement, Map<Block, LegoPlate> blockMap) {
+	private int getLoopPressure(
+		LoopTree loopTree, LoopTree.LoopElement loopElement, Map<Block, LegoPlate> blockMap, Dominance dominance
+	) {
 		int pressure = 0;
 		for (LoopTree.LoopElement child : loopTree.getChildren(loopElement)) {
 			int childPressure = switch (child) {
-				case LoopTree.LoopElementLoop ignored -> getLoopPressure(loopTree, child);
-				case LoopTree.LoopElementNode node -> getBlockPressure(blockMap.get((Block) node.firmNode()));
+				case LoopTree.LoopElementLoop ignored -> getLoopPressure(loopTree, child, dominance);
+				case LoopTree.LoopElementNode node -> getBlockPressure(blockMap.get((Block) node.firmNode()),
+					dominance);
 			};
 
 			pressure = Math.max(childPressure, pressure);
@@ -95,12 +101,15 @@ public class LifetimeAnalysis {
 		return pressure;
 	}
 
-	private int getBlockPressure(LegoPlate block) {
+	private int getBlockPressure(LegoPlate block, Dominance dominance) {
 		Set<LegoNode> live = getLiveOut(block);
 		int maxLive = live.size();
 
 		for (LegoNode node : Lists.reverse(block.nodes())) {
 			node.results().forEach(live::remove);
+			if (node instanceof LegoReload reload) {
+				live.remove(getReloadedValue(reload, dominance));
+			}
 			live.addAll(node.inputs());
 
 			// TODO: Is this clobber handling enough?
@@ -110,11 +119,14 @@ public class LifetimeAnalysis {
 		return maxLive;
 	}
 
-	public Set<LegoNode> getLiveBefore(LegoNode before) {
+	public Set<LegoNode> getLiveBefore(LegoNode before, Dominance dominance) {
 		Set<LegoNode> live = new HashSet<>(getLiveOut(before.block()));
 
 		for (LegoNode node : Lists.reverse(before.block().nodes())) {
 			node.results().forEach(live::remove);
+			if (node instanceof LegoReload reload) {
+				live.remove(getReloadedValue(reload, dominance));
+			}
 			live.addAll(node.inputs());
 			if (node.equals(before)) {
 				break;
@@ -122,6 +134,29 @@ public class LifetimeAnalysis {
 		}
 
 		return live;
+	}
+
+	private LegoNode getReloadedValue(LegoReload reload, Dominance dominance) {
+		return getReloadedValue(reload.spillSlot(), reload.block().nodes().indexOf(reload), reload.block(), dominance);
+	}
+
+	private LegoNode getReloadedValue(int slot, int startIndex, LegoPlate currentBlock, Dominance dominance) {
+		int index = startIndex;
+
+		if (index < 0) {
+			index = currentBlock.nodes().size() - 1;
+		}
+
+		for (int i = index; i >= 0; i--) {
+			if (currentBlock.nodes().get(i) instanceof LegoSpill spill && spill.spillSlot() == slot) {
+				return spill.inputs().get(0);
+			}
+		}
+
+		LegoPlate idom = dominance.getIdom(currentBlock)
+			.orElseThrow(() -> new InternalCompilerException("No idom found while searching for spill of " + slot));
+
+		return getReloadedValue(slot, idom.nodes().size() - 1, idom, dominance);
 	}
 
 	private record BlockLiveliness(
