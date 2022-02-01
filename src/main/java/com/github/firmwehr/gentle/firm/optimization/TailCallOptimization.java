@@ -9,6 +9,7 @@ import firm.BackEdges;
 import firm.Graph;
 import firm.Mode;
 import firm.bindings.binding_irgopt;
+import firm.nodes.Address;
 import firm.nodes.Anchor;
 import firm.nodes.Block;
 import firm.nodes.Call;
@@ -199,7 +200,7 @@ public class TailCallOptimization {
 	}
 
 	private static List<TailCall> findTailCalls(Graph graph) {
-		LOGGER.debugHeader("Looking for tails calls in %d returns...", graph.getEndBlock().getPredCount());
+		LOGGER.debugHeader("Looking for tail calls in %d returns...", graph.getEndBlock().getPredCount());
 		List<TailCall> tailCalls = new ArrayList<>();
 		Block end = graph.getEndBlock();
 
@@ -214,12 +215,12 @@ public class TailCallOptimization {
 	}
 
 	@FiAscii("""
-		           ┌────────────────┐  While it is technically possible
-		           │funcPtr: Address│  that a call returns multiple values,
-		           └┬───────────────┘  the gentle frontend does not generate
-		            │                  such code. Therefore we only need to
-		           ┌▼─────────┐        consider tail calls with a single
-		           │call: Call├─────┐   return value.
+		                                    While it is technically possible
+		                                    that a call returns multiple values,
+		                                    the gentle frontend does not generate
+		                                    such code. Therefore we only need to
+		           ┌──────────┐             consider tail calls with a single
+		           │call: Call├─────┐       return value.
 		           └┬─────────┘     │
 		            │               │
 		┌───────────▼───────────┐  ┌▼──────────────┐
@@ -236,7 +237,8 @@ public class TailCallOptimization {
 	public static Optional<TailCallPattern.Match> matchTailCall(Node node) {
 		return TailCallPattern.match(node).filter((match) -> {
 			// Check whether match is a recursive tail call
-			return match.funcPtr().getEntity().equals(node.getGraph().getEntity());
+			Address funcPtr = (Address) match.call().getPred(1);
+			return funcPtr.getEntity().equals(node.getGraph().getEntity());
 		});
 	}
 
