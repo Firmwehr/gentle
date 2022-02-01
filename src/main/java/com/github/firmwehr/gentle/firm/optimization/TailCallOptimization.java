@@ -117,9 +117,7 @@ public class TailCallOptimization {
 
 				BackEdges.disable(graph);
 
-				if (LOGGER.isDebugEnabled()) {
-					GraphDumper.dumpGraph(graph, "tco");
-				}
+				GraphDumper.dumpGraph(graph, "tco");
 
 				return true;
 			})
