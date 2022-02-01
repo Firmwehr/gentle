@@ -19,6 +19,7 @@ import com.github.firmwehr.fiascii.generated.MulInAddPattern;
 import com.github.firmwehr.fiascii.generated.MulInShiftLeftPattern;
 import com.github.firmwehr.fiascii.generated.ShiftRightLeftPattern;
 import com.github.firmwehr.fiascii.generated.ShiftRightSignedLeftPattern;
+import com.github.firmwehr.fiascii.generated.SubtractConstPattern;
 import com.github.firmwehr.fiascii.generated.SubtractFromZeroPattern;
 import com.github.firmwehr.fiascii.generated.SubtractSamePattern;
 import com.github.firmwehr.fiascii.generated.SubtractZeroPattern;
@@ -64,8 +65,8 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		.addStep(ArithmeticOptimization::subtractFromZero,
 			(match, graph, block) -> exchange(match.sub(), graph.newMinus(block, match.rhs())))
 		.addStep(ArithmeticOptimization::subtractZero, (match, graph, block) -> exchange(match.sub(), match.lhs()))
-		.addStep(ArithmeticOptimization::addMinus,
-			(match, graph, block) -> exchange(match.add(), graph.newSub(block, match.other(), match.value())))
+		.addStep(ArithmeticOptimization::subtractConst, (match, graph, block) -> exchange(match.sub(),
+			graph.newAdd(block, match.lhs(), graph.newConst(match.rhs().getTarval().neg()))))
 		.addStep(ArithmeticOptimization::associativeAdd, (match, graph, block) -> {
 			// we don't care about left/right here, just set both again *somewhere*
 			Node newInner = graph.newAdd(block, match.a(), match.b());
@@ -105,6 +106,8 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		.addStep(ArithmeticOptimization::mulInShiftLeft, (match, graph, block) -> exchange(match.outer(),
 			graph.newMul(block, match.value(), graph.newShl(block, match.ci(), match.co()))))
 		.addStep(ArithmeticOptimization::doubleShiftLeft, ArithmeticOptimization::collapseDoubleShiftLeft)
+		.addStep(ArithmeticOptimization::addMinus,
+			(match, graph, block) -> exchange(match.add(), graph.newSub(block, match.other(), match.value())))
 		.build();
 
 	private boolean hasChanged;
@@ -411,6 +414,20 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 		      └────────┘""")
 	public static Optional<SubtractZeroPattern.Match> subtractZero(Node node) {
 		return SubtractZeroPattern.match(node);
+	}
+
+	@FiAscii("""
+		┌──────┐   ┌───────────┐
+		│lhs: *│   │rhs: Const │
+		└───┬──┘   └┬──────────┘
+		    │       │
+		    └────┐  │
+		         │  │
+		      ┌──▼──▼──┐
+		      │sub: Sub│
+		      └────────┘""")
+	public static Optional<SubtractConstPattern.Match> subtractConst(Node node) {
+		return SubtractConstPattern.match(node);
 	}
 
 	@FiAscii("""
