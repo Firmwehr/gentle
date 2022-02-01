@@ -132,7 +132,7 @@ public class GentleCompiler {
 
 	private static void printAstCommand(Path path) {
 		try {
-			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			Source source = new Source(Files.readString(path, FILE_CHARSET));
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
 			Program program = parser.parse();
@@ -154,7 +154,7 @@ public class GentleCompiler {
 
 	private static void checkCommand(Path path) {
 		try {
-			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			Source source = new Source(Files.readString(path, FILE_CHARSET));
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
 			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer(source, parser.parse());
@@ -196,7 +196,7 @@ public class GentleCompiler {
 				binding_irdump.ir_set_dump_path(dumpBaseDir.getPath());
 			}
 
-			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			Source source = new Source(Files.readString(path, FILE_CHARSET));
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
 			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer(source, parser.parse());
