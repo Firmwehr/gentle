@@ -26,10 +26,12 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaMul;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNeg;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaRet;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSet;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShl;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaXor;
 import com.github.firmwehr.gentle.debug.DebugStore;
 import com.google.common.collect.Lists;
 import firm.Entity;
@@ -108,6 +110,11 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 	}
 
 	@Override
+	public String visit(IkeaXor xor) {
+		return simpleBinaryOperator("xor", xor.getRight().box(), xor.getLeft().box(), xor.box());
+	}
+
+	@Override
 	public String visit(IkeaSub sub) {
 		return simpleBinaryOperator("sub", sub.getRight().box(), sub.getLeft().box(), sub.box());
 	}
@@ -178,6 +185,26 @@ public class DjungelskogVisitor implements IkeaVisitor<String> {
 		result += " " + blockMarker(jcc.getTrueTarget());
 		result += "\n";
 		result += "jmp " + blockMarker(jcc.getFalseTarget());
+
+		return result;
+	}
+
+	@Override
+	public String visit(IkeaSet set) {
+		String result = "";
+		result += switch (set.getRelation()) {
+			case Equal -> "sete";
+			case Less -> "setl";
+			case Greater -> "setg";
+			case LessEqual -> "setle";
+			case GreaterEqual -> "setge";
+			case LessGreater, UnorderedLessGreater -> "setne";
+			default -> throw new InternalCompilerException(":( Where do we use " + set.getRelation());
+		};
+
+		result += " %r8b\n";
+		result += "movsx %r8b, %r8\n"; // clear upper bits, setcc only sets lower 8 bits
+		result += storeFromTargetToStack(set.box(), "%r8") + "\n";
 
 		return result;
 	}

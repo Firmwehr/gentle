@@ -742,11 +742,12 @@ public class FirmGraphBuilder {
 				yield node;
 			}
 			case LOGICAL_NOT -> {
-				// !b => (b == false)
+				// !b => b ^ 1
+				//  0 ^ 0 = 1
+				//  1 ^ 1 = 0
 				Node innerExpr = processValueExpression(context, expr.expression());
-				Node constFalse = context.newConst(0, Mode.getBu());
-				yield condToBool(context,
-					target -> processRelation(context, innerExpr, constFalse, Relation.Equal, target, expr), expr);
+				Node constOne = context.newConst(1, Mode.getBu());
+				yield context.construction().newEor(innerExpr, constOne);
 			}
 		};
 	}

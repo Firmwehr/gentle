@@ -27,6 +27,7 @@ import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShl;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShr;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaShrs;
 import com.github.firmwehr.gentle.backend.ir.nodes.IkeaSub;
+import com.github.firmwehr.gentle.backend.ir.nodes.IkeaXor;
 
 public interface IkeaVisitor<T> {
 
@@ -134,6 +135,10 @@ public interface IkeaVisitor<T> {
 
 	default T visit(IkeaShrs shrs) {
 		return defaultVisit(shrs);
+	}
+
+	default T visit(IkeaXor xor) {
+		return defaultVisit(xor);
 	}
 
 	default T visit(IkeaBløck block) {

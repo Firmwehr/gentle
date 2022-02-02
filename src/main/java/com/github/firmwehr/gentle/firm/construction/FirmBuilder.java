@@ -3,6 +3,7 @@ package com.github.firmwehr.gentle.firm.construction;
 import com.github.firmwehr.gentle.cli.CompilerArguments;
 import com.github.firmwehr.gentle.debug.DebugStore;
 import com.github.firmwehr.gentle.firm.optimization.ArithmeticOptimization;
+import com.github.firmwehr.gentle.firm.optimization.BooleanOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.firm.optimization.EscapeAnalysisOptimization;
 import com.github.firmwehr.gentle.firm.optimization.FirmGraphCleanup;
@@ -100,6 +101,11 @@ public class FirmBuilder {
 		if (enableOptimizations) {
 			if (!CompilerArguments.get().noArithmeticOptimizations()) {
 				builder.addGraphStep(ArithmeticOptimization.arithmeticOptimization());
+			}
+			// firm backend does not know how to deal with Mux, so we can only enable this optimization
+			// if we don't use the firm backend
+			if (!CompilerArguments.get().compileFirm() && !CompilerArguments.get().noBooleanOptimizations()) {
+				builder.addGraphStep(BooleanOptimization.booleanOptimization());
 			}
 			if (!CompilerArguments.get().noEscapeAnalysis()) {
 				builder.addGraphStep(EscapeAnalysisOptimization.escapeAnalysisOptimization());

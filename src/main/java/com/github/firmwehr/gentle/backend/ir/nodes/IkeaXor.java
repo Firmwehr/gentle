@@ -1,32 +1,28 @@
 package com.github.firmwehr.gentle.backend.ir.nodes;
 
 import com.github.firmwehr.gentle.backend.ir.IkeaBøx;
-import com.github.firmwehr.gentle.backend.ir.IkeaBøx.IkeaRegisterSize;
-import com.github.firmwehr.gentle.backend.ir.IkeaUnassignedBøx;
 import com.github.firmwehr.gentle.backend.ir.visit.IkeaVisitor;
-import firm.nodes.Cmp;
+import firm.nodes.Eor;
 import firm.nodes.Node;
 
 import java.util.List;
 
-public class IkeaCmp implements IkeaNode {
+public class IkeaXor implements IkeaNode {
+	private IkeaBøx box;
 	private final IkeaNode left;
 	private final IkeaNode right;
-	private final Cmp cmp;
-	private final boolean wasInverted;
-	private final boolean belongsToJump;
+	private final Eor eor;
 
-	public IkeaCmp(IkeaNode left, IkeaNode right, Cmp cmp, boolean wasInverted, boolean belongsToJump) {
+	public IkeaXor(IkeaBøx box, IkeaNode left, IkeaNode right, Eor eor) {
+		this.box = box;
 		this.left = left;
 		this.right = right;
-		this.cmp = cmp;
-		this.wasInverted = wasInverted;
-		this.belongsToJump = belongsToJump;
+		this.eor = eor;
 	}
 
 	@Override
 	public IkeaBøx box() {
-		return new IkeaUnassignedBøx(IkeaRegisterSize.ILLEGAL);
+		return this.box;
 	}
 
 	@Override
@@ -42,14 +38,6 @@ public class IkeaCmp implements IkeaNode {
 		return right;
 	}
 
-	public boolean wasInverted() {
-		return wasInverted;
-	}
-
-	public boolean belongsToJump() {
-		return belongsToJump;
-	}
-
 	@Override
 	public <T> T accept(IkeaVisitor<T> visitor) {
 		return visitor.visit(this);
@@ -57,7 +45,6 @@ public class IkeaCmp implements IkeaNode {
 
 	@Override
 	public List<Node> getUnderlyingFirmNodes() {
-		return List.of(cmp);
+		return List.of(eor);
 	}
-
 }
