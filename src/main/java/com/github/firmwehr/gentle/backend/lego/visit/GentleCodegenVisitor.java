@@ -5,12 +5,14 @@ import com.github.firmwehr.gentle.backend.lego.LegoBøx;
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoAdd;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoArgNode;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoBinaryOp;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoCall;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoCmp;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoConst;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoConv;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoCopy;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoDiv;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoImmediate;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoJcc;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoJmp;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoMovLoad;
@@ -27,9 +29,9 @@ import com.github.firmwehr.gentle.backend.lego.nodes.LegoProj;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoReload;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoRet;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSal;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoSar;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoShift;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoShr;
-import com.github.firmwehr.gentle.backend.lego.nodes.LegoSar;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSpill;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSub;
 import com.github.firmwehr.gentle.backend.lego.register.X86Register;
@@ -91,10 +93,15 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoCmp cmp) {
-		List<LegoNode> inputs = cmp.inputs();
-		LegoNode a0 = inputs.get(0);
-		LegoNode a1 = inputs.get(1);
-		code.op("cmp", cmp, a0.asRegisterName(), a1.asRegisterName());
+		LegoNode a0 = cmp.left();
+		LegoNode a1 = cmp.right();
+		// LegoCmp has no direct out register and therefore a register size of ILLEGAL
+		// => we use a0 for size
+		if (a1 instanceof LegoImmediate imm) {
+			code.op("cmp", a0, imm(imm), a0.asRegisterName());
+		} else {
+			code.op("cmp", a0, a1.asRegisterName(), a0.asRegisterName());
+		}
 		return null;
 	}
 
@@ -105,7 +112,18 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoJcc jcc) {
-		return LegoVisitor.super.visit(jcc);
+		String op = switch (jcc.relation()) {
+			case Equal -> "je";
+			case Less -> "jl";
+			case Greater -> "jg";
+			case LessEqual -> "jle";
+			case GreaterEqual -> "jge";
+			case LessGreater, UnorderedLessGreater -> "jne";
+			default -> throw new InternalCompilerException(":( Where do we use " + jcc.relation());
+		};
+		// FIXME
+		code.noSuffixOp(op, "TODO TODO TODO TODO");
+		return null;
 	}
 
 	@Override
@@ -236,26 +254,81 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoAdd legoAdd) {
-		LegoNode a0 = legoAdd.inputs().get(0);
-		LegoNode a1 = legoAdd.inputs().get(1);
-		X86Register targetRegister = legoAdd.uncheckedRegister();
-		if (a0.uncheckedRegister() != targetRegister && a1.uncheckedRegister() != targetRegister) {
-			code.op("lea", legoAdd, "(%s, %s)".formatted(a0.asRegisterName(), a1.asRegisterName()),
+		LegoNode left = legoAdd.left();
+		LegoNode right = legoAdd.right();
+		if (left.register().isPresent() && right.register().isPresent() &&
+			left.uncheckedRegister() != right.uncheckedRegister() &&
+			left.uncheckedRegister() != legoAdd.uncheckedRegister() &&
+			right.uncheckedRegister() != legoAdd.uncheckedRegister()) {
+			// if all registers are different, we can still use lea to avoid extra mov
+			code.op("lea", legoAdd, "(%s, %s)".formatted(left.asRegisterName(), right.asRegisterName()),
 				legoAdd.asRegisterName());
-		} else {
-			var other = convert2AddressCode(legoAdd, a0, a1);
-			code.op("add", legoAdd, other.uncheckedRegister().nameForSize(legoAdd), legoAdd.asRegisterName());
+			return null;
 		}
-
+		// otherwise, we just go the common way for all commutative operations
+		visitCommutative(legoAdd, "add");
 		return null;
+/*		if (right instanceof LegoImmediate imm) {
+			moveToTarget(left, legoAdd);
+			code.op("add", legoAdd, imm(imm), legoAdd.asRegisterName());
+			return null;
+		}
+		X86Register targetRegister = legoAdd.uncheckedRegister();
+		if (right.uncheckedRegister() != targetRegister && left.uncheckedRegister() != targetRegister) {
+			// we have the same register for both the right argument and the target
+			// but this can't be expressed in 2 address
+			code.op("lea", legoAdd, "(%s, %s)".formatted(left.asRegisterName(), right.asRegisterName()),
+				legoAdd.asRegisterName());
+			return null;
+		}
+		if (left.uncheckedRegister() != targetRegister) {
+			// a0 + a1 = target => add a1, a0 => move a0 to target if necessary
+			code.op("mov", left, left.asRegisterName(), legoAdd.asRegisterName());
+		}
+		code.op("add", legoAdd, right.asRegisterName(), legoAdd.asRegisterName());
+			*//*var other = convert2AddressCode(legoAdd, a0, a1);
+			code.op("add", legoAdd, other.uncheckedRegister().nameForSize(legoAdd), legoAdd.asRegisterName());*//*
+		return null;*/
+	}
+
+	private void moveToTarget(LegoNode argument, LegoNode target) {
+		if (argument.uncheckedRegister() != target.uncheckedRegister()) {
+			code.op("mov", argument, argument.asRegisterName(), target.asRegisterName());
+		}
 	}
 
 	@Override
 	public Void visit(LegoMul legoMul) {
-		var other = convert2AddressCode(legoMul, legoMul.inputs().get(0), legoMul.inputs().get(1));
-		code.op("add", legoMul, other.uncheckedRegister().nameForSize(legoMul), legoMul.asRegisterName());
-
+		visitCommutative(legoMul, "mul");
 		return null;
+	}
+
+	private void visitCommutative(LegoBinaryOp binaryOp, String mnemonic) {
+		LegoNode left = binaryOp.left();
+		LegoNode right = binaryOp.right();
+		assert !(left instanceof LegoImmediate); // only one value is allowed to be directly encoded
+		if (right instanceof LegoImmediate imm) {
+			// create a mov for the left value if not already in target register
+			moveToTarget(left, binaryOp);
+			// encode the immediate value in the instruction
+			code.op(mnemonic, binaryOp, imm(imm), binaryOp.asRegisterName());
+			return;
+		}
+		// we have two source registers, now we need to deal with them
+		X86Register targetRegister = binaryOp.uncheckedRegister();
+		if (right.uncheckedRegister() == targetRegister && left.uncheckedRegister() != targetRegister) {
+			// we have the same register for both the right argument and the target
+			// but this can't be expressed in 2 address if the left isn't the same too.
+			// However, we can swap left and right as the operation is commutative
+			code.op(mnemonic, binaryOp, left.asRegisterName(), right.asRegisterName());
+			return;
+		}
+		if (left.uncheckedRegister() != targetRegister) {
+			// left + right = target => add right, left => move left to target if necessary
+			code.op("mov", left, left.asRegisterName(), binaryOp.asRegisterName());
+		}
+		// if we are here, the left value should already be in the target register
+		code.op(mnemonic, binaryOp, right.asRegisterName(), binaryOp.asRegisterName());
 	}
 
 	// TODO: Pretty sure we are going to nuke this method from orbit eventually, no need to document
@@ -331,6 +404,10 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 		return "$" + legoConst.value().asLong();
 	}
 
+	private String imm(LegoImmediate imm) {
+		return "$" + imm.targetValue().asLong();
+	}
+
 	private static class CodeBlock {
 		private final StringBuilder sb = new StringBuilder();
 
@@ -348,6 +425,10 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 		public void op(String op, LegoNode node, String... arg) {
 			line(op + node.size().getOldRegisterSuffix() + " " + String.join(", ", arg));
+		}
+
+		public void noSuffixOp(String op, String... arg) {
+			line(op + " " + String.join(", ", arg));
 		}
 
 		public void label(String label) {

@@ -1,8 +1,8 @@
 package com.github.firmwehr.gentle.backend.lego.nodes;
 
-import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.LegoBøx;
 import com.github.firmwehr.gentle.backend.lego.LegoGraph;
+import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.register.LegoRegisterRequirement;
 import firm.nodes.Node;
 
@@ -15,6 +15,14 @@ public abstract class LegoBinaryOp extends LegoNode {
 		int id, LegoPlate block, LegoGraph graph, LegoBøx.LegoRegisterSize size, List<Node> firmNodes
 	) {
 		super(id, block, graph, size, firmNodes);
+	}
+
+	public LegoNode left() {
+		return inputs().get(0);
+	}
+
+	public LegoNode right() {
+		return inputs().get(1);
 	}
 
 	@Override

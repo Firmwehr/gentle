@@ -4,7 +4,7 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import firm.Mode;
 import firm.nodes.Node;
 
-public sealed interface LegoBøx permits LegoVirtualRegister, LegoPhysicalRegister, LegoUnassignedBøx, LegoImmediate {
+public sealed interface LegoBøx permits LegoVirtualRegister, LegoPhysicalRegister, LegoUnassignedBøx {
 
 	String assemblyName();
 

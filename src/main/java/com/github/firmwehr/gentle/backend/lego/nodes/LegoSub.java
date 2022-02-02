@@ -1,8 +1,8 @@
 package com.github.firmwehr.gentle.backend.lego.nodes;
 
-import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.LegoBøx;
 import com.github.firmwehr.gentle.backend.lego.LegoGraph;
+import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.visit.LegoVisitor;
 import firm.nodes.Node;
 

@@ -1,20 +1,26 @@
 package com.github.firmwehr.gentle.backend.lego.nodes;
 
-import com.github.firmwehr.gentle.backend.lego.LegoBøx.LegoRegisterSize;
+import com.github.firmwehr.gentle.backend.lego.LegoBøx;
 import com.github.firmwehr.gentle.backend.lego.LegoGraph;
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.register.LegoRegisterRequirement;
 import com.github.firmwehr.gentle.backend.lego.visit.LegoVisitor;
-import firm.nodes.Node;
+import firm.TargetValue;
+import firm.nodes.Const;
 
 import java.util.List;
 
-public final class LegoCmp extends LegoBinaryOp {
+public class LegoImmediate extends LegoNode {
+	private final TargetValue targetValue;
 
-	public LegoCmp(
-		int id, LegoPlate block, LegoGraph graph, List<Node> firmNodes
+	public LegoImmediate(
+		int id,
+		LegoPlate block,
+		LegoGraph graph,
+		Const firmNode
 	) {
-		super(id, block, graph, LegoRegisterSize.ILLEGAL, firmNodes);
+		super(id, block, graph, LegoBøx.LegoRegisterSize.ILLEGAL, List.of(firmNode));
+		this.targetValue = firmNode.getTarval();
 	}
 
 	@Override
@@ -23,7 +29,16 @@ public final class LegoCmp extends LegoBinaryOp {
 	}
 
 	@Override
+	public List<LegoRegisterRequirement> inRequirements() {
+		return List.of();
+	}
+
+	@Override
 	public LegoRegisterRequirement registerRequirement() {
 		return LegoRegisterRequirement.none();
+	}
+
+	public TargetValue targetValue() {
+		return targetValue;
 	}
 }

@@ -9,6 +9,7 @@ import com.github.firmwehr.gentle.backend.lego.nodes.LegoConst;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoConv;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoCopy;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoDiv;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoImmediate;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoJcc;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoJmp;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoMovLoad;
@@ -147,6 +148,10 @@ public interface LegoVisitor<T> {
 	}
 
 	default T visit(LegoPlate block) {
+		return defaultReturnValue();
+	}
+
+	default T visit(LegoImmediate immediate) {
 		return defaultReturnValue();
 	}
 }
