@@ -21,7 +21,7 @@ public class Optimizer {
 	private static final Logger LOGGER = new Logger(Optimizer.class);
 	private final List<GraphOptimizationStep<Graph, Boolean>> graphOptimizationSteps;
 	private final List<GraphOptimizationStep<CallGraph, Set<Graph>>> callGraphOptimizationSteps;
-	private boolean freeUnusedGraphs;
+	private final boolean freeUnusedGraphs;
 
 	private Optimizer(
 		List<GraphOptimizationStep<Graph, Boolean>> graphOptimizationSteps,
@@ -137,8 +137,8 @@ public class Optimizer {
 			return this;
 		}
 
-		public Builder freeUnusedGraphs(boolean free) {
-			this.freeUnusedGraphs = free;
+		public Builder freeUnusedGraphs() {
+			this.freeUnusedGraphs = true;
 			return this;
 		}
 

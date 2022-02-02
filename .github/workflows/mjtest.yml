@@ -9,8 +9,8 @@ env:
   JAVA_VERSION: 17
 
 jobs:
-  mjtest-tests-tests:
-    name: "Run basic mjtest-tests tests"
+  common:
+    name: "Test common functionality"
     runs-on: ubuntu-latest
     steps:
       - name: Set up JDK
@@ -22,10 +22,12 @@ jobs:
         run: ./build
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git -C mjtest/tests reset --hard origin/master"
+      - run: "rm -r mjtest/tests/exec/big/"
+      - run: "rm mjtest/tests/exec/Vector.java"
       - run: "./mjtest/mjt.py lexer syntax ast semantic ./run"
 
-  mjtest-firm:
-    name: "Run firm compile"
+  firm:
+    name: "Test firm"
     runs-on: ubuntu-latest
     steps:
       - name: Set up JDK
@@ -37,10 +39,12 @@ jobs:
         run: ./build
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git -C mjtest/tests reset --hard origin/master"
-      - run: "./mjtest/mjt.py compile-firm-only compile-firm ./run"
+      - run: "rm -r mjtest/tests/exec/big/"
+      - run: "rm mjtest/tests/exec/Vector.java"
+      - run: "./mjtest/mjt.py compile-firm compile-firm-only ./run"
 
-  mjtest-djungelskog:
-    name: "Run Djungelskog compile"
+  firm-opt:
+    name: "Test firm with optimizations"
     runs-on: ubuntu-latest
     steps:
       - name: Set up JDK
@@ -52,4 +56,40 @@ jobs:
         run: ./build
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git -C mjtest/tests reset --hard origin/master"
-      - run: "./mjtest/mjt.py compile-only compile ./run"
+      - run: "rm -r mjtest/tests/exec/big/"
+      - run: "rm mjtest/tests/exec/Vector.java"
+      - run: "./mjtest/mjt.py compile-firm compile-firm-only ./run_opt"
+
+  ikea:
+    name: "Test ikea"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: actions/checkout@v2
+      - name: Build using build script
+        run: ./build
+      - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
+      - run: "git -C mjtest/tests reset --hard origin/master"
+      - run: "rm -r mjtest/tests/exec/big/"
+      - run: "rm mjtest/tests/exec/Vector.java"
+      - run: "./mjtest/mjt.py compile compile-only ./run"
+
+  ikea-opt:
+    name: "Test ikea with optimizations"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: actions/checkout@v2
+      - name: Build using build script
+        run: ./build
+      - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
+      - run: "git -C mjtest/tests reset --hard origin/master"
+      - run: "rm -r mjtest/tests/exec/big/"
+      - run: "rm mjtest/tests/exec/Vector.java"
+      - run: "./mjtest/mjt.py compile compile-only ./run_opt"
