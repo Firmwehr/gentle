@@ -2,13 +2,13 @@ package com.github.firmwehr.gentle.backend.lego.codegen;
 
 import com.github.firmwehr.fiascii.FiAscii;
 import com.github.firmwehr.fiascii.asciiart.generating.BaseMatch;
-import com.github.firmwehr.fiascii.generated.MatchBaseDisplacement;
-import com.github.firmwehr.fiascii.generated.MatchBaseIndex;
-import com.github.firmwehr.fiascii.generated.MatchBaseIndexDisplacement0;
-import com.github.firmwehr.fiascii.generated.MatchBaseIndexDisplacement1;
-import com.github.firmwehr.fiascii.generated.MatchBaseIndexScale;
-import com.github.firmwehr.fiascii.generated.MatchBaseIndexScaleDisplacement0;
-import com.github.firmwehr.fiascii.generated.MatchBaseIndexScaleDisplacement1;
+import com.github.firmwehr.fiascii.generated.LegoMatchBaseDisplacement;
+import com.github.firmwehr.fiascii.generated.LegoMatchBaseIndex;
+import com.github.firmwehr.fiascii.generated.LegoMatchBaseIndexDisplacement0;
+import com.github.firmwehr.fiascii.generated.LegoMatchBaseIndexDisplacement1;
+import com.github.firmwehr.fiascii.generated.LegoMatchBaseIndexScale;
+import com.github.firmwehr.fiascii.generated.LegoMatchBaseIndexScaleDisplacement0;
+import com.github.firmwehr.fiascii.generated.LegoMatchBaseIndexScaleDisplacement1;
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.Pair;
@@ -218,11 +218,11 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                │  *add: Add  │
 		                └─────────────┘
 		""")
-	public static Optional<MatchBaseIndex.Match> matchBaseIndex(Node node) {
-		return MatchBaseIndex.match(node);
+	public static Optional<LegoMatchBaseIndex.Match> matchBaseIndex(Node node) {
+		return LegoMatchBaseIndex.match(node);
 	}
 
-	public static AddressingScheme handleMatchBaseIndex(MatchBaseIndex.Match match) {
+	public static AddressingScheme handleMatchBaseIndex(LegoMatchBaseIndex.Match match) {
 		return new AddressingScheme(Optional.of(match.base()), Optional.of(match.index()), 0, 0);
 	}
 
@@ -240,11 +240,11 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                │  *add: Add  │
 		                └─────────────┘
 		""")
-	public static Optional<MatchBaseDisplacement.Match> matchBaseDisplacement(Node node) {
-		return MatchBaseDisplacement.match(node);
+	public static Optional<LegoMatchBaseDisplacement.Match> matchBaseDisplacement(Node node) {
+		return LegoMatchBaseDisplacement.match(node);
 	}
 
-	public static AddressingScheme handleMatchBaseDisplacement(MatchBaseDisplacement.Match match) {
+	public static AddressingScheme handleMatchBaseDisplacement(LegoMatchBaseDisplacement.Match match) {
 		return new AddressingScheme(Optional.of(match.base()), Optional.empty(), 0,
 			match.displacement().getTarval().asLong());
 	}
@@ -276,11 +276,11 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                          │ *add0: Add  │
 		                          └─────────────┘
 			""")
-	public static Optional<MatchBaseIndexScaleDisplacement0.Match> matchBaseIndexScaleDisplacement0(Node node) {
-		return MatchBaseIndexScaleDisplacement0.match(node);
+	public static Optional<LegoMatchBaseIndexScaleDisplacement0.Match> matchBaseIndexScaleDisplacement0(Node node) {
+		return LegoMatchBaseIndexScaleDisplacement0.match(node);
 	}
 
-	public static AddressingScheme handleMatchBaseIndexScaleDisplacement0(MatchBaseIndexScaleDisplacement0.Match match) {
+	public static AddressingScheme handleMatchBaseIndexScaleDisplacement0(LegoMatchBaseIndexScaleDisplacement0.Match match) {
 		return new AddressingScheme(Optional.of(match.base()), Optional.of(match.index()),
 			match.scale().getTarval().asLong(), match.displacement().getTarval().asLong());
 	}
@@ -322,8 +322,8 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                 │ *add0: Add  │
 		                 └─────────────┘
 		    """)
-	public static Optional<MatchBaseIndexScaleDisplacement1.Match> matchBaseIndexScaleDisplacement1(Node node) {
-		var match = MatchBaseIndexScaleDisplacement1.match(node);
+	public static Optional<LegoMatchBaseIndexScaleDisplacement1.Match> matchBaseIndexScaleDisplacement1(Node node) {
+		var match = LegoMatchBaseIndexScaleDisplacement1.match(node);
 
 		return match.filter(m -> {
 			// for this pattern to work either x xor y needs to be const
@@ -332,7 +332,7 @@ public class CodePreselectionMatcher implements CodePreselection {
 		});
 	}
 
-	public static AddressingScheme handleMatchBaseIndexScaleDisplacement1(MatchBaseIndexScaleDisplacement1.Match match) {
+	public static AddressingScheme handleMatchBaseIndexScaleDisplacement1(LegoMatchBaseIndexScaleDisplacement1.Match match) {
 		/*
 		 * we have no way of carrying over the meaning of x and y, so we have to repeat the check, knowing that it's
 		 * one or the other
@@ -366,11 +366,11 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                         │ *add0: Add  │
 		                         └─────────────┘
 		""")
-	public static Optional<MatchBaseIndexDisplacement0.Match> matchBaseIndexDisplacement0(Node node) {
-		return MatchBaseIndexDisplacement0.match(node);
+	public static Optional<LegoMatchBaseIndexDisplacement0.Match> matchBaseIndexDisplacement0(Node node) {
+		return LegoMatchBaseIndexDisplacement0.match(node);
 	}
 
-	public static AddressingScheme handleMatchBaseIndexDisplacement0(MatchBaseIndexDisplacement0.Match match) {
+	public static AddressingScheme handleMatchBaseIndexDisplacement0(LegoMatchBaseIndexDisplacement0.Match match) {
 		return new AddressingScheme(Optional.of(match.base()), Optional.of(match.index()), 0,
 			match.displacement().getTarval().asLong());
 	}
@@ -400,11 +400,11 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                         │ *add0: Add  │
 		                         └─────────────┘
 		""")
-	public static Optional<MatchBaseIndexDisplacement1.Match> matchBaseIndexDisplacement1(Node node) {
-		return MatchBaseIndexDisplacement1.match(node);
+	public static Optional<LegoMatchBaseIndexDisplacement1.Match> matchBaseIndexDisplacement1(Node node) {
+		return LegoMatchBaseIndexDisplacement1.match(node);
 	}
 
-	public static AddressingScheme handleMatchBaseIndexDisplacement1(MatchBaseIndexDisplacement1.Match match) {
+	public static AddressingScheme handleMatchBaseIndexDisplacement1(LegoMatchBaseIndexDisplacement1.Match match) {
 		return new AddressingScheme(Optional.of(match.base()), Optional.of(match.index()), 0,
 			match.displacement().getTarval().asLong());
 	}
@@ -433,11 +433,11 @@ public class CodePreselectionMatcher implements CodePreselection {
 		                │  *add: Add  │
 		                └─────────────┘
 		""")
-	public static Optional<MatchBaseIndexScale.Match> matchBaseIndexScale(Node node) {
-		return MatchBaseIndexScale.match(node);
+	public static Optional<LegoMatchBaseIndexScale.Match> matchBaseIndexScale(Node node) {
+		return LegoMatchBaseIndexScale.match(node);
 	}
 
-	public static AddressingScheme handleMatchBaseIndexScale(MatchBaseIndexScale.Match match) {
+	public static AddressingScheme handleMatchBaseIndexScale(LegoMatchBaseIndexScale.Match match) {
 		return new AddressingScheme(Optional.of(match.base()), Optional.of(match.index()),
 			match.scale().getTarval().asLong(), 0);
 	}
