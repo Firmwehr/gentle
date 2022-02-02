@@ -42,6 +42,7 @@ import firm.Graph;
 import java.util.List;
 import java.util.Set;
 
+// TODO Rename to JättestorCodegenVisitor
 public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	private static final Logger LOGGER = new Logger(GentleCodegenVisitor.class, Logger.LogLevel.DEBUG);

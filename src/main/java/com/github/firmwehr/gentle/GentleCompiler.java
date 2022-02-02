@@ -1,9 +1,8 @@
 package com.github.firmwehr.gentle;
 
+import com.github.firmwehr.gentle.backend.ir.IkeaBløck;
+import com.github.firmwehr.gentle.backend.ir.visit.DjungelskogVisitor;
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
-import com.github.firmwehr.gentle.backend.lego.codegen.CodePreselection;
-import com.github.firmwehr.gentle.backend.lego.codegen.CodePreselectionMatcher;
-import com.github.firmwehr.gentle.backend.lego.codegen.CodeSelection;
 import com.github.firmwehr.gentle.backend.lego.visit.GentleCodegenVisitor;
 import com.github.firmwehr.gentle.cli.CommandArguments;
 import com.github.firmwehr.gentle.cli.CommandDispatcher;
@@ -243,26 +242,26 @@ public class GentleCompiler {
 
 	private static void generateWithIkeaBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
 		throws IOException {
-		LOGGER.info("handing over to gentle backend...");
+		LOGGER.info("handing over to ikea backend...");
 
 		Files.deleteIfExists(assemblyFile);
 
 		int preselectionCount = 0;
 		for (Graph graph : firm.Program.getGraphs()) {
 
-			CodePreselection codePreselection;
+			com.github.firmwehr.gentle.backend.ir.codegen.CodePreselection codePreselection;
 			if (CompilerArguments.optimizations().advancedCodeSelection()) {
-				codePreselection = new CodePreselectionMatcher(graph);
+				codePreselection = new com.github.firmwehr.gentle.backend.ir.codegen.CodePreselectionMatcher(graph);
 			} else {
-				codePreselection = CodePreselection.DUMMY;
+				codePreselection = com.github.firmwehr.gentle.backend.ir.codegen.CodePreselection.DUMMY;
 			}
 
 			preselectionCount += codePreselection.replacedSubtrees();
 
-			CodeSelection codeSelection = new CodeSelection(graph, codePreselection);
-			List<LegoPlate> blocks = codeSelection.convertBlocks();
-
-			GentleCodegenVisitor visitor = new GentleCodegenVisitor();
+			var codeSelection =
+				new com.github.firmwehr.gentle.backend.ir.codegen.CodeSelection(graph, codePreselection);
+			List<IkeaBløck> blocks = codeSelection.convertBlocks();
+			DjungelskogVisitor visitor = new DjungelskogVisitor(debugStore);
 			String res = visitor.visit(graph, blocks);
 			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
 		}
@@ -275,8 +274,33 @@ public class GentleCompiler {
 	private static void generateWithLegoBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
 		throws IOException {
 		LOGGER.info("handing over to lego backend...");
-		LOGGER.info("Lego backend not implemented yet");
-		// TODO Implement lego backend (remember to enable it for -O1 too)
+
+		Files.deleteIfExists(assemblyFile);
+
+		int preselectionCount = 0;
+		for (Graph graph : firm.Program.getGraphs()) {
+
+			com.github.firmwehr.gentle.backend.lego.codegen.CodePreselection codePreselection;
+			if (CompilerArguments.optimizations().advancedCodeSelection()) {
+				codePreselection = new com.github.firmwehr.gentle.backend.lego.codegen.CodePreselectionMatcher(graph);
+			} else {
+				codePreselection = com.github.firmwehr.gentle.backend.lego.codegen.CodePreselection.DUMMY;
+			}
+
+			preselectionCount += codePreselection.replacedSubtrees();
+
+			var codeSelection =
+				new com.github.firmwehr.gentle.backend.lego.codegen.CodeSelection(graph, codePreselection);
+			List<LegoPlate> blocks = codeSelection.convertBlocks();
+
+			GentleCodegenVisitor visitor = new GentleCodegenVisitor();
+			String res = visitor.visit(graph, blocks);
+			Files.writeString(assemblyFile, res, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+		}
+
+		LOGGER.info("code preselection matched %s subtrees in total across all graphs", preselectionCount);
+
+		new ExternalLinker().link(assemblyFile, RuntimeAbi.CDECL);
 	}
 
 	/**

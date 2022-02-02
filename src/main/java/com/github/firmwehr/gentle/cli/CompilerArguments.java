@@ -13,7 +13,7 @@ public class CompilerArguments {
 
 	public static Optimizations optimizations() {
 		boolean o1 = get().optimizerLevel().orElse(0) >= 1;
-		boolean lego = /* o1 || */ get().lego();
+		boolean lego = get().lego();
 		boolean optimize = o1 || get().optimize();
 
 		boolean constantFolding = !get().noConstantFolding();
