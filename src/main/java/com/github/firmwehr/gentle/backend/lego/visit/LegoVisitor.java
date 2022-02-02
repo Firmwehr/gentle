@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.backend.lego.visit;
 
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoAdd;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoAnd;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoArgNode;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoCall;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoCmp;
@@ -152,6 +153,10 @@ public interface LegoVisitor<T> {
 	}
 
 	default T visit(LegoImmediate immediate) {
+		return defaultReturnValue();
+	}
+
+	default T visit(LegoAnd and) {
 		return defaultReturnValue();
 	}
 }

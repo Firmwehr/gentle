@@ -4,6 +4,7 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.lego.LegoBøx;
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoAdd;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoAnd;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoArgNode;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoBinaryOp;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoCall;
@@ -291,16 +292,22 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 		return null;*/
 	}
 
-	private void moveToTarget(LegoNode argument, LegoNode target) {
-		if (argument.uncheckedRegister() != target.uncheckedRegister()) {
-			code.op("mov", argument, argument.asRegisterName(), target.asRegisterName());
-		}
+	@Override
+	public Void visit(LegoAnd and) {
+		visitCommutative(and, "and");
+		return null;
 	}
 
 	@Override
 	public Void visit(LegoMul legoMul) {
 		visitCommutative(legoMul, "mul");
 		return null;
+	}
+
+	private void moveToTarget(LegoNode argument, LegoNode target) {
+		if (argument.uncheckedRegister() != target.uncheckedRegister()) {
+			code.op("mov", argument, argument.asRegisterName(), target.asRegisterName());
+		}
 	}
 
 	private void visitCommutative(LegoBinaryOp binaryOp, String mnemonic) {

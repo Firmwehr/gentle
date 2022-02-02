@@ -7,6 +7,7 @@ import com.github.firmwehr.gentle.backend.lego.LegoParentBløck;
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.nodes.BoxScheme;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoAdd;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoAnd;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoArgNode;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoCall;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoCmp;
@@ -54,6 +55,7 @@ import firm.Mode;
 import firm.Relation;
 import firm.nodes.Add;
 import firm.nodes.Address;
+import firm.nodes.And;
 import firm.nodes.Block;
 import firm.nodes.Call;
 import firm.nodes.Cmp;
@@ -274,15 +276,28 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		LegoPlate block = blocks.get((Block) node.getBlock());
-		LegoNode right = nodes.get(node.getRight());
-		if (node.getRight() instanceof Const constant) {
-			right = new LegoImmediate(legoGraph.nextId(), block, legoGraph, constant);
-		}
+		LegoNode right = getRightNode(node.getRight(), block);
 		LegoAdd legoAdd =
 			new LegoAdd(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node.getLeft(), node.getRight()));
 		nodes.put(node, legoAdd);
 		block.nodes().add(legoAdd);
 		legoGraph.addNode(legoAdd, List.of(nodes.get(node.getLeft()), right));
+	}
+
+	@Override
+	public void visit(And node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
+		LegoPlate block = blocks.get((Block) node.getBlock());
+		LegoNode right = getRightNode(node.getRight(), block);
+		LegoAnd legoAnd =
+			new LegoAnd(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node.getLeft(), node.getRight()));
+		nodes.put(node, legoAnd);
+		block.nodes().add(legoAnd);
+		legoGraph.addNode(legoAnd, List.of(nodes.get(node.getLeft()), right));
 	}
 
 	@Override
@@ -353,10 +368,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 	private Pair<LegoCmp, LegoNode> visitFromCond(Cmp node) {
 		LegoPlate block = blocks.get((Block) node.getBlock());
-		LegoNode right = nodes.get(node.getRight());
-		if (node.getRight() instanceof Const constant) {
-			right = new LegoImmediate(legoGraph.nextId(), block, legoGraph, constant);
-		}
+		LegoNode right = getRightNode(node.getRight(), block);
 		return new Pair<>(new LegoCmp(legoGraph.nextId(), block, legoGraph, List.of(node)), right);
 	}
 
@@ -531,10 +543,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		LegoPlate block = blocks.get((Block) node.getBlock());
-		LegoNode right = nodes.get(node.getRight());
-		if (node.getRight() instanceof Const constant) {
-			right = new LegoImmediate(legoGraph.nextId(), block, legoGraph, constant);
-		}
+		LegoNode right = getRightNode(node.getRight(), block);
 		LegoMul legoMul = new LegoMul(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node));
 		nodes.put(node, legoMul);
 		block.nodes().add(legoMul);
@@ -675,10 +684,7 @@ public class CodeSelection extends NodeVisitor.Default {
 			return;
 		}
 		LegoPlate block = blocks.get((Block) node.getBlock());
-		LegoNode right = nodes.get(node.getRight());
-		if (node.getRight() instanceof Const constant) {
-			right = new LegoImmediate(legoGraph.nextId(), block, legoGraph, constant);
-		}
+		LegoNode right = getRightNode(node.getRight(), block);
 		LegoSub legoSub = new LegoSub(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node));
 		nodes.put(node, legoSub);
 		block.nodes().add(legoSub);
@@ -704,5 +710,13 @@ public class CodeSelection extends NodeVisitor.Default {
 	@Override
 	public void defaultVisit(Node n) {
 		throw new InternalCompilerException("Unexpected node " + n);
+	}
+
+	private LegoNode getRightNode(Node node, LegoPlate block) {
+		LegoNode right = nodes.get(node);
+		if (node instanceof Const constant) {
+			right = new LegoImmediate(legoGraph.nextId(), block, legoGraph, constant);
+		}
+		return right;
 	}
 }
