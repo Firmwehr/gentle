@@ -214,9 +214,8 @@ public class TailCallOptimization {
 	}
 
 	private static Optional<TailCall> matchTailCall(Node node) {
-		return matchTailCallWithoutArg(node)
-			.map((match) -> Optional.of(new TailCall(match.ret(), match.call())))
-			.orElseGet(() -> matchTailCallWithArg(node).map((match) -> new TailCall(match.ret(), match.call())));
+		return matchTailCallWithoutArg(node).map(match -> new TailCall(match.ret(), match.call()))
+			.or(() -> matchTailCallWithArg(node).map((match) -> new TailCall(match.ret(), match.call())));
 	}
 
 	@FiAscii("""
