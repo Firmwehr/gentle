@@ -49,41 +49,48 @@ public interface CommandArguments {
 	@Option(names = "--dump-graphs", description = "generate graph dump files")
 	boolean dumpGraphs();
 
-	@Option(names = "-O", description = "sets optimization level. 0 will disable all non-required optimization")
+	@Option(names = "--dump-backend-schedule", description = "include schedule information in backend graphs")
+	boolean dumpBackendSchedule();
+
+	@Option(names = "-O",
+		description = "set optimization level. -O0 disables all non-required optimizations. -O1 is equivalent to " +
+			"--lego --optimize. Defaults to .O0")
 	Optional<Integer> optimizerLevel();
 
-	@Option(names = "--no-advanced-code-selection", description = "disable advanced x86 codes generation")
+	@Option(names = "--lego", description = "use lego + jättestor instead of ikea + djungelskog")
+	boolean lego();
+
+	@Option(names = "--optimize", description = "enable all optimizations for the current backend")
+	boolean optimize();
+
+	@Option(names = "--no-advanced-code-selection", description = "disable advanced x86 code generation")
 	boolean noAdvancedCodeSelection();
 
-	@Option(names = "--no-constant-folding", description = "do not perform constant folding optimization")
+	@Option(names = "--no-constant-folding", description = "don't do constant folding")
 	boolean noConstantFolding();
 
-	@Option(names = "--no-arithmetic-optimization", description = "do not perform arithmetic optimizations")
+	@Option(names = "--no-arithmetic-optimization", description = "don't do arithmetic optimizations")
 	boolean noArithmeticOptimizations();
 
-	@Option(names = "--no-boolean-optimization", description = "do not perform boolean optimizations")
+	@Option(names = "--no-boolean-optimization", description = "don't perform boolean optimizations")
 	boolean noBooleanOptimizations();
 
-	@Option(names = "--no-remove-unused", description = "keep call arguments even if they are not used in the method")
+	@Option(names = "--no-remove-unused", description = "don't remove unused call arguments")
 	boolean noRemoveUnused();
 
-	@Option(names = "--no-gvn", description = "disables global value numbering")
+	@Option(names = "--no-gvn", description = "disable global value numbering")
 	boolean noGlobalValueNumbering();
 
 	@Option(names = "--no-escape-analysis", description = "keep allocations for objects that do not escape")
 	boolean noEscapeAnalysis();
 
-	@Option(names = "--no-remove-pure-functions", description = "keep pure function calls")
+	@Option(names = "--no-remove-pure-functions", description = "don't remove pure function calls")
 	boolean noRemovePureFunctions();
 
-	@Option(names = "--dump-backend-schedule", description = "include schedule information in backend graphs")
-	boolean dumpBackendSchedule();
-
-	@Option(names = "--no-inlining", description = "do not inline code")
+	@Option(names = "--no-inlining", description = "don't inline code")
 	boolean noInlining();
 
-	@Option(names = "--no-free-unused-graphs",
-		description = "do not remove graphs that are not reachable from the main method")
+	@Option(names = "--no-free-unused-graphs", description = "don't remove unreachable graphs")
 	boolean noFreeUnusedGraphs();
 
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",

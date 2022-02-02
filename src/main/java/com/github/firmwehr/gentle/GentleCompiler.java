@@ -222,7 +222,26 @@ public class GentleCompiler {
 		}
 	}
 
+	private static void generateWithFirmBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
+		throws IOException {
+		graphs.forEach(FirmJlsFixup::fix);
+		LOGGER.info("handing over to firm backend...");
+
+		String file = assemblyFile.toString();
+		Backend.createAssembler(file, assemblyFile.getFileName().toString());
+		new ExternalLinker().link(assemblyFile, RuntimeAbi.AMD64_SYSTEMV_ABI);
+	}
+
 	private static void generateWithGentleBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
+		throws IOException {
+		if (CompilerArguments.optimizations().lego()) {
+			generateWithLegoBackend(assemblyFile, graphs, debugStore);
+		} else {
+			generateWithIkeaBackend(assemblyFile, graphs, debugStore);
+		}
+	}
+
+	private static void generateWithIkeaBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
 		throws IOException {
 		LOGGER.info("handing over to gentle backend...");
 
@@ -232,8 +251,7 @@ public class GentleCompiler {
 		for (Graph graph : firm.Program.getGraphs()) {
 
 			CodePreselection codePreselection;
-			if (CompilerArguments.get().optimizerLevel().orElse(1) > 0 &&
-				!CompilerArguments.get().noAdvancedCodeSelection()) {
+			if (CompilerArguments.optimizations().advancedCodeSelection()) {
 				codePreselection = new CodePreselectionMatcher(graph);
 			} else {
 				codePreselection = CodePreselection.DUMMY;
@@ -254,14 +272,11 @@ public class GentleCompiler {
 		new ExternalLinker().link(assemblyFile, RuntimeAbi.CDECL);
 	}
 
-	private static void generateWithFirmBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
+	private static void generateWithLegoBackend(Path assemblyFile, List<Graph> graphs, DebugStore debugStore)
 		throws IOException {
-		graphs.forEach(FirmJlsFixup::fix);
-		LOGGER.info("handing over to firm backend...");
-
-		String file = assemblyFile.toString();
-		Backend.createAssembler(file, assemblyFile.getFileName().toString());
-		new ExternalLinker().link(assemblyFile, RuntimeAbi.AMD64_SYSTEMV_ABI);
+		LOGGER.info("handing over to lego backend...");
+		LOGGER.info("Lego backend not implemented yet");
+		// TODO Implement lego backend (remember to enable it for -O1 too)
 	}
 
 	/**
