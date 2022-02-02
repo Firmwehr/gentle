@@ -2,6 +2,11 @@ package com.github.firmwehr.gentle.source;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -14,11 +19,17 @@ public record Source(
 	int[] lineStarts
 ) {
 	private static final int TAB_WIDTH = 4;
+	public static final Charset FILE_CHARSET = StandardCharsets.US_ASCII;
 	public static final String ERROR_COLOR = ansi().fgRed().toString();
 	public static final String LINE_COLOR = ansi().fgBlue().toString();
 
 	public Source(String content) {
 		this(content, precomputeLineLookupArray(content));
+	}
+
+	public static Source loadFromFile(Path path) throws IOException {
+		String content = Files.readString(path, FILE_CHARSET);
+		return new Source(content);
 	}
 
 	public SourcePosition positionFromOffset(int offset) {
