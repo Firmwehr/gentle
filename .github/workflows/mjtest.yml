@@ -23,6 +23,7 @@ jobs:
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git -C mjtest/tests reset --hard origin/master"
       - run: "rm -r mjtest/tests/exec/big/"
+      - run: "rm mjtest/tests/exec/Vector.java"
       - run: "./mjtest/mjt.py lexer syntax ast semantic ./run"
 
   firm:
@@ -39,6 +40,7 @@ jobs:
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git -C mjtest/tests reset --hard origin/master"
       - run: "rm -r mjtest/tests/exec/big/"
+      - run: "rm mjtest/tests/exec/Vector.java"
       - run: "./mjtest/mjt.py compile-firm compile-firm-only ./run"
 
   firm-opt:
@@ -55,6 +57,7 @@ jobs:
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git -C mjtest/tests reset --hard origin/master"
       - run: "rm -r mjtest/tests/exec/big/"
+      - run: "rm mjtest/tests/exec/Vector.java"
       - run: "./mjtest/mjt.py compile-firm compile-firm-only ./run_opt"
 
   ikea:
@@ -71,6 +74,7 @@ jobs:
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git -C mjtest/tests reset --hard origin/master"
       - run: "rm -r mjtest/tests/exec/big/"
+      - run: "rm mjtest/tests/exec/Vector.java"
       - run: "./mjtest/mjt.py compile compile-only ./run"
 
   ikea-opt:
@@ -87,4 +91,5 @@ jobs:
       - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
       - run: "git -C mjtest/tests reset --hard origin/master"
       - run: "rm -r mjtest/tests/exec/big/"
+      - run: "rm mjtest/tests/exec/Vector.java"
       - run: "./mjtest/mjt.py compile compile-only ./run_opt"
