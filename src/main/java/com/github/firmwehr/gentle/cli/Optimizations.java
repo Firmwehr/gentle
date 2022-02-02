@@ -12,6 +12,7 @@ public record Optimizations(
 	boolean removeUnused,
 	boolean removePureFunctions,
 	boolean removeUnusedGraphs,
-	boolean tailCallOptimization
+	boolean tailCallOptimization,
+	boolean reorderInputs
 ) {
 }
