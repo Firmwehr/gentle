@@ -35,6 +35,7 @@ import firm.nodes.Minus;
 import firm.nodes.Mod;
 import firm.nodes.Mul;
 import firm.nodes.Mulh;
+import firm.nodes.Mux;
 import firm.nodes.NoMem;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
@@ -422,6 +423,19 @@ public class ConstantFolding extends NodeVisitor.Default {
 	}
 
 	@Override
+	public void visit(Mux node) {
+		if (!(node.getFalse() instanceof Const) || !(node.getTrue() instanceof Const)) {
+			throw new InternalCompilerException("Unexpected mux arguments");
+		}
+
+		if (tarValOf(node.getSel()).equals(TargetValue.getBTrue())) {
+			updateTarVal(node, tarValOf(node.getTrue()));
+		} else if (tarValOf(node.getSel()).equals(TargetValue.getBFalse())) {
+			updateTarVal(node, tarValOf(node.getFalse()));
+		}
+	}
+
+	@Override
 	public void visit(Not node) {
 		TargetValue targetValue = tarValOf(node.getOp());
 		if (targetValue.isConstant()) {
@@ -579,6 +593,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 				case Store ignored -> TargetValue.getBad();
 				case Sub ignored -> TargetValue.getUnknown();
 				case Unknown ignored -> TargetValue.getUnknown();
+				case Mux ignored -> TargetValue.getUnknown();
 				// if you reached this, your graph is broken, please enter your total time spend debugging the problem
 				// Chris: 5 hours
 				default -> throw new InternalCompilerException(
