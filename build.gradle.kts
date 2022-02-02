@@ -15,7 +15,7 @@ repositories {
 
 application {
 	mainClass.set("com.github.firmwehr.gentle.GentleCompiler")
-	applicationDefaultJvmArgs = listOf("--enable-preview", "-Dspeedcenter.true")
+	applicationDefaultJvmArgs = listOf("--enable-preview", "-Xss16m", "-Dspeedcenter.true")
 }
 
 buildDir = File("_build")
@@ -116,10 +116,10 @@ tasks.withType<JavaCompile> {
 
 tasks.getByName<Test>("test") {
 	useJUnitPlatform()
-	jvmArgs("--enable-preview")
+	jvmArgs("--enable-preview", "-Xss16m")
 }
 
 tasks.getByName<Test>("integrationTest") {
 	useJUnitPlatform()
-	jvmArgs("--enable-preview")
+	jvmArgs("--enable-preview", "-Xss16m")
 }
