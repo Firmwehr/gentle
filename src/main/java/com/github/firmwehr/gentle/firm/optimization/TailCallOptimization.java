@@ -2,6 +2,7 @@ package com.github.firmwehr.gentle.firm.optimization;
 
 import com.github.firmwehr.fiascii.FiAscii;
 import com.github.firmwehr.fiascii.generated.TailCallPattern;
+import com.github.firmwehr.fiascii.generated.TailCallPatternWithArg;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.GraphDumper;
@@ -203,13 +204,19 @@ public class TailCallOptimization {
 		Block end = graph.getEndBlock();
 
 		for (Node endPred : end.getPreds()) {
-			matchTailCall(endPred).ifPresent((match) -> {
+			matchTailCall(endPred).ifPresent((tc) -> {
 				LOGGER.debug("%s is in a fact a tail call", endPred);
-				tailCalls.add(new TailCall(match.ret(), match.call()));
+				tailCalls.add(tc);
 			});
 		}
 
 		return tailCalls;
+	}
+
+	private static Optional<TailCall> matchTailCall(Node node) {
+		return matchTailCallWithoutArg(node)
+			.map((match) -> Optional.of(new TailCall(match.ret(), match.call())))
+			.orElseGet(() -> matchTailCallWithArg(node).map((match) -> new TailCall(match.ret(), match.call())));
 	}
 
 	@FiAscii("""
@@ -232,8 +239,36 @@ public class TailCallOptimization {
 		           ┌▼───▼──────┐
 		           │ret: Return│
 		           └───────────┘""")
-	public static Optional<TailCallPattern.Match> matchTailCall(Node node) {
+	private static Optional<TailCallPattern.Match> matchTailCallWithArg(Node node) {
 		return TailCallPattern.match(node).filter((match) -> {
+			// Check whether match is a recursive tail call
+			Address funcPtr = (Address) match.call().getPred(1);
+			return funcPtr.getEntity().equals(node.getGraph().getEntity());
+		});
+	}
+
+	@FiAscii("""
+		                                    While it is technically possible
+		                                    that a call returns multiple values,
+		                                    the gentle frontend does not generate
+		                                    such code. Therefore we only need to
+		           ┌──────────┐             consider tail calls with a single
+		           │call: Call│             return value.
+		           └┬─────────┘
+		            │
+		┌───────────▼───────────┐
+		│memProj: Proj ; +memory│
+		└───────────┬───────────┘
+		            │
+		            │
+		            │
+		            │
+		            │
+		           ┌▼──────────┐
+		           │ret: Return│
+		           └───────────┘""")
+	private static Optional<TailCallPatternWithArg.Match> matchTailCallWithoutArg(Node node) {
+		return TailCallPatternWithArg.match(node).filter((match) -> {
 			// Check whether match is a recursive tail call
 			Address funcPtr = (Address) match.call().getPred(1);
 			return funcPtr.getEntity().equals(node.getGraph().getEntity());
