@@ -249,8 +249,7 @@ public class GentleCompiler {
 		for (Graph graph : firm.Program.getGraphs()) {
 
 			CodePreselection codePreselection;
-			if (CompilerArguments.get().optimizerLevel().orElse(1) > 0 &&
-				!CompilerArguments.get().noAdvancedCodeSelection()) {
+			if (CompilerArguments.optimizations().advancedCodeSelection()) {
 				codePreselection = new CodePreselectionMatcher(graph);
 			} else {
 				codePreselection = CodePreselection.DUMMY;
