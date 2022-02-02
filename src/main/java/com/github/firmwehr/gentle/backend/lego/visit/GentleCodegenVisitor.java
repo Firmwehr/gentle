@@ -175,25 +175,30 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoSub sub) {
-		List<LegoNode> inputs = sub.inputs();
-		LegoNode a0 = inputs.get(0);
-		LegoNode a1 = inputs.get(1);
-		X86Register a1Reg = a1.uncheckedRegister();
+		LegoNode left = sub.left();
+		LegoNode right = sub.right();
+		if (right instanceof LegoImmediate imm) {
+			moveToTarget(left, sub);
+			code.op("sub", sub, imm(imm), sub.asRegisterName());
+			return null;
+		}
+		X86Register a1Reg = right.uncheckedRegister();
 		if (a1Reg == sub.uncheckedRegister()) {
 			Set<X86Register> registers = X86Register.all();
-			registers.remove(a0.uncheckedRegister());
-			registers.remove(a1.uncheckedRegister());
+			registers.remove(left.uncheckedRegister());
+			registers.remove(right.uncheckedRegister());
 			registers.remove(sub.uncheckedRegister());
+			// TODO maybe choose randomly? Or the last one?
 			a1Reg = registers.iterator().next();
 			code.comment("always spill the full register, we don't know its content");
 			code.line("vmovd %s, %%xmm0".formatted(a1Reg.nameForSize(LegoBøx.LegoRegisterSize.BITS_64)));
-			code.op("mov", a1, a1.asRegisterName(), a1Reg.nameForSize(a1));
+			code.op("mov", right, right.asRegisterName(), a1Reg.nameForSize(right));
 		}
-		if (sub.uncheckedRegister() != a0.uncheckedRegister()) {
-			code.op("mov", sub, a0.asRegisterName(), sub.asRegisterName());
+		if (sub.uncheckedRegister() != left.uncheckedRegister()) {
+			code.op("mov", sub, left.asRegisterName(), sub.asRegisterName());
 		}
-		code.op("sub", sub, a1Reg.nameForSize(a0), sub.asRegisterName());
-		if (a1Reg != a1.uncheckedRegister()) {
+		code.op("sub", sub, a1Reg.nameForSize(left), sub.asRegisterName());
+		if (a1Reg != right.uncheckedRegister()) {
 			// always un-spill the full register, we don't know its content
 			code.comment("always reload the full register, we don't know its content");
 			code.line("vmovd %%xmm0, %s".formatted(a1Reg.nameForSize(LegoBøx.LegoRegisterSize.BITS_64)));
