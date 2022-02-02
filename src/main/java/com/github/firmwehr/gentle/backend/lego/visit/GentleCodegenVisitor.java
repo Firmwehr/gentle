@@ -91,7 +91,11 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoCmp cmp) {
-		return LegoVisitor.super.visit(cmp);
+		List<LegoNode> inputs = cmp.inputs();
+		LegoNode a0 = inputs.get(0);
+		LegoNode a1 = inputs.get(1);
+		code.op("cmp", cmp, a0.asRegisterName(), a1.asRegisterName());
+		return null;
 	}
 
 	@Override
