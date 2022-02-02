@@ -34,9 +34,7 @@ import org.apache.commons.io.FilenameUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.nio.charset.MalformedInputException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -45,7 +43,6 @@ import java.util.List;
 public class GentleCompiler {
 
 	private static final Logger LOGGER = new Logger(GentleCompiler.class);
-	private static final Charset FILE_CHARSET = StandardCharsets.US_ASCII;
 
 	public static void main(String[] args) {
 		LOGGER.info("Hello World, please be gentle UwU");
@@ -84,12 +81,12 @@ public class GentleCompiler {
 
 	private static void lexTestCommand(Path path) {
 		try {
-			var source = new Source(Files.readString(path, FILE_CHARSET));
+			var source = Source.loadFromFile(path);
 			var lexer = new Lexer(source, true);
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
 			for (Token token : lexer.lex()) {
-				outputStream.writeBytes(token.format().getBytes(FILE_CHARSET));
+				outputStream.writeBytes(token.format().getBytes(Source.FILE_CHARSET));
 				outputStream.write('\n');
 			}
 
@@ -111,7 +108,7 @@ public class GentleCompiler {
 
 	private static void parseTestCommand(Path path) {
 		try {
-			Source source = new Source(Files.readString(path, FILE_CHARSET));
+			Source source = Source.loadFromFile(path);
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
 			parser.parse(); // Result ignored
@@ -132,7 +129,7 @@ public class GentleCompiler {
 
 	private static void printAstCommand(Path path) {
 		try {
-			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			Source source = Source.loadFromFile(path);
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
 			Program program = parser.parse();
@@ -154,7 +151,7 @@ public class GentleCompiler {
 
 	private static void checkCommand(Path path) {
 		try {
-			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			Source source = Source.loadFromFile(path);
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
 			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer(source, parser.parse());
@@ -196,7 +193,7 @@ public class GentleCompiler {
 				binding_irdump.ir_set_dump_path(dumpBaseDir.getPath());
 			}
 
-			Source source = new Source(Files.readString(path, StandardCharsets.UTF_8));
+			Source source = Source.loadFromFile(path);
 			Lexer lexer = new Lexer(source, true);
 			Parser parser = Parser.fromLexer(source, lexer);
 			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer(source, parser.parse());
