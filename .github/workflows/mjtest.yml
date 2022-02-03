@@ -95,36 +95,36 @@ jobs:
       - run: "rm mjtest/tests/exec/Vector.java"
       - run: "./mjtest/mjt.py compile compile-only ./run_opt"
 
-  lego:
-    name: "Test lego"
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up JDK
-        uses: actions/setup-java@v1
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-      - uses: actions/checkout@v2
-      - name: Build using build script
-        run: ./build
-      - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
-      - run: "git -C mjtest/tests reset --hard origin/master"
-      - run: "rm -r mjtest/tests/exec/big/"
-      - run: "rm mjtest/tests/exec/Vector.java"
-      - run: "./mjtest/mjt.py compile compile-only ./run_lego"
+  # lego:
+  #   name: "Test lego"
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Set up JDK
+  #       uses: actions/setup-java@v1
+  #       with:
+  #         java-version: ${{ env.JAVA_VERSION }}
+  #     - uses: actions/checkout@v2
+  #     - name: Build using build script
+  #       run: ./build
+  #     - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
+  #     - run: "git -C mjtest/tests reset --hard origin/master"
+  #     - run: "rm -r mjtest/tests/exec/big/"
+  #     - run: "rm mjtest/tests/exec/Vector.java"
+  #     - run: "./mjtest/mjt.py compile compile-only ./run_lego"
 
-  lego-opt:
-    name: "Test lego with optimizations"
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up JDK
-        uses: actions/setup-java@v1
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-      - uses: actions/checkout@v2
-      - name: Build using build script
-        run: ./build
-      - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
-      - run: "git -C mjtest/tests reset --hard origin/master"
-      - run: "rm -r mjtest/tests/exec/big/"
-      - run: "rm mjtest/tests/exec/Vector.java"
-      - run: "./mjtest/mjt.py compile compile-only ./run_lego_opt"
+  # lego-opt:
+  #   name: "Test lego with optimizations"
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Set up JDK
+  #       uses: actions/setup-java@v1
+  #       with:
+  #         java-version: ${{ env.JAVA_VERSION }}
+  #     - uses: actions/checkout@v2
+  #     - name: Build using build script
+  #       run: ./build
+  #     - run: "git clone --recursive https://git.scc.kit.edu/IPDSnelting/mjtest mjtest"
+  #     - run: "git -C mjtest/tests reset --hard origin/master"
+  #     - run: "rm -r mjtest/tests/exec/big/"
+  #     - run: "rm mjtest/tests/exec/Vector.java"
+  #     - run: "./mjtest/mjt.py compile compile-only ./run_lego_opt"
