@@ -29,9 +29,10 @@ public class CompilerArguments {
 		boolean removePureFunctions = (optimize || args.rmPure()) && !args.noRmPure();
 		boolean removeUnusedGraphs = (optimize || args.rmGraphs()) && !args.noRmGraphs();
 		boolean tailCallOptimization = (optimize || args.tco()) && !args.noTco();
+		boolean reorderInputs = (optimize || args.reorder()) && !args.noReorder();
 
 		return new Optimizations(lego, constantFolding, advancedCodeSelection, arithmeticOpt, booleanOpt,
 			escapeAnalysis, globalValueNumbering, inlining, removeUnused, removePureFunctions, removeUnusedGraphs,
-			tailCallOptimization);
+			tailCallOptimization, reorderInputs);
 	}
 }

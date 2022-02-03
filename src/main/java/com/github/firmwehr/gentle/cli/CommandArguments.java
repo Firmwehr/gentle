@@ -127,6 +127,12 @@ public interface CommandArguments {
 	@Option(names = "--no-tco", description = "don't optimize tail calls")
 	boolean noTco();
 
+	@Option(names = "--reorder", description = "reorder inputs of binary ops")
+	boolean reorder();
+
+	@Option(names = "--no-reorder", description = "don't reorder inputs of binary ops")
+	boolean noReorder();
+
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",
 		paramLabel = "FILE")
 	Path path();

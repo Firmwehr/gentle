@@ -185,7 +185,7 @@ public class GentleCompiler {
 			String assemblyFilename = programBaseName + ".s";
 			Path assemblyFile = path.resolveSibling(assemblyFilename);
 
-			// dump vcg files in directory with programm base name, so they are easier to manage
+			// dump vcg files in directory with program base name, so they are easier to manage
 			if (CompilerArguments.get().dumpGraphs()) {
 				var dumpBaseDir = path.resolveSibling("vcg/" + programBaseName).toFile();
 				FileUtils.forceMkdir(dumpBaseDir);
