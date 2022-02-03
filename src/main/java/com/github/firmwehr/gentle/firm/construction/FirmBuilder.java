@@ -12,6 +12,8 @@ import com.github.firmwehr.gentle.firm.optimization.GlobalValueNumbering;
 import com.github.firmwehr.gentle.firm.optimization.MethodInliningOptimization;
 import com.github.firmwehr.gentle.firm.optimization.Optimizer;
 import com.github.firmwehr.gentle.firm.optimization.PureFunctionOptimization;
+import com.github.firmwehr.gentle.firm.optimization.TailCallOptimization;
+import com.github.firmwehr.gentle.firm.optimization.ReorderInputsOptimization;
 import com.github.firmwehr.gentle.firm.optimization.UnusedParameterOptimization;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
@@ -110,6 +112,9 @@ public class FirmBuilder {
 		if (opts.escapeAnalysis()) {
 			builder.addGraphStep(EscapeAnalysisOptimization.escapeAnalysisOptimization());
 		}
+		if (opts.reorderInputs()) {
+			builder.addGraphStep(ReorderInputsOptimization.reorderInputs());
+		}
 		if (opts.removeUnused()) {
 			builder.addCallGraphStep(UnusedParameterOptimization.unusedParameterOptimization());
 		}
@@ -124,6 +129,9 @@ public class FirmBuilder {
 		}
 		if (opts.removeUnusedGraphs()) {
 			builder.freeUnusedGraphs();
+		}
+		if (opts.tailCallOptimization()) {
+			builder.addGraphStep(TailCallOptimization.tailCallOptimization());
 		}
 
 		Optimizer optimizer = builder.build();

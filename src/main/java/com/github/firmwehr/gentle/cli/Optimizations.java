@@ -9,8 +9,10 @@ public record Optimizations(
 	boolean escapeAnalysis,
 	boolean globalValueNumbering,
 	boolean inlining,
-	boolean removePureFunctions,
 	boolean removeUnused,
-	boolean removeUnusedGraphs
+	boolean removePureFunctions,
+	boolean removeUnusedGraphs,
+	boolean tailCallOptimization,
+	boolean reorderInputs
 ) {
 }

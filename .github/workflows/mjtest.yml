@@ -58,6 +58,7 @@ jobs:
       - run: "git -C mjtest/tests reset --hard origin/master"
       - run: "rm -r mjtest/tests/exec/big/"
       - run: "rm mjtest/tests/exec/Vector.java"
+      - run: "rm mjtest/tests/exec/Calculator.*"
       - run: "./mjtest/mjt.py compile-firm compile-firm-only ./run_opt"
 
   ikea:
