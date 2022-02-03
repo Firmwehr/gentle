@@ -117,6 +117,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		this.nodes = new HashMap<>();
 	}
 
+	@SuppressWarnings("AssignmentToForLoopParameter") // TODO Remove
 	public List<LegoPlate> convertBlocks() {
 		LOGGER.info("Converting blocks for %s", graph.getEntity().getLdName());
 		CriticalEdges.breakCriticalEdges(graph);

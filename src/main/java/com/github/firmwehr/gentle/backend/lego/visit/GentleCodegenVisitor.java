@@ -259,6 +259,7 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 		return null;
 	}
 
+	@SuppressWarnings("CommentedOutCode") // TODO Remove
 	@Override
 	public Void visit(LegoAdd legoAdd) {
 		LegoNode left = legoAdd.left();

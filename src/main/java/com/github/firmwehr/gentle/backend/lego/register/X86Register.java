@@ -56,6 +56,7 @@ public enum X86Register {
 		return values().length;
 	}
 
+	@SuppressWarnings("UseOfSystemOutOrSystemErr") // TODO Remove
 	public static void main(String[] args) {
 		for (X86Register value : values()) {
 			for (LegoBøx.LegoRegisterSize size : LegoBøx.LegoRegisterSize.values()) {

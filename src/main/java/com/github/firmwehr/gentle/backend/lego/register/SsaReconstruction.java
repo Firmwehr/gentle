@@ -63,6 +63,7 @@ public class SsaReconstruction {
 		}
 	}
 
+	@SuppressWarnings("AssignmentToMethodParameter") // TODO Remove
 	private LegoNode findDef(LegoNode use, LegoPlate parent, Set<LegoNode> brokenVariables, Set<LegoPlate> F) {
 		if (use instanceof LegoPhi phi) {
 			use = phi.parent(parent);

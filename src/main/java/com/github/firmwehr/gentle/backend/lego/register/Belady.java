@@ -238,6 +238,7 @@ public class Belady {
 		return magicStartWorkset(block);
 	}
 
+	@SuppressWarnings({"ConstantConditions", "RedundantOperationOnEmptyContainer"}) // TODO Remove
 	private Set<WorksetNode> magicStartWorkset(LegoPlate block) {
 		// Nodes we definitely want to keep if possible
 		Set<WorksetNode> starters = new HashSet<>();

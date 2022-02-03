@@ -13,7 +13,6 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
-@SuppressWarnings("UnstableApiUsage")
 public class Uses {
 
 	private static final Logger LOGGER = new Logger(Uses.class);
