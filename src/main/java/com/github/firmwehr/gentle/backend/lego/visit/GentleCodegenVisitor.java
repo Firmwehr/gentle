@@ -31,6 +31,7 @@ import com.github.firmwehr.gentle.backend.lego.nodes.LegoReload;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoRet;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSal;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSar;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoSetcc;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoShift;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoShr;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSpill;
@@ -38,6 +39,7 @@ import com.github.firmwehr.gentle.backend.lego.nodes.LegoSub;
 import com.github.firmwehr.gentle.backend.lego.register.X86Register;
 import com.github.firmwehr.gentle.output.Logger;
 import firm.Graph;
+import firm.Relation;
 
 import java.util.List;
 import java.util.Set;
@@ -109,23 +111,52 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoDiv div) {
-		return LegoVisitor.super.visit(div);
+		LegoBøx.LegoRegisterSize divSize;
+		LegoNode left = div.inputs().get(0);
+		if (left.uncheckedRegister() != X86Register.RAX) {
+			code.op("mov", left, left.asRegisterName(), X86Register.RAX.nameForSize(left));
+		}
+		if (div.small()) {
+			divSize = LegoBøx.LegoRegisterSize.BITS_32;
+			code.comment("small div possible, generating 32bit division (extending to 64bit)");
+			code.line("cltd");
+		} else {
+			code.comment("both arguments are unknown, generating 64bit division (extending to 128bit)");
+			code.line("cqto");
+			divSize = LegoBøx.LegoRegisterSize.BITS_64;
+		}
+		code.op("idiv", divSize, div.inputs().get(1).uncheckedRegister().nameForSize(divSize));
+		return null;
+	}
+
+	@Override
+	public Void visit(LegoSetcc legoSetcc) {
+		String op = "set" + relationSuffix(legoSetcc.relation());
+		String registerName = legoSetcc.uncheckedRegister().nameForSize(LegoBøx.LegoRegisterSize.BITS_8);
+		code.noSuffixOp(op, registerName);
+		code.comment("clear upper bits, setcc only sets one byte");
+		code.noSuffixOp("movsx", registerName, legoSetcc.uncheckedRegister().nameForSize(LegoBøx.LegoRegisterSize.BITS_64));
+		return null;
 	}
 
 	@Override
 	public Void visit(LegoJcc jcc) {
-		String op = switch (jcc.relation()) {
-			case Equal -> "je";
-			case Less -> "jl";
-			case Greater -> "jg";
-			case LessEqual -> "jle";
-			case GreaterEqual -> "jge";
-			case LessGreater, UnorderedLessGreater -> "jne";
-			default -> throw new InternalCompilerException(":( Where do we use " + jcc.relation());
-		};
+		String op = "j" + relationSuffix(jcc.relation());
 		// FIXME
 		code.noSuffixOp(op, "TODO TODO TODO TODO");
 		return null;
+	}
+
+	private String relationSuffix(Relation relation) {
+		return switch (relation) {
+			case Equal -> "e";
+			case Less -> "l";
+			case Greater -> "g";
+			case LessEqual -> "le";
+			case GreaterEqual -> "ge";
+			case LessGreater, UnorderedLessGreater -> "ne";
+			default -> throw new InternalCompilerException(":( Where do we use " + relation);
+		};
 	}
 
 	@Override
@@ -307,7 +338,7 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoMul legoMul) {
-		visitCommutative(legoMul, "mul");
+		visitCommutative(legoMul, "imul");
 		return null;
 	}
 

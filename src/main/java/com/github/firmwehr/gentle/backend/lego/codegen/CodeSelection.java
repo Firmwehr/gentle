@@ -29,6 +29,7 @@ import com.github.firmwehr.gentle.backend.lego.nodes.LegoProj;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoRet;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSal;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSar;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoSetcc;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoShr;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSub;
 import com.github.firmwehr.gentle.backend.lego.register.Belady;
@@ -69,6 +70,7 @@ import firm.nodes.Load;
 import firm.nodes.Minus;
 import firm.nodes.Mod;
 import firm.nodes.Mul;
+import firm.nodes.Mux;
 import firm.nodes.NoMem;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
@@ -442,7 +444,10 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		LegoPlate block = blocks.get((Block) node.getBlock());
-		LegoDiv legoDiv = new LegoDiv(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node));
+		boolean small = node.getLeft() instanceof Const cl && cl.getTarval().asInt() != Integer.MIN_VALUE ||
+			node.getRight() instanceof Const cr && cr.getTarval().asInt() != -1;
+		LegoDiv legoDiv =
+			new LegoDiv(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node), small);
 		nodes.put(node, legoDiv);
 		block.nodes().add(legoDiv);
 		legoGraph.addNode(legoDiv, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
@@ -524,7 +529,10 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		LegoPlate block = blocks.get((Block) node.getBlock());
-		LegoDiv legoDiv = new LegoDiv(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node));
+		boolean small = node.getLeft() instanceof Const cl && cl.getTarval().asInt() != Integer.MIN_VALUE ||
+			node.getRight() instanceof Const cr && cr.getTarval().asInt() != -1;
+		LegoDiv legoDiv =
+			new LegoDiv(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node), small);
 		nodes.put(node, legoDiv);
 		block.nodes().add(legoDiv);
 		legoGraph.addNode(legoDiv, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
@@ -549,6 +557,27 @@ public class CodeSelection extends NodeVisitor.Default {
 		nodes.put(node, legoMul);
 		block.nodes().add(legoMul);
 		legoGraph.addNode(legoMul, List.of(nodes.get(node.getLeft()), right));
+	}
+
+	@Override
+	public void visit(Mux node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
+		LegoPlate block = blocks.get((Block) node.getBlock());
+		Relation relation = ((Cmp) node.getSel()).getRelation();
+
+		Pair<LegoCmp, LegoNode> pair = visitFromCond((Cmp) node.getSel());
+		LegoCmp cmp = pair.first();
+		LegoSetcc legoSetcc =
+			new LegoSetcc(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node), relation);
+		this.nodes.put(node, legoSetcc);
+		block.nodes().add(cmp);
+		block.nodes().add(legoSetcc);
+		legoGraph.addNode(cmp, List.of(this.nodes.get(((Cmp) node.getSel()).getLeft()), pair.second()));
+		legoGraph.addNode(legoSetcc, List.of(cmp));
 	}
 
 	@Override
