@@ -13,6 +13,10 @@ repositories {
 	maven("https://oss.sonatype.org/content/repositories/snapshots/")
 }
 
+dependencyLocking {
+	lockAllConfigurations()
+}
+
 application {
 	mainClass.set("com.github.firmwehr.gentle.GentleCompiler")
 	applicationDefaultJvmArgs = listOf("--enable-preview", "-Xss16m", "-Dspeedcenter.true")
