@@ -51,8 +51,8 @@ public class TailCallOptimization {
 				}
 
 				/*
-				We will now replace each tail calls return by a jump. The target of this new jump
-				needs to be a new block. We can't jump into the graphs start block itself.
+				We will now replace each tail call's return by a jump. The target of this new jump
+				needs to be a new block. We can't jump into the graph's start block itself.
 				 */
 				LOGGER.debugHeader("Creating a jump to replace each tail call...");
 
