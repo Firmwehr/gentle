@@ -1,6 +1,6 @@
 package com.github.firmwehr.gentle.debug;
 
-import com.github.firmwehr.gentle.backend.ir.nodes.IkeaNode;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoNode;
 import com.github.firmwehr.gentle.debug.DebugInfoAllocate.AllocateElementType;
 import com.github.firmwehr.gentle.debug.DebugInfoArrayAccessTarget.ArrayAccessTargetType;
 import com.github.firmwehr.gentle.debug.DebugInfoCompare.CompareElementType;
@@ -30,7 +30,7 @@ import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 public record FirmNodeMetadata(
-	List<IkeaNode> associatedBackendNodes,
+	List<LegoNode> associatedBackendNodes,
 	List<HasDebugInformation> semanticElements
 ) {
 

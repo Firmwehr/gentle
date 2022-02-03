@@ -34,6 +34,56 @@ public enum GentleBindings {
 			null);
 	}
 
+	/**
+	 * Returns the root loop info (if exists) for an irg.
+	 *
+	 * @param irg the pointer to the firm graph
+	 */
+	public static native Pointer get_irg_loop(Pointer irg);
+
+	/**
+	 * Returns the loop n is contained in.  NULL if node is in no loop.
+	 *
+	 * @param irn the pointer to the firm node
+	 */
+	public static native Pointer get_irn_loop(Pointer irn);
+
+	/**
+	 * Returns outer loop, itself if outermost.
+	 *
+	 * @param loop the loop pointer
+	 */
+	public static native Pointer get_loop_outer_loop(Pointer loop);
+
+	/**
+	 * Returns nesting depth of this loop
+	 *
+	 * @param loop the loop pointer
+	 */
+	public static native int get_loop_depth(Pointer loop);
+
+	/**
+	 * Returns the number of elements contained in loop.
+	 *
+	 * @param loop the loop pointer
+	 */
+	public static native int get_loop_n_elements(Pointer loop);
+
+	/**
+	 * Returns a loop element. A loop element can be interpreted as a kind pointer, an ir_node* or an ir_loop*.
+	 *
+	 * @param loop the loop pointer
+	 * @param pos the position, needs to be {@code 0 <= pos <= } {@link #get_loop_n_elements(Pointer)}
+	 */
+	public static native Pointer get_loop_element(Pointer loop, int pos);
+
+	/**
+	 * Computes Intra-procedural control flow loop tree on demand.
+	 *
+	 * @param irg the graph pointer
+	 */
+	public static native void assure_loopinfo(Pointer irg);
+
 	public static native double get_block_execfreq(Pointer ptr);
 
 	public static native void ir_estimate_execfreq(Pointer ptr);
