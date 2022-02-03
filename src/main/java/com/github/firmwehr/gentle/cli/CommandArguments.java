@@ -63,35 +63,63 @@ public interface CommandArguments {
 	@Option(names = "--optimize", description = "enable all optimizations for the current backend")
 	boolean optimize();
 
-	@Option(names = "--no-advanced-code-selection", description = "disable advanced x86 code generation")
-	boolean noAdvancedCodeSelection();
+	@Option(names = "--acs", description = "enable advanced x86 code generation")
+	boolean acs();
 
-	@Option(names = "--no-constant-folding", description = "don't do constant folding")
-	boolean noConstantFolding();
+	@Option(names = "--no-acs", description = "disable advanced x86 code generation")
+	boolean noAcs();
 
-	@Option(names = "--no-arithmetic-optimization", description = "don't do arithmetic optimizations")
-	boolean noArithmeticOptimizations();
+	// Constant folding is always active by default, so there's no point in a --cf flag
+	@Option(names = "--no-cf", description = "don't do constant folding")
+	boolean noCf();
 
-	@Option(names = "--no-boolean-optimization", description = "don't perform boolean optimizations")
-	boolean noBooleanOptimizations();
+	@Option(names = "--arith", description = "do arithmetic optimizations")
+	boolean arith();
 
-	@Option(names = "--no-remove-unused", description = "don't remove unused call arguments")
-	boolean noRemoveUnused();
+	@Option(names = "--no-arith", description = "don't do arithmetic optimizations")
+	boolean noArith();
+
+	@Option(names = "--bool", description = "perform boolean optimizations")
+	boolean bool();
+
+	@Option(names = "--no-bool", description = "don't perform boolean optimizations")
+	boolean noBool();
+
+	@Option(names = "--escape", description = "remove allocations for objects that do not escape")
+	boolean escape();
+
+	@Option(names = "--no-escape", description = "keep allocations for objects that do not escape")
+	boolean noEscape();
+
+	@Option(names = "--gvn", description = "enable global value numbering")
+	boolean gvn();
 
 	@Option(names = "--no-gvn", description = "disable global value numbering")
-	boolean noGlobalValueNumbering();
+	boolean noGvn();
 
-	@Option(names = "--no-escape-analysis", description = "keep allocations for objects that do not escape")
-	boolean noEscapeAnalysis();
+	@Option(names = "--inline", description = "inline code")
+	boolean inline();
 
-	@Option(names = "--no-remove-pure-functions", description = "don't remove pure function calls")
-	boolean noRemovePureFunctions();
+	@Option(names = "--no-inline", description = "don't inline code")
+	boolean noInline();
 
-	@Option(names = "--no-inlining", description = "don't inline code")
-	boolean noInlining();
+	@Option(names = "--rm-unused", description = "remove unused call arguments")
+	boolean rmUnused();
 
-	@Option(names = "--no-free-unused-graphs", description = "don't remove unreachable graphs")
-	boolean noFreeUnusedGraphs();
+	@Option(names = "--no-rm-unused", description = "don't remove unused call arguments")
+	boolean noRmUnused();
+
+	@Option(names = "--rm-pure", description = "remove pure function calls")
+	boolean rmPure();
+
+	@Option(names = "--no-rm-pure", description = "don't remove pure function calls")
+	boolean noRmPure();
+
+	@Option(names = "--rm-graphs", description = "remove unreachable graphs")
+	boolean rmGraphs();
+
+	@Option(names = "--no-rm-graphs", description = "don't remove unreachable graphs")
+	boolean noRmGraphs();
 
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",
 		paramLabel = "FILE")
