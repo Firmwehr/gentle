@@ -66,6 +66,7 @@ jib {
 
 		container {
 			environment = mapOf("GENTLE_ENABLE_LOG" to "true")
+			jvmFlags = application.applicationDefaultJvmArgs.toList()
 		}
 	}
 }
