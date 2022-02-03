@@ -428,11 +428,13 @@ public class ConstantFolding extends NodeVisitor.Default {
 			throw new InternalCompilerException("Unexpected mux arguments");
 		}
 
-		if (tarValOf(node.getSel()).equals(TargetValue.getBTrue())) {
-			updateTarVal(node, tarValOf(node.getTrue()));
-		} else if (tarValOf(node.getSel()).equals(TargetValue.getBFalse())) {
-			updateTarVal(node, tarValOf(node.getFalse()));
+		TargetValue targetValue = tarValOf(node.getSel());
+		if (targetValue.equals(TargetValue.getBTrue())) {
+			targetValue = tarValOf(node.getTrue());
+		} else if (targetValue.equals(TargetValue.getBFalse())) {
+			targetValue = tarValOf(node.getFalse());
 		}
+		updateTarVal(node, targetValue);
 	}
 
 	@Override
