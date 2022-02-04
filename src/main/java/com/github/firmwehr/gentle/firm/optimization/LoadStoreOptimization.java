@@ -29,7 +29,10 @@ import java.util.Set;
 import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 
 /**
- * Simplifies memory
+ * Simplifies memory access in several cases.
+ * <p>
+ * This optimization runs in two steps. First, memory nodes are reordered where possible, then loads are deduplicated,
+ * loads after stores are simplified and dead stores are removed.
  */
 public class LoadStoreOptimization extends NodeVisitor.Default {
 
@@ -81,10 +84,6 @@ public class LoadStoreOptimization extends NodeVisitor.Default {
 		}
 		// use node number to have a specified order and avoid endless swapping
 		return upper.getNr() > lower.getNr();
-	}
-
-	private static boolean isNotResultOf(Node value, Node node) {
-		return !(value instanceof Proj proj && proj.getPred().equals(node));
 	}
 
 	public LoadStoreOptimization(Graph graph) {
