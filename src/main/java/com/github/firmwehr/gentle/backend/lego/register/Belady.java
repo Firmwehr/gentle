@@ -100,6 +100,8 @@ public class Belady {
 		}
 
 		endWorksets.put(block, currentBlockWorkset);
+		LOGGER.debugHeader("End workset for %s", block.id());
+		LOGGER.debug("  %s", endWorksets.get(block));
 	}
 
 	private void displace(

@@ -141,6 +141,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 				LegoPlate block = blocks.get((Block) node.getBlock());
 				LegoPhi legoPhi = new LegoPhi(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node));
+				LOGGER.debug("Created phi %s at start of %s", legoPhi, block);
 				nodes.put(node, legoPhi);
 				block.nodes().add(legoPhi);
 				legoGraph.addNode(legoPhi, List.of());
@@ -195,12 +196,19 @@ public class CodeSelection extends NodeVisitor.Default {
 					LegoNode input = inputs.get(inputIndex);
 
 					if (input instanceof LegoConst constNode) {
-						LegoConst newConst = new LegoConst(legoGraph.nextId(), block, legoGraph, input.size(),
+						LegoPlate blockToAdd = block;
+						int insertIndex = nodeIndex;
+						if (node instanceof LegoPhi) {
+							blockToAdd = block.parents().get(inputIndex).parent();
+							insertIndex = block.parents().get(inputIndex).parent().nodes().size() - 1;
+						} else {
+							nodeIndex++;
+						}
+						LegoConst newConst = new LegoConst(legoGraph.nextId(), blockToAdd, legoGraph, input.size(),
 							input.underlyingFirmNodes(), constNode.value());
 						legoGraph.addNode(newConst, List.of());
 						legoGraph.setInput(node, inputIndex, newConst);
-						block.nodes().add(nodeIndex, newConst);
-						nodeIndex++;
+						blockToAdd.nodes().add(insertIndex, newConst);
 					}
 				}
 			}
@@ -746,6 +754,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		LegoNode right = nodes.get(node);
 		if (node instanceof Const constant) {
 			right = new LegoImmediate(legoGraph.nextId(), block, legoGraph, constant);
+			block.nodes().add(right);
 		}
 		return right;
 	}

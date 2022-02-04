@@ -15,7 +15,7 @@ import java.util.Set;
  */
 public class PerfectElimationOrderColorer {
 
-	private static final Logger LOGGER = new Logger(PerfectElimationOrderColorer.class, Logger.LogLevel.DEBUG);
+	private static final Logger LOGGER = new Logger(PerfectElimationOrderColorer.class);
 
 	private final ControlFlowGraph graph;
 	private final LifetimeAnalysis liveliness;
@@ -42,6 +42,7 @@ public class PerfectElimationOrderColorer {
 		for (LegoNode node : liveliness.getAllLiveIn(block)) {
 			if (node.register().isPresent()) {
 				assigned.add(node.uncheckedRegister());
+				LOGGER.debug("Keeping assigned register %s for live in %s", node.uncheckedRegister(), node);
 				continue;
 			}
 			// Phis introduce loops but I ~~think~~ *pray* this might work.
@@ -64,6 +65,7 @@ public class PerfectElimationOrderColorer {
 				}
 			}
 
+			LOGGER.debug("At %s assigned: %s", node, assigned);
 			if (node.registerIgnore()) {
 				continue;
 			}
