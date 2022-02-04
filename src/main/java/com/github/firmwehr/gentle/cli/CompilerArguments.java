@@ -31,9 +31,10 @@ public class CompilerArguments {
 		boolean tailCallOptimization = (optimize || args.tco()) && !args.noTco();
 		boolean loopInvariant = (optimize || args.loopInvariant()) && !args.noLoopInvariant();
 		boolean reorderInputs = (optimize || args.reorder()) && !args.noReorder();
+		boolean loadStore = (optimize || args.loadStore()) && !args.noLoadStore();
 
 		return new Optimizations(lego, constantFolding, advancedCodeSelection, arithmeticOpt, booleanOpt,
 			escapeAnalysis, globalValueNumbering, inlining, removeUnused, removePureFunctions, removeUnusedGraphs,
-			tailCallOptimization, loopInvariant, reorderInputs);
+			tailCallOptimization, loopInvariant, reorderInputs, loadStore);
 	}
 }

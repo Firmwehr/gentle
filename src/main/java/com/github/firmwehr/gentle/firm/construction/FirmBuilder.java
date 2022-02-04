@@ -129,10 +129,12 @@ public class FirmBuilder {
 		if (opts.inlining()) {
 			builder.addCallGraphStep(MethodInliningOptimization.methodInlineOptimization());
 		}
+		if (opts.loadStore()) {
+			builder.addGraphStep(LoadStoreOptimization.loadStoreOptimizations());
+		}
 		if (opts.removeUnusedGraphs()) {
 			builder.freeUnusedGraphs();
 		}
-		builder.addGraphStep(LoadStoreOptimization.loadStoreOptimizations());
 		if (opts.tailCallOptimization()) {
 			builder.addGraphStep(TailCallOptimization.tailCallOptimization());
 		}

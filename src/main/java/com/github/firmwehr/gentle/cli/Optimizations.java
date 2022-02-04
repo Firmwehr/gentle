@@ -14,6 +14,7 @@ public record Optimizations(
 	boolean removeUnusedGraphs,
 	boolean tailCallOptimization,
 	boolean loopInvariant,
-	boolean reorderInputs
+	boolean reorderInputs,
+	boolean loadStore
 ) {
 }
