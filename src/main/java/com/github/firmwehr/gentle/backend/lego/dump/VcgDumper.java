@@ -5,6 +5,7 @@ import com.github.firmwehr.gentle.backend.lego.LegoGraph;
 import com.github.firmwehr.gentle.backend.lego.LegoParentBløck;
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoAdd;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoAnd;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoArgNode;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoCall;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoCmp;
@@ -12,6 +13,7 @@ import com.github.firmwehr.gentle.backend.lego.nodes.LegoConst;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoConv;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoCopy;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoDiv;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoImmediate;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoJcc;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoJmp;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoMovLoad;
@@ -28,8 +30,8 @@ import com.github.firmwehr.gentle.backend.lego.nodes.LegoProj;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoReload;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoRet;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSal;
-import com.github.firmwehr.gentle.backend.lego.nodes.LegoShr;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSar;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoShr;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSpill;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSub;
 import com.github.firmwehr.gentle.backend.lego.register.ControlFlowGraph;
@@ -213,6 +215,7 @@ public class VcgDumper {
 	private VcgColor nodeColor(LegoNode node) {
 		return switch (node) {
 			case LegoAdd ignored -> VcgColor.NORMAL;
+			case LegoAnd ignored -> VcgColor.NORMAL;
 			case LegoArgNode ignored -> VcgColor.SPECIAL;
 			case LegoCall ignored -> VcgColor.MEMORY;
 			case LegoCmp ignored -> VcgColor.NORMAL;
@@ -220,6 +223,7 @@ public class VcgDumper {
 			case LegoConv ignored -> VcgColor.NORMAL;
 			case LegoCopy ignored -> VcgColor.SPECIAL;
 			case LegoDiv ignored -> VcgColor.MEMORY;
+			case LegoImmediate ignored -> VcgColor.CONST;
 			case LegoJcc ignored -> VcgColor.CONTROL_FLOW;
 			case LegoJmp ignored -> VcgColor.CONTROL_FLOW;
 			case LegoMovLoad ignored -> VcgColor.MEMORY;
