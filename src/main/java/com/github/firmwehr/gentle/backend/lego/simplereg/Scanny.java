@@ -227,7 +227,7 @@ public class Scanny {
 			//  => The requirements of that user should be respected
 			//  => let them handle it in the input code
 			if (uses.uses(result).size() == 1) {
-				//				continue;
+				continue;
 			}
 
 			// If we already have a spill node for this result it either has a register or should be on the stack
