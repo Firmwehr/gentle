@@ -393,6 +393,11 @@ public class ConstantFolding extends NodeVisitor.Default {
 	}
 
 	@Override
+	public void visit(Eor node) {
+		updateTarVal(node, TargetValue::eor);
+	}
+
+	@Override
 	public void visit(Id node) {
 		updateTarVal(node, tarValOf(node.getPred()));
 	}
