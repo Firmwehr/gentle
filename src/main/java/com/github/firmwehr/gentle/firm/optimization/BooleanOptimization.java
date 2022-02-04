@@ -99,13 +99,15 @@ public class BooleanOptimization extends NodeVisitor.Default {
 				falseNode = tmp;
 			}
 
-			Node mux = match.cmp().getGraph().newMux(match.cmp().getBlock(), match.cmp(), falseNode, trueNode);
+			Node mux = match.cond().getGraph().newMux(match.cond().getBlock(), match.cmp(), falseNode, trueNode);
 
 			for (BackEdges.Edge out : BackEdges.getOuts(phi)) {
 				out.node.setPred(out.pos, mux);
 			}
 
-			Node jmp = match.cmp().getGraph().newJmp(match.cmp().getBlock());
+			// The unconditional jump must be placed in the same block as the cond it replaces, or our graph may get
+			// messed up.
+			Node jmp = match.cond().getGraph().newJmp(match.cond().getBlock());
 			binding_irnode.set_irn_in(match.afterBlock().ptr, 1, Node.getBufferFromNodeList(new Node[]{jmp}));
 
 			changed = true;
