@@ -9,7 +9,6 @@ import com.github.firmwehr.gentle.util.Pair;
 import firm.BackEdges;
 import firm.Graph;
 import firm.Mode;
-import firm.nodes.Add;
 import firm.nodes.Call;
 import firm.nodes.Cmp;
 import firm.nodes.Const;
@@ -30,7 +29,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import static java.util.stream.Collectors.toMap;
