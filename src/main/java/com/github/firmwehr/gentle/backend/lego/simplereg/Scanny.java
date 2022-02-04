@@ -19,7 +19,6 @@ import com.github.firmwehr.gentle.util.GraphDumper;
 import com.github.firmwehr.gentle.util.Pair;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -49,7 +48,7 @@ public class Scanny {
 		this.dominance = dominance;
 
 		this.liveNodes = new HashSet<>();
-		this.freeRegisters = EnumSet.allOf(X86Register.class);
+		this.freeRegisters = X86Register.all();
 		this.spillNodes = new HashMap<>();
 		this.spillContext = new SpillContext(new HashMap<>(), dominance);
 		this.rewireCleanups = new HashSet<>();
@@ -226,7 +225,7 @@ public class Scanny {
 			// Only one user
 			//  => The requirements of that user should be respected
 			//  => let them handle it in the input code
-			if (uses.uses(result).size() == 1) {
+			if (uses.uses(result).size() == 1 && !result.registerRequirement().limited()) {
 				continue;
 			}
 
@@ -481,7 +480,7 @@ public class Scanny {
 				reload.register(requirement.limitedTo().iterator().next());
 			} else {
 				// Must be distinct to all other args
-				reload.register(X86Register.values()[index]);
+				reload.register(X86Register.allOrdered().get(index));
 			}
 		}
 

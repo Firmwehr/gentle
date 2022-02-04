@@ -375,13 +375,15 @@ public class CodeSelection extends NodeVisitor.Default {
 			.map(nodes::get)
 			.toList();
 
-		MethodType type = (MethodType) ((Address) node.getPtr()).getEntity().getType();
+		Address address = (Address) node.getPtr();
+		MethodType type = (MethodType) address.getEntity().getType();
 		LegoRegisterSize size = ILLEGAL;
 		if (type.getNRess() > 0 && !type.getResType(0).getMode().equals(Mode.getANY())) {
 			size = forMode(type.getResType(0).getMode());
 		}
 
-		LegoCall legoCall = new LegoCall(legoGraph.nextId(), block, legoGraph, size, List.of(node));
+		LegoCall legoCall =
+			new LegoCall(legoGraph.nextId(), block, legoGraph, size, List.of(node), address.getEntity());
 		legoGraph.addNode(legoCall, arguments);
 		nodes.put(node, legoCall);
 		block.nodes().add(legoCall);
@@ -477,6 +479,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		LegoProj divProj =
 			new LegoProj(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node), 0, "div");
+		divProj.register(X86Register.RAX);
 		block.nodes().add(divProj);
 		nodes.put(node, divProj);
 		legoGraph.addNode(divProj, List.of(legoDiv));
@@ -562,6 +565,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		LegoProj modProj =
 			new LegoProj(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node), 1, "mod");
+		modProj.register(X86Register.RDX);
 		nodes.put(node, modProj);
 		block.nodes().add(modProj);
 		legoGraph.addNode(modProj, List.of(legoDiv));

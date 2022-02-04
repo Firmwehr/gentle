@@ -91,7 +91,7 @@ public class ConstraintNodePrepare {
 		// TODO: Pair up perm args that die at node with node defs => They can use the same register. Use intersection
 		//  of allowed registers as requirements.
 
-		Set<X86Register> freeRegisters = EnumSet.allOf(X86Register.class);
+		Set<X86Register> freeRegisters = X86Register.all();
 		freeRegisters.removeAll(node.clobbered());
 		if (node.registerRequirement().limited() && !node.registerIgnore()) {
 			if (node.registerRequirement().limitedTo().size() != 1) {
