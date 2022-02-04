@@ -1,8 +1,8 @@
 package com.github.firmwehr.gentle.backend.lego.nodes;
 
-import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.LegoBøx;
 import com.github.firmwehr.gentle.backend.lego.LegoGraph;
+import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.register.LegoRegisterRequirement;
 import com.github.firmwehr.gentle.backend.lego.register.X86Register;
 import com.github.firmwehr.gentle.backend.lego.visit.LegoVisitor;
@@ -38,7 +38,10 @@ public final class LegoCall extends LegoNode {
 
 	@Override
 	public LegoRegisterRequirement registerRequirement() {
-		return LegoRegisterRequirement.singleRegister(X86Register.RAX);
+		if (size() != LegoBøx.LegoRegisterSize.ILLEGAL) {
+			return LegoRegisterRequirement.singleRegister(X86Register.RAX);
+		}
+		return LegoRegisterRequirement.none();
 	}
 
 	@Override

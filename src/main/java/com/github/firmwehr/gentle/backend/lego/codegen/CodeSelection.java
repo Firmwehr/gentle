@@ -43,6 +43,7 @@ import com.github.firmwehr.gentle.backend.lego.register.PerfectElimationOrderCol
 import com.github.firmwehr.gentle.backend.lego.register.Spillprepare;
 import com.github.firmwehr.gentle.backend.lego.register.Uses;
 import com.github.firmwehr.gentle.backend.lego.register.X86Register;
+import com.github.firmwehr.gentle.backend.lego.simplereg.Scanny;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.firm.model.LoopTree;
 import com.github.firmwehr.gentle.output.Logger;
@@ -232,6 +233,22 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		GraphDumper.dumpGraph(controlFlowGraph, "backend-init");
 
+		// fancyRegister(controlFlowGraph, dominance, liveliness, uses, loopTree);
+
+		new Scanny(controlFlowGraph, uses, liveliness, dominance).assignRegisters();
+
+		GraphDumper.dumpGraph(controlFlowGraph, "backend-ra");
+
+		return orderedBlocks;
+	}
+
+	private void fancyRegister(
+		ControlFlowGraph controlFlowGraph,
+		Dominance dominance,
+		LifetimeAnalysis liveliness,
+		Uses uses,
+		LoopTree loopTree
+	) {
 		CalleeSavedPrepare calleeSavedPrepare = new CalleeSavedPrepare(legoGraph, controlFlowGraph);
 		calleeSavedPrepare.prepare();
 		liveliness.recompute();
@@ -271,8 +288,6 @@ public class CodeSelection extends NodeVisitor.Default {
 		new LowerPerms(legoGraph, controlFlowGraph).lower();
 
 		GraphDumper.dumpGraph(controlFlowGraph, "lower-perms");
-
-		return orderedBlocks;
 	}
 
 	private Mut<Optional<X86Register>> noReg() {

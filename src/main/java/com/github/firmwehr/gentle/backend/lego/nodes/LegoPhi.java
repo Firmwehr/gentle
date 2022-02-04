@@ -48,7 +48,7 @@ public class LegoPhi extends LegoNode {
 
 	@Override
 	public LegoRegisterRequirement registerRequirement() {
-		return LegoRegisterRequirement.none();
+		return LegoRegisterRequirement.gpRegister();
 	}
 
 }

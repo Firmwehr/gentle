@@ -26,7 +26,7 @@ import static java.util.function.Predicate.not;
 @SuppressWarnings("UnstableApiUsage")
 public class Dominance {
 
-	private static final Logger LOGGER = new Logger(Dominance.class, Logger.LogLevel.DEBUG);
+	private static final Logger LOGGER = new Logger(Dominance.class);
 
 	private final MutableGraph<LegoNode> dominatorTree;
 	private final MutableGraph<LegoPlate> blockDominators;
