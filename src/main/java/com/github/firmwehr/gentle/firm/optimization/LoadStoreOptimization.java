@@ -6,6 +6,7 @@ import com.github.firmwehr.fiascii.generated.StoreAndLoadPattern;
 import com.github.firmwehr.fiascii.generated.StoreAndStorePattern;
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.firm.Util;
+import com.github.firmwehr.gentle.firm.optimization.memory.LocalAddress;
 import com.github.firmwehr.gentle.output.Logger;
 import firm.BackEdges;
 import firm.Graph;
@@ -27,6 +28,9 @@ import java.util.Set;
 
 import static com.github.firmwehr.gentle.util.GraphDumper.dumpGraph;
 
+/**
+ * Simplifies memory
+ */
 public class LoadStoreOptimization extends NodeVisitor.Default {
 
 	private static final Logger LOGGER = new Logger(LoadStoreOptimization.class, Logger.LogLevel.DEBUG);
@@ -39,23 +43,45 @@ public class LoadStoreOptimization extends NodeVisitor.Default {
 		.addStep(LoadStoreOptimization::loadAndLoad, LoadStoreOptimization::replaceLoadAndLoad)
 		.build();
 
-	// TODO: BIG FAT TODO
 	private static final List<SwapRule<?, ?>> SWAP_RULES = List.of(
 		// Load can be moved above Mod/Div if Ptr does not depend on Mod/Div
-		new SwapRule<>(Div.class, Load.class, (div, load) -> isNotResultOf(load.getPtr(), div)),
-		new SwapRule<>(Mod.class, Load.class, (mod, load) -> isNotResultOf(load.getPtr(), mod)),
+		// Ptr only depends on Mod/Div for array access, so if we can get a LocalAddress from it,
+		// we're on the safe side
+		new SwapRule<>(Div.class, Load.class, (div, load) -> LocalAddress.fromLoad(load).isPresent()),
+		new SwapRule<>(Mod.class, Load.class, (mod, load) -> LocalAddress.fromLoad(load).isPresent()),
 		// Store can be moved below Div/Mod
 		new SwapRule<>(Store.class, Div.class, (store, div) -> true),
-		new SwapRule<>(Store.class, Mod.class, (store, mod) -> true)
+		new SwapRule<>(Store.class, Mod.class, (store, mod) -> true),
 		// Loads can be reordered if the result of the upper is not used for the lower.
 		// In that case we move them in one direction for LoadAndLoadPattern
-	/*	new SwapRule<>(Load.class, Load.class, (upper, lower) -> isNotResultOf()
-			&& upper.getPtr().getNr() > lower.getPtr().getNr())*/
+		new SwapRule<>(Load.class, Load.class, LoadStoreOptimization::shouldSwapLoads)
 		// without alias analysis, this does not work for Stores, as we need to keep the last Store at
 		// its position in a Store-chain. However, if we can guarantee that the Stores come from the same
 		// instance and their index in the instance is known to be different, we can swap them too
 		// => TODO
 	);
+
+	private static boolean shouldSwapLoads(Load upper, Load lower) {
+		Optional<LocalAddress> upperLocalAddressOpt = LocalAddress.fromLoad(upper);
+		Optional<LocalAddress> lowerLocalAddressOpt = LocalAddress.fromLoad(lower);
+		LOGGER.debug("upper address %s", upperLocalAddressOpt);
+		LOGGER.debug("lower address %s", lowerLocalAddressOpt);
+		if (upperLocalAddressOpt.isEmpty() || lowerLocalAddressOpt.isEmpty()) {
+			return false;
+		}
+		LocalAddress upperAddress = upperLocalAddressOpt.get();
+		LocalAddress lowerAddress = lowerLocalAddressOpt.get();
+		if (lowerAddress.pointer().getPred().equals(upper)) {
+			// the upper Load is required for the lower Load
+			return false;
+		}
+		if (upperAddress.pointerEquals(lowerAddress)) {
+			// use offset to have a specified order and avoid endless swapping
+			return upperAddress.offset() > lowerAddress.offset();
+		}
+		// use node number to have a specified order and avoid endless swapping
+		return upper.getNr() > lower.getNr();
+	}
 
 	private static boolean isNotResultOf(Node value, Node node) {
 		return !(value instanceof Proj proj && proj.getPred().equals(node));
@@ -183,7 +209,14 @@ public class LoadStoreOptimization extends NodeVisitor.Default {
 		SwapCheck<A, B> check
 	) {
 		boolean swap(A upper, B lower) {
-			if (upper().isInstance(upper) && lower().isInstance(lower) && check().canSwap(upper, lower)) {
+			if (!(upper().isInstance(upper) && lower().isInstance(lower))) {
+				return false;
+			}
+			if (!upper.getBlock().equals(lower.getBlock())) {
+				LOGGER.debug("do not swap %s with %s due to different block", upper, lower);
+				return false;
+			}
+			if (check().canSwap(upper, lower)) {
 				// get mem predecessors
 				Node upperPred = upper.getPred(0);
 				Node lowerPred = lower.getPred(0);
@@ -197,8 +230,10 @@ public class LoadStoreOptimization extends NodeVisitor.Default {
 				// swap mem successors
 				upperSuccessor.node.setPred(upperSuccessor.pos, lower);
 				lowerSuccessor.node.setPred(lowerSuccessor.pos, upper);
+				LOGGER.debug("swapped %s and %s with rule (%s, %s)", upper, lower, upper(), lower());
 				return true;
 			}
+			LOGGER.debug("do not swap %s with %s due to swap check", upper, lower);
 			return false;
 		}
 	}
