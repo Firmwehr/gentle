@@ -103,7 +103,7 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 		code.noSuffixOp("push", "%rbp");
 		code.noSuffixOp("movq", "%rsp", "%rbp");
-		code.noSuffixOp("sub", "$" + stackFrameSize, "%rbp");
+		code.noSuffixOp("sub", "$" + stackFrameSize, "%rsp");
 
 		source.append(code.code()).append("\n");
 
@@ -464,7 +464,7 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 	@Override
 	public Void visit(LegoSpill node) {
 		// well, we seem to be always going with the 8 byte sized slot
-		var slotOffset = node.spillSlot() * 8;
+		var slotOffset = (node.spillSlot() + 1) * 8;
 		code.op("mov", node, node.inputs().get(0).asRegisterName(), "-%d(%%rbp)".formatted(slotOffset));
 
 		return null;
@@ -473,7 +473,7 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 	@Override
 	public Void visit(LegoReload node) {
 		// well, we seem to be always going with the 8 byte sized slot
-		var slotOffset = node.spillSlot() * 8;
+		var slotOffset = (node.spillSlot() + 1) * 8;
 		code.op("mov", node, "-%d(%%rbp)".formatted(slotOffset), node.asRegisterName());
 
 		return null;

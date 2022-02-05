@@ -21,6 +21,7 @@ import com.github.firmwehr.gentle.util.Pair;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,6 +41,7 @@ public class Scanny {
 	private final Map<LegoNode, SpillNode> spillNodes;
 	private final SpillContext spillContext;
 	private final Set<RewireCleanup> rewireCleanups;
+	private final Set<LegoNode> addedMetaNodes;
 
 	public Scanny(ControlFlowGraph controlFlowGraph, Uses uses, LifetimeAnalysis liveliness, Dominance dominance) {
 		this.controlFlowGraph = controlFlowGraph;
@@ -52,6 +54,7 @@ public class Scanny {
 		this.spillNodes = new HashMap<>();
 		this.spillContext = new SpillContext(new HashMap<>(), dominance);
 		this.rewireCleanups = new HashSet<>();
+		this.addedMetaNodes = new HashSet<>();
 	}
 
 	public void assignRegisters() {
@@ -83,6 +86,13 @@ public class Scanny {
 		// Needs to be after insertion of the rest so live nodes can be accurately determined
 		for (LegoPlate block : controlFlowGraph.reversePostOrder()) {
 			fixClobbers(block);
+			for (Iterator<LegoNode> iterator = block.nodes().iterator(); iterator.hasNext(); ) {
+				LegoNode node = iterator.next();
+				if (addedMetaNodes.contains(node)) {
+					iterator.remove();
+					node.graph().removeNode(node);
+				}
+			}
 			realizeForBlock(block);
 		}
 
@@ -113,18 +123,21 @@ public class Scanny {
 			SpillNode node = spillNodes.get(legoNode);
 			for (LegoSpill spill : node.spillsBefore()) {
 				block.nodes().add(i, spill);
+				addedMetaNodes.add(spill);
 				spill.graph().addNode(spill, List.of(spill.originalValue()));
 				i++;
 			}
 			for (var pair : node.movesBefore()) {
 				var move = pair.first();
 				block.nodes().add(i, move.second());
+				addedMetaNodes.add(move.second());
 				move.second().graph().addNode(move.second(), List.of(move.first()));
 				rewireCleanups.add(new RewireCleanup(node.lego(), pair.second(), move.second()));
 				i++;
 			}
 			for (var reload : node.reloadsBefore()) {
 				block.nodes().add(i, reload.first());
+				addedMetaNodes.add(reload.first());
 				reload.first().graph().addNode(reload.first(), List.of());
 				rewireCleanups.add(new RewireCleanup(node.lego(), reload.second(), reload.first()));
 				i++;
@@ -138,16 +151,18 @@ public class Scanny {
 
 			for (LegoSpill spill : node.spillsAfter()) {
 				block.nodes().add(i, spill);
+				addedMetaNodes.add(spill);
 				spill.graph().addNode(spill, List.of(spill.originalValue()));
 				i++;
 			}
 			for (LegoReload reload : node.reloadsAfter()) {
 				block.nodes().add(i, reload);
+				addedMetaNodes.add(reload);
 				reload.graph().addNode(reload, List.of());
 				i++;
 			}
 
-			node.clear();
+			//			node.clear();
 		}
 	}
 

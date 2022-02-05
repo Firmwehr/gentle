@@ -13,7 +13,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.IntStream;
 
+import static com.github.firmwehr.gentle.backend.lego.register.LegoRegisterRequirement.gpRegister;
+import static com.github.firmwehr.gentle.backend.lego.register.LegoRegisterRequirement.singleRegister;
+
 public final class LegoCall extends LegoNode {
+
+	private static final boolean USE_CDECL = true;
 
 	public static final List<X86Register> REGISTER_ORDER =
 		List.of(X86Register.RDI, X86Register.RSI, X86Register.RDX, X86Register.RCX, X86Register.R8, X86Register.R9);
@@ -39,22 +44,29 @@ public final class LegoCall extends LegoNode {
 	@Override
 	public List<LegoRegisterRequirement> inRequirements() {
 		return IntStream.range(0, graph().getInputs(this).size())
-			.mapToObj(REGISTER_ORDER::get)
-			.map(LegoRegisterRequirement::singleRegister)
+			.mapToObj(it -> USE_CDECL ? gpRegister() : singleRegister(REGISTER_ORDER.get(it)))
 			.toList();
 	}
 
 	@Override
 	public LegoRegisterRequirement registerRequirement() {
 		if (size() != LegoBøx.LegoRegisterSize.ILLEGAL) {
-			return LegoRegisterRequirement.singleRegister(X86Register.RAX);
+			return singleRegister(X86Register.RAX);
 		}
 		return LegoRegisterRequirement.none();
 	}
 
 	@Override
 	public Set<X86Register> clobbered() {
+		if (USE_CDECL) {
+			return X86Register.all();
+		}
 		return Set.of(X86Register.R11, X86Register.R10, X86Register.R9, X86Register.R8, X86Register.RDI,
 			X86Register.RSI, X86Register.RDX, X86Register.RCX, X86Register.RAX);
+	}
+
+	@Override
+	public String display() {
+		return getClass().getSimpleName() + " " + entity.getLdName() + " (" + id() + ")";
 	}
 }
