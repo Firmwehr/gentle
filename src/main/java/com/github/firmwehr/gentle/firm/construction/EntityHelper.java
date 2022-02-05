@@ -85,6 +85,6 @@ public class EntityHelper {
 	private String getLinkerName(SMethod method) {
 		String className = method.classDecl().name().ident();
 		String methodName = method.name().ident();
-		return className + "_" + methodName;
+		return className + "." + methodName;
 	}
 }
