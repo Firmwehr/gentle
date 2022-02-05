@@ -46,6 +46,7 @@ import firm.Graph;
 import firm.MethodType;
 import firm.Relation;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -112,6 +113,7 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 			code.comment("start block " + block.id() + ":");
 
 			code.label(labelForBlock(block));
+			lowerSpilledPhis(block);
 			lowerPhi(block);
 
 			block.accept(this);
@@ -122,12 +124,34 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 		return source.toString();
 	}
 
+	private void lowerSpilledPhis(LegoPlate block) {
+		List<LegoPhi> spilledPhis = new ArrayList<>();
+		for (LegoNode node : block.nodes()) {
+			if (!(node instanceof LegoPhi phi)) {
+				continue;
+			}
+			if (phi.inputs().get(0) instanceof LegoSpill) {
+				spilledPhis.add(phi);
+			}
+		}
+
+		if (spilledPhis.isEmpty()) {
+			return;
+		}
+
+		code.line("TODO: Cool spilled phi handling");
+	}
+
 	private void lowerPhi(LegoPlate block) {
 		X86Register stackPointer = X86Register.RSP;
 		String rsp = stackPointer.nameForSize(BITS_64);
 		RegisterTransferGraph<X86Register> transferGraph = new RegisterTransferGraph<>(Set.of(X86Register.RSP));
-		List<LegoPhi> phis =
-			block.nodes().stream().filter(it -> it instanceof LegoPhi).map(it -> (LegoPhi) it).toList();
+		List<LegoPhi> phis = block.nodes()
+			.stream()
+			.filter(it -> it instanceof LegoPhi)
+			.filter(it -> !(it.inputs().get(0) instanceof LegoSpill))
+			.map(it -> (LegoPhi) it)
+			.toList();
 
 		for (LegoParentBløck parent : block.parents()) {
 			for (LegoPhi phi : phis) {

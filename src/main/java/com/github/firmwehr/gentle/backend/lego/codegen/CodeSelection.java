@@ -37,6 +37,7 @@ import com.github.firmwehr.gentle.backend.lego.register.CalleeSavedPrepare;
 import com.github.firmwehr.gentle.backend.lego.register.ConstraintNodePrepare;
 import com.github.firmwehr.gentle.backend.lego.register.ControlFlowGraph;
 import com.github.firmwehr.gentle.backend.lego.register.Dominance;
+import com.github.firmwehr.gentle.backend.lego.register.LegoRegisterRequirement;
 import com.github.firmwehr.gentle.backend.lego.register.LifetimeAnalysis;
 import com.github.firmwehr.gentle.backend.lego.register.LowerPerms;
 import com.github.firmwehr.gentle.backend.lego.register.PerfectElimationOrderColorer;
@@ -479,7 +480,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		LegoProj divProj =
 			new LegoProj(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node), 0, "div");
-		divProj.register(X86Register.RAX);
+		divProj.registerRequirement(LegoRegisterRequirement.singleRegister(X86Register.RAX));
 		block.nodes().add(divProj);
 		nodes.put(node, divProj);
 		legoGraph.addNode(divProj, List.of(legoDiv));
@@ -565,7 +566,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		LegoProj modProj =
 			new LegoProj(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node), 1, "mod");
-		modProj.register(X86Register.RDX);
+		modProj.registerRequirement(LegoRegisterRequirement.singleRegister(X86Register.RDX));
 		nodes.put(node, modProj);
 		block.nodes().add(modProj);
 		legoGraph.addNode(modProj, List.of(legoDiv));

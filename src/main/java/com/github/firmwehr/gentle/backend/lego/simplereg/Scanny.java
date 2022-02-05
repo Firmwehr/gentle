@@ -5,6 +5,7 @@ import com.github.firmwehr.gentle.backend.lego.LegoGraph;
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoMovRegister;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoNode;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoPhi;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoReload;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSpill;
 import com.github.firmwehr.gentle.backend.lego.register.ControlFlowGraph;
@@ -76,6 +77,9 @@ public class Scanny {
 			realizeForBlock(block);
 		}
 
+		// Used by liveliness analysis
+		assignSpillSlots();
+
 		GraphDumper.dumpGraph(controlFlowGraph, "ra-no-clobber");
 
 		// realize inserts spills and reloads
@@ -85,7 +89,13 @@ public class Scanny {
 		LOGGER.info("Fixing clobbers");
 		// Needs to be after insertion of the rest so live nodes can be accurately determined
 		for (LegoPlate block : controlFlowGraph.reversePostOrder()) {
+			finishPhis(block);
 			fixClobbers(block);
+		}
+
+		// Phi inserts spills across blocks so we need to realize them after all blocks were processed
+		for (LegoPlate block : controlFlowGraph.reversePostOrder()) {
+			// Clear up so realize can insert them again in the same order
 			for (Iterator<LegoNode> iterator = block.nodes().iterator(); iterator.hasNext(); ) {
 				LegoNode node = iterator.next();
 				if (addedMetaNodes.contains(node)) {
@@ -97,6 +107,7 @@ public class Scanny {
 		}
 
 		for (RewireCleanup cleanup : rewireCleanups) {
+			LOGGER.warn("Cleaning up %s", cleanup);
 			cleanup.source().graph().setInput(cleanup.source(), cleanup.index(), cleanup.newArgument());
 		}
 
@@ -107,14 +118,13 @@ public class Scanny {
 		// realize inserts spills and reloads
 		liveliness.recompute();
 		dominance.recompute();
-
 	}
 
 	private void realizeForBlock(LegoPlate block) {
 		for (int i = 0; i < block.nodes().size(); ) {
 			LegoNode legoNode = block.nodes().get(i);
 
-			if (legoNode.registerIgnore() || legoNode instanceof LegoSpill || legoNode instanceof LegoReload ||
+			if (legoNode instanceof LegoSpill || legoNode instanceof LegoReload ||
 				legoNode instanceof LegoMovRegister) {
 				i++;
 				continue;
@@ -161,15 +171,17 @@ public class Scanny {
 				reload.graph().addNode(reload, List.of());
 				i++;
 			}
-
-			//			node.clear();
 		}
 	}
 
 	private void handleBlock(LegoPlate block) {
 		for (LegoNode node : block.nodes()) {
-			// Try to find free registers for inputs
-			allocateInputs(node);
+			if (node instanceof LegoPhi phi) {
+				allocatePhiInputs(phi);
+			} else {
+				// Try to find free registers for inputs
+				allocateInputs(node);
+			}
 
 			// Clear out live nodes that are no longer needed
 			for (LegoNode input : node.inputs()) {
@@ -179,12 +191,123 @@ public class Scanny {
 				}
 			}
 
+			if (node instanceof LegoPhi phi) {
+				allocatePhiOut(phi);
+				continue;
+			}
+
 			if (!node.registerIgnore()) {
 				allocateOutputs(node);
 			} else {
 				spillNodes.computeIfAbsent(node, it -> SpillNode.forNode(it, spillContext));
 			}
 		}
+	}
+
+	private void allocatePhiInputs(LegoPhi phi) {
+		if (!spillNodes.containsKey(phi)) {
+			updateSpillNode(phi, SpillNode.forNode(phi, spillContext));
+		}
+
+		for (int i = 0; i < phi.inputs().size(); i++) {
+			LegoNode input = phi.inputs().get(i);
+			if (!spillNodes.containsKey(input)) {
+				updateSpillNode(input, SpillNode.forNode(input, spillContext));
+				if (tryAssignInputRegister(input, i, phi)) {
+					updateSpillNode(input, spillNodes.get(input).withRegister(input.uncheckedRegister()));
+				}
+			}
+		}
+	}
+
+	private void allocatePhiOut(LegoPhi phi) {
+		// Give phi a register and still spill all arguments
+		if (!freeRegisters.isEmpty()) {
+			LOGGER.debug("Assigning phi %s a register but spilling args", phi);
+			phi.register(allocateNextRegister());
+			updateSpillNode(phi, spillNodes.get(phi).withRegister(phi.uncheckedRegister()));
+			liveNodes.add(phi);
+		}
+	}
+
+	private void finishPhis(LegoPlate block) {
+		for (LegoNode node : block.nodes()) {
+			if (node instanceof LegoPhi phi) {
+				finishPhi(phi);
+			}
+		}
+	}
+
+	private void finishPhi(LegoPhi phi) {
+		boolean inputsInRegisters = phi.inputs().stream().allMatch(it -> spillNodes.get(it).hasRegister());
+
+		// Easy register phi, all inputs are in registers already
+		if (inputsInRegisters && !freeRegisters.isEmpty()) {
+			LOGGER.debug("Realizing phi %s as register phi", phi);
+			phi.register(allocateNextRegister());
+			updateSpillNode(phi, spillNodes.get(phi).withRegister(phi.uncheckedRegister()));
+			liveNodes.add(phi);
+			return;
+		}
+
+		LOGGER.debug("Not all args for %s in register (or phi), spilling", phi);
+		// spill all arguments
+		for (int i = 0; i < phi.inputs().size(); i++) {
+			LegoNode legoNode = phi.inputs().get(i);
+			LOGGER.debug("Spilling phi argument %s for %s", legoNode, phi);
+			LegoSpill spill = addSpillOnEdge(legoNode, phi.block(), phi.block().parents().get(i).parent());
+			LOGGER.warn("Rewiring %s from %s to %s", phi, legoNode, spill);
+			rewireCleanups.add(new RewireCleanup(phi, i, spill));
+		}
+	}
+
+	private LegoSpill addSpillOnEdge(LegoNode node, LegoPlate block, LegoPlate parent) {
+		LOGGER.debug("Adding spill for %s on edge %s -> %s", node, block, parent);
+		// We have only one parent, we can spill at the entry to our block
+		if (controlFlowGraph.inputBlocks(block).size() == 1) {
+			LOGGER.debug("Placing at start of block %s", block);
+			// Spill at start of our block
+			return spillNodes.get(block.nodes().get(0)).spillBefore(node);
+		}
+
+		LOGGER.debug("Multiple inputs, pushing to parent %s", parent);
+		// We have more than one parent, so we need to move the spill to the parent block
+		return spillNodes.get(parent.nodes().get(parent.nodes().size() - 1)).spillAfter(node);
+	}
+
+	private boolean tryAssignInputRegister(LegoNode input, int index, LegoNode instruction) {
+		if (liveNodes.contains(input)) {
+			return true;
+		}
+		if (freeRegisters.isEmpty()) {
+			return false;
+		}
+		LegoRegisterRequirement requirement = instruction.inRequirements().get(index);
+		if (!requirement.limited()) {
+			input.register(allocateNextRegister());
+			liveNodes.add(input);
+
+			// Update created spillnode
+			updateSpillNode(input, spillNodes.get(input).withRegister(input.uncheckedRegister()));
+			return true;
+		}
+
+		if (requirement.limitedTo().size() != 1) {
+			throw new InternalCompilerException("Input has multiple options: " + input + " - " + requirement);
+		}
+		X86Register wantedRegister = requirement.limitedTo().iterator().next();
+		if (freeRegisters.remove(wantedRegister)) {
+			input.register(wantedRegister);
+			liveNodes.add(input);
+
+			// Update created spillnode
+			updateSpillNode(input, spillNodes.get(input).withRegister(input.uncheckedRegister()));
+			return true;
+		}
+
+		displaceSpecific(input, instruction, wantedRegister);
+
+		return input.register().isPresent();
 	}
 
 	private void allocateInputs(LegoNode instruction) {
@@ -202,36 +325,7 @@ public class Scanny {
 				continue;
 			}
 
-			if (liveNodes.contains(input)) {
-				continue;
-			}
-			if (freeRegisters.isEmpty()) {
-				continue;
-			}
-			LegoRegisterRequirement requirement = instruction.inRequirements().get(i);
-			if (!requirement.limited()) {
-				input.register(allocateNextRegister());
-				liveNodes.add(input);
-
-				// Update created spillnode
-				updateSpillNode(input, spillNodes.get(input).withRegister(input.uncheckedRegister()));
-				continue;
-			}
-
-			if (requirement.limitedTo().size() != 1) {
-				throw new InternalCompilerException("Input has multiple options: " + input + " - " + requirement);
-			}
-			X86Register wantedRegister = requirement.limitedTo().iterator().next();
-			if (freeRegisters.remove(wantedRegister)) {
-				input.register(wantedRegister);
-				liveNodes.add(input);
-
-				// Update created spillnode
-				updateSpillNode(input, spillNodes.get(input).withRegister(input.uncheckedRegister()));
-				continue;
-			}
-
-			displaceSpecific(input, instruction, wantedRegister);
+			tryAssignInputRegister(input, i, instruction);
 		}
 	}
 
@@ -312,6 +406,9 @@ public class Scanny {
 
 	private void reloadAndSpillArgumentsAndResults(LegoPlate block) {
 		for (LegoNode legoNode : block.nodes()) {
+			if (legoNode instanceof LegoPhi) {
+				continue;
+			}
 			SpillNode node = spillNodes.get(legoNode);
 
 			for (int i = 0; i < node.lego().inputs().size(); i++) {
@@ -478,6 +575,38 @@ public class Scanny {
 			}
 		}
 
+		public LegoSpill spillAfter(LegoNode node) {
+			LegoGraph graph = node.graph();
+			LegoSpill spill = new LegoSpill(graph.nextId(), lego.block(), graph, node.size(), List.of(), node);
+
+			LegoSpill dominantSpill = spillContext.getDominated(spill, lego);
+			if (!dominantSpill.equals(spill)) {
+				return dominantSpill;
+			}
+
+			LOGGER.debug("Spilling node %s after %s", node, lego);
+			spillsAfter.add(spill);
+			spillContext.addSpill(spill, lego);
+
+			return spill;
+		}
+
+		public LegoSpill spillBefore(LegoNode node) {
+			LegoGraph graph = node.graph();
+			LegoSpill spill = new LegoSpill(graph.nextId(), lego.block(), graph, node.size(), List.of(), node);
+
+			LegoSpill dominantSpill = spillContext.getDominated(spill, lego);
+			if (!dominantSpill.equals(spill)) {
+				return dominantSpill;
+			}
+
+			LOGGER.debug("Spilling node %s before %s", node, lego);
+			spillsBefore.add(spill);
+			spillContext.addSpill(spill, lego);
+
+			return spill;
+		}
+
 		/**
 		 * Reloads an argument so it can be passed to the node.
 		 *
@@ -539,16 +668,6 @@ public class Scanny {
 			reloadsAfter.add(reload);
 			reload.register(conflicting.uncheckedRegister());
 		}
-
-		public void clear() {
-			spillsBefore.clear();
-			spillsAfter.clear();
-
-			reloadsBefore.clear();
-			reloadsAfter.clear();
-
-			movesBefore.clear();
-		}
 	}
 
 	private record RewireCleanup(
@@ -560,11 +679,12 @@ public class Scanny {
 	}
 
 	private record SpillContext(
-		Map<LegoNode, Set<LegoNode>> spillsForNode,
+		Map<LegoNode, Set<Pair<LegoSpill, LegoNode>>> spillsForNode,
 		Dominance dominance
 	) {
 		public boolean isDominated(LegoSpill newSpill, LegoNode spillBefore) {
-			for (LegoNode existingBefore : spillsForNode.getOrDefault(newSpill.originalValue(), Set.of())) {
+			for (var existingPair : spillsForNode.getOrDefault(newSpill.originalValue(), Set.of())) {
+				LegoNode existingBefore = existingPair.second();
 				if (dominance.dominates(existingBefore, spillBefore) || existingBefore.equals(spillBefore)) {
 					return true;
 				}
@@ -572,8 +692,19 @@ public class Scanny {
 			return false;
 		}
 
+		public LegoSpill getDominated(LegoSpill newSpill, LegoNode spillBefore) {
+			for (var existingPair : spillsForNode.getOrDefault(newSpill.originalValue(), Set.of())) {
+				LegoNode existingBefore = existingPair.second();
+				if (dominance.dominates(existingBefore, spillBefore) || existingBefore.equals(spillBefore)) {
+					return existingPair.first();
+				}
+			}
+			return newSpill;
+		}
+
 		public void addSpill(LegoSpill spill, LegoNode before) {
-			spillsForNode.computeIfAbsent(spill.originalValue(), ignored -> new HashSet<>()).add(before);
+			spillsForNode.computeIfAbsent(spill.originalValue(), ignored -> new HashSet<>())
+				.add(new Pair<>(spill, before));
 		}
 	}
 
