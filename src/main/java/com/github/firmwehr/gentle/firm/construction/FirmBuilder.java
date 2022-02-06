@@ -9,11 +9,12 @@ import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.firm.optimization.EscapeAnalysisOptimization;
 import com.github.firmwehr.gentle.firm.optimization.FirmGraphCleanup;
 import com.github.firmwehr.gentle.firm.optimization.GlobalValueNumbering;
+import com.github.firmwehr.gentle.firm.optimization.LoopInvariantOptimization;
 import com.github.firmwehr.gentle.firm.optimization.MethodInliningOptimization;
 import com.github.firmwehr.gentle.firm.optimization.Optimizer;
 import com.github.firmwehr.gentle.firm.optimization.PureFunctionOptimization;
-import com.github.firmwehr.gentle.firm.optimization.TailCallOptimization;
 import com.github.firmwehr.gentle.firm.optimization.ReorderInputsOptimization;
+import com.github.firmwehr.gentle.firm.optimization.TailCallOptimization;
 import com.github.firmwehr.gentle.firm.optimization.UnusedParameterOptimization;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.semantic.ast.SProgram;
@@ -43,7 +44,6 @@ public class FirmBuilder {
 	static {
 		// Must be set before Firm.init is called!
 		var maybeVersion = CompilerArguments.get().firmVersion();
-
 		if (maybeVersion.isPresent()) {
 			var version = maybeVersion.get();
 			LOGGER.info("picked up firm version override to: %s", version);
@@ -132,6 +132,9 @@ public class FirmBuilder {
 		}
 		if (opts.tailCallOptimization()) {
 			builder.addGraphStep(TailCallOptimization.tailCallOptimization());
+		}
+		if (opts.loopInvariant()) {
+			builder.addGraphStep(LoopInvariantOptimization.loopInvariantOptimization());
 		}
 
 		Optimizer optimizer = builder.build();

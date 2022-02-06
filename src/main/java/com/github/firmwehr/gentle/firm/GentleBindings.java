@@ -35,6 +35,25 @@ public enum GentleBindings {
 	}
 
 	/**
+	 * Returns the immediate dominator of block.
+	 *
+	 * @param block the block to get the idom for
+	 *
+	 * @return the idom
+	 */
+	public static native Pointer get_Block_idom(Pointer block);
+
+	/**
+	 * Check, if a block dominates another block.
+	 *
+	 * @param a The potential dominator block.
+	 * @param b The potentially dominated block.
+	 *
+	 * @return 1, if @p a dominates @p b, else 0.
+	 */
+	public static native boolean block_dominates(Pointer a, Pointer b);
+
+	/**
 	 * Returns the root loop info (if exists) for an irg.
 	 *
 	 * @param irg the pointer to the firm graph
