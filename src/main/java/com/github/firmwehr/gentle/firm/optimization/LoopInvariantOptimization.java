@@ -28,10 +28,9 @@ public class LoopInvariantOptimization {
 	private final LoopTree2 loopTree;
 	private boolean hasChanged;
 
-	private LoopInvariantOptimization(Graph graph) {
+	private LoopInvariantOptimization(Graph graph, LoopTree2 loopTree) {
 		this.graph = graph;
-
-		this.loopTree = new LoopTree2(graph);
+		this.loopTree = loopTree;
 	}
 
 	public static GraphOptimizationStep<Graph, Boolean> loopInvariantOptimization() {
@@ -43,7 +42,12 @@ public class LoopInvariantOptimization {
 
 				int runs = 0;
 				while (true) {
-					LoopInvariantOptimization loopInvariantOptimization = new LoopInvariantOptimization(graph);
+					Optional<LoopTree2> loopTree = LoopTree2.forGraph(graph);
+					if (loopTree.isEmpty()) {
+						return false;
+					}
+					LoopInvariantOptimization loopInvariantOptimization =
+						new LoopInvariantOptimization(graph, loopTree.get());
 					loopInvariantOptimization.applyLoopInvariantOptimization();
 
 					if (!loopInvariantOptimization.hasChanged) {

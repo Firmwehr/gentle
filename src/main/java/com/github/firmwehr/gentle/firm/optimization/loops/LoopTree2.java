@@ -1,10 +1,8 @@
 package com.github.firmwehr.gentle.firm.optimization.loops;
 
-import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.firm.GentleBindings;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.output.Logger;
-import com.google.common.collect.Sets;
 import com.google.common.graph.GraphBuilder;
 import com.google.common.graph.MutableGraph;
 import firm.Graph;
@@ -29,16 +27,14 @@ public class LoopTree2 {
 	private final Graph graph;
 	private final BlockBackedges blockBackedges;
 
-	public LoopTree2(Graph graph) {
+	private LoopTree2(Graph graph) {
 		this.graph = graph;
 		this.tree = GraphBuilder.directed().allowsSelfLoops(true).build();
 
 		this.blockBackedges = new BlockBackedges(graph);
-
-		recompute();
 	}
 
-	private void recompute() {
+	private boolean recompute() {
 		Set.copyOf(tree.nodes()).forEach(tree::removeNode);
 
 		Map<Block, Set<Block>> headToTails = new HashMap<>();
@@ -63,7 +59,11 @@ public class LoopTree2 {
 			Set<Block> blocks = new HashSet<>();
 
 			for (Block tail : entry.getValue()) {
-				blocks.addAll(findBlocksBetween(tail, head));
+				Optional<Set<Block>> blocksBetween = findBlocksBetween(tail, head);
+				if (blocksBetween.isEmpty()) {
+					return false;
+				}
+				blocks.addAll(blocksBetween.get());
 			}
 
 			headToInnerNodes.put(head, blocks);
@@ -74,9 +74,11 @@ public class LoopTree2 {
 				tree.putEdge(entry.getKey(), inner);
 			}
 		}
+
+		return true;
 	}
 
-	private Set<Block> findBlocksBetween(Block tail, Block head) {
+	private Optional<Set<Block>> findBlocksBetween(Block tail, Block head) {
 		Set<Block> blocks = new HashSet<>();
 		Queue<Block> worklist = new ArrayDeque<>();
 		worklist.add(tail);
@@ -99,8 +101,7 @@ public class LoopTree2 {
 				.collect(Collectors.toSet());
 
 			if (preds.isEmpty()) {
-				// TODO: Do sth nicer.
-				throw new InternalCompilerException("Found irreducible control flow");
+				return Optional.empty();
 			}
 
 			worklist.addAll(preds);
@@ -108,34 +109,7 @@ public class LoopTree2 {
 
 		blocks.add(head);
 
-		return blocks;
-	}
-
-	public Optional<Block> getInnermostLoopHeader(Block block) {
-		Set<Block> headers = getLoopHeaders(block);
-
-		if (headers.isEmpty()) {
-			return Optional.empty();
-		}
-
-		for (Block potentialHeader : headers) {
-			Sets.SetView<Block> parents = Sets.intersection(tree.predecessors(potentialHeader), headers);
-			// Our loop header has the same amount of parents as the block we are looking for. This should work, as
-			// the header points to itself as well and therefore should have the same parents as hour block.
-			if (parents.size() == headers.size()) {
-				return Optional.of(potentialHeader);
-			}
-		}
-
-		throw new InternalCompilerException("Did not find an innermost loop header for " + block);
-	}
-
-	public Set<Block> getLoopHeaders(Block block) {
-		return Set.copyOf(tree.predecessors(block));
-	}
-
-	public Set<Node> getLoopBody(Block block) {
-		return Set.copyOf(tree.successors(block));
+		return Optional.of(blocks);
 	}
 
 	public int getLoopDepth(Block block) {
@@ -143,5 +117,14 @@ public class LoopTree2 {
 			return 0;
 		}
 		return tree.predecessors(block).size();
+	}
+
+	public static Optional<LoopTree2> forGraph(Graph graph) {
+		LoopTree2 tree = new LoopTree2(graph);
+		if (!tree.recompute()) {
+			return Optional.empty();
+		}
+
+		return Optional.of(tree);
 	}
 }
