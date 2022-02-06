@@ -127,6 +127,12 @@ public interface CommandArguments {
 	@Option(names = "--no-tco", description = "don't optimize tail calls")
 	boolean noTco();
 
+	@Option(names = "--loop-invariant", description = "move loop-invariant expressions up")
+	boolean loopInvariant();
+
+	@Option(names = "--no-loop-invariant", description = "don't move loop-invariant expressions up")
+	boolean noLoopInvariant();
+
 	@Option(names = "--reorder", description = "reorder inputs of binary ops")
 	boolean reorder();
 

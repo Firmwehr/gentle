@@ -256,6 +256,7 @@ public class ConstantFolding extends NodeVisitor.Default {
 			}
 			block.setPred(i, predBlock.getPred(0));
 			LOGGER.debug("deletable %s in the middle of %s and %s", predBlock, block, predBlock.getPred(0));
+			hasChangedInCurrentIteration = true;
 		}
 	}
 

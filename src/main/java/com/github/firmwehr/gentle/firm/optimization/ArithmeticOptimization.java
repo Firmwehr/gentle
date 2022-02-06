@@ -113,7 +113,7 @@ public class ArithmeticOptimization extends NodeVisitor.Default {
 	private boolean hasChanged;
 	private final Graph graph;
 
-	public ArithmeticOptimization(Graph graph) {
+	private ArithmeticOptimization(Graph graph) {
 		this.graph = graph;
 	}
 
