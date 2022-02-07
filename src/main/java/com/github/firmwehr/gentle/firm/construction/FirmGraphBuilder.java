@@ -162,6 +162,12 @@ public class FirmGraphBuilder {
 	}
 
 	private void processStatement(Context context, SStatement statement) {
+		if (context.isReturning(context.construction.getCurrentBlock())) {
+			// Somewhere in the current (firm) block, an unconditional return exists. Don't process this statement as
+			// it would be dead code and must not be executed anyways.
+			return;
+		}
+
 		switch (statement) {
 			case SBlock block -> processBlock(context, block.statements());
 			case SExpressionStatement expressionStatement -> processValueExpression(context,
@@ -175,9 +181,6 @@ public class FirmGraphBuilder {
 	private void processBlock(Context context, List<SStatement> block) {
 		for (SStatement statement : block) {
 			processStatement(context, statement);
-			if (statement instanceof SReturnStatement) {
-				return; // don't process dead code
-			}
 		}
 	}
 
