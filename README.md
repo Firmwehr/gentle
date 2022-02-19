@@ -21,10 +21,26 @@ All of this was done by [@Chrisliebaer](https://github.com/chrisliebaer), [@Garm
 and [@SirYWell](https://github.com/SirYwell).
 
 # How to compile and run it
-TODO: docker image, gradlew
+This project is using gradle for compilation. So if you are familiar with gradle, you can simply build the project as
+you are used to. You can also use the `build` and `run` scripts, which where used by both the benchmark and testing suite.
+We also build a Docker image which you can find on ghcr.io or build yourself by using the provided `Dockerfile`.
 
 # Features
-TODO: features, optimization stages
+Gentle is a fully functional Mini-Java-Compiler, which is a limited subset of Java without most object-oriented
+features. It contains all required compilation stages as well as the following optimizations:
+
+* Algebraische Identitäten
+* Boolean Optimization
+* Escapeanalyse
+* Global Value Numbering
+* Konstantenfaltung
+* Kontrollflussoptimierungen
+* Loop-invariant code motion
+* Method Inlining
+* Pure Function Analysis
+* Strength Reduction
+* Unused Parameter Elimination
+
 
 # Feedback
 TODO: feedback
