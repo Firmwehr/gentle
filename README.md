@@ -29,21 +29,37 @@ We also build a Docker image which you can find on ghcr.io or build yourself by 
 Gentle is a fully functional Mini-Java-Compiler, which is a limited subset of Java without most object-oriented
 features. It contains all required compilation stages as well as the following optimizations:
 
-* Algebraische Identitäten
-* Boolean Optimization
-* Escapeanalyse
+* Algebraic Identity Transformation
+* Boolean Optimizations
+* Escape Analysis
 * Global Value Numbering
-* Konstantenfaltung
-* Kontrollflussoptimierungen
+* Constant folding (this one was required)
+* Control Flow Optimizations
 * Loop-invariant code motion
 * Method Inlining
 * Pure Function Analysis
 * Strength Reduction
 * Unused Parameter Elimination
 
+Sadly we were unable to produce a proper register allocator which meant that the final submission was always loading
+and storing the operands from stack. We were not required to have any form of register allocation but it would have
+been nice, since the produced binary is actually really slow and would have benefited greatly from having a solid
+register allocation.
 
-# Feedback
-TODO: feedback
+# Summary
+There was an optional competition for generating the fastest binaries, that we probably had very good chances of winning,
+given the capabilities of our code transformations during optimization. If it weren't for having not register allocation at all
+We ended up third place, which is right in the middle and was probably due to gentle being very robust, winning simply
+by default, for generating working binaries, where other compilers failed.
+
+Despite that, we had lots of fun working on this project and really learned a lot about compilers. We had to invest
+quite a lot of time, probably than you would in other courses, but who cares if you enjoy it? It's probably not advised
+to take this course if you are not interested and just want to get easy credits.
+
+As this repository demonstrates, we also went ham with the CI pipeline, creating multiple tests and unnecessary tools to
+save a few hours in total, that we never got back. On of which is [Flammenwehrfer](https://github.com/Flammenwehrfer),
+our cross-repository test bot, that would run all tests from our shared test framework against every groups current
+compiler, informing them if a test case broken their compiler.
 
 # FAQ
 The following section serves to answer what we believe to be common questions one might have, especially if you are a
@@ -64,15 +80,20 @@ language but focus on the optimizations and code generation. Here is a quick sum
 * no constructors / no overloading / no visibility modifiers (or any modifiers)
 * no static variables, `public static void main(String[])` is only static method (and kept to stay mostly compatible
   with Java)
-* TODO
 
 ## But isn't Java using garbage collection and supposed to run everywere?
 The Java language itself only tells us the semantics of the language. It does in fact not specify the requirement of a
 garbage collector. That's the job of the JVM specification. There is nothing preventing you from compiling it directly
-to native code. (TODO: fact check, elaborate)
+to native code.
 
 ## This sounds really complicated, how did you not get overwhelmed?
 For starters, don't make mistakes, duh. (If you do, blame someone else, the last person to have merged code
 into `master` is a good candidate to start with. If it was you, blame the person who wrote the failing test.)
 
-Part of the assignments was to contribute test cases shared by all competing groups. (TODO: continue tomorrow)
+Part of the assignments was to contribute test cases to a common pool of tests, shared by all competing groups. This
+way we had solid foundation of test cases, that we could all use to test our compiler against. However as we later
+learned, our collection of tests turned out to be very lackluster, failing to spot quite a lot of very basic cases,
+which meant that we had to rely quite often on our mentors, who would have their own test suite from all the years before
+us combined. Towards the end of the project we started using [jazzer](https://github.com/CodeIntelligenceTesting/jazzer)
+which was kind of eye-opening, as it was able to spit out bugs faster than any test before that ever could, despite
+being hand-crafted.
