@@ -1,50 +1,121 @@
-This repository contains the result of a [compiler course](https://pp.info.uni-karlsruhe.de/lehre/WS202122/compprakt/)
-that we took during the winter term 2021/22 at [Karlsruher Institut für Technologie](https://www.kit.edu/). The task was
-to implement a fully functional compiler for a subset of the Java language. This included (besides other things)
-lexing the input, constructing an abstract syntax tree, transforming the programm
-into [SSA form](https://en.wikipedia.org/wiki/Static_single_assignment_form) and running optimizations, before
-outputting x86 assembly.
+<div align="center">
+  <h1>Gentle</h1>
+</div>
 
-Most of the intermediate steps were to be done by using the research group's own compiler
-library [libFirm](https://pp.ipd.kit.edu/firm/). Firm offers fully graph-based code representation and comes with a C99
-frontend, enabling it to output optimized code for both x86 and SPARC architectures. While we were free to use whatever
-part of the library we wanted during development, the final submission was only allowed to use basic primitives of
-libfirm to interact with the graph. This meant that both optimizations and code generation had to done by our own
-compiler. So calling our compiler `gentle` was the only logical thing do to.
+Gentle is a compiler for a Java subset called "MiniJava" and was developed during the
+2021/22 [compiler construction course](https://pp.info.uni-karlsruhe.de/lehre/WS202122/compprakt/)
+at [Karlsruher Institut für Technologie](https://www.kit.edu/).
+In this course, students implement a fully-functional compiler from the ground
+up. Gentle is comprised of
+- a simple string-based lexer
+- a recursive-descent parser utilizing precedence climbing for expressions
+  and building an abstract syntax tree
+- a semantic analysis and conversion step, attributing our AST, enriching it
+  with e.g. type information and ensuring programs are semantically valid
+- a conversion into the [libFirm](https://pp.ipd.kit.edu/firm/) SSA-based
+  intermediate representation (IR)
+- many optimizations operating on the libFirm IR
+- a backend step lowering the libFirm IR to our own Ikea-IR
+- a final step generating x86-64 assembly
+- invoking gcc to assemble and link the output with our custom runtime
 
-The task were do be done in groups of four to five students, competing to compile the fastest *correct* binaries (
-without taking forever to do so). We choose to implement our compiler in Java, simply for the fact, that we all had a
-lot of experience using it and [bindings were already available](https://pp.ipd.kit.edu/git/jFirm/).
 
-All of this was done by [@Chrisliebaer](https://github.com/chrisliebaer), [@Garmelon](https://github.com/Garmelon),
-[@I-Al-Istannen](https://github.com/I-Al-Istannen), [@pbrinkmeier](https://github.com/pbrinkmeier)
-and [@SirYWell](https://github.com/SirYwell).
+## Intermediate Representations
+As mentioned above, our compiler makes heavy use of the FIRM intermediate
+representation using [libFirm](https://libfirm.github.io/). Firm is a
+graph-based intermediate representation in
+[SSA form](https://en.wikipedia.org/wiki/Static_single_assignment_form) and
+libFirm offers a C99 frontend (`cparser`) and can output optimized assembly for
+multiple architectures, including x86 (32/64 bit), RISC-V 32, MIPS and a few
+more.
 
-# How to compile and run it
-This project is using gradle for compilation. So if you are familiar with gradle, you can simply build the project as
-you are used to. You can also use the `build` and `run` scripts, which where used by both the benchmark and testing suite.
-We also build a Docker image which you can find on ghcr.io or build yourself by using the provided `Dockerfile`.
+We weren't allowed to use many of the conveniences and analysis results libFirm
+computes, so our compiler only depends on the graph structure, the initial
+insertion of Phis to build up a proper SSA structure and dominance to properly
+implement global value numbering.
+
+
+## Integrating libFirm
+libFirm is written in C and must therefore be called using JNI - the Java
+native interface. Thankfully, there is already a library providing JNA (Java
+native access) bindings for it: [jFirm](https://pp.ipd.kit.edu/git/jFirm/). We
+forked this project, converted it a more standard maven build and included a
+few pre-built native binaries. This ensures that gentle is self-contained and
+can be run on its own, without needing to also manually compile and provide a
+libFirm binary. You can find this fork
+[in our organization](https://github.com/Firmwehr/jFirm).
+
+
+## Organization and authors
+As you can't effectively build a compiler with 20 people working all over each
+other, we were split in groups of four to five students. Each group created
+their own compiler for the same MiniJava language, but the approaches,
+workflows and even programming languages varied considerably.
+
+Our group consisted of [@Chrisliebaer](https://github.com/chrisliebaer),
+[@Garmelon](https://github.com/Garmelon),
+[@I-Al-Istannen](https://github.com/I-Al-Istannen),
+[@pbrinkmeier](https://github.com/pbrinkmeier) and
+[@SirYWell](https://github.com/SirYwell).
+
+
+# Getting started
+The easiest way to get started is using the `build` and `run` scripts in the
+root directory. These scripts are used by CI and also the benchmark and testing
+suite - they should work out of the box.
+
+Additionally, we also provide a docker image built with
+[jib](https://github.com/GoogleContainerTools/jib) which is automatically
+pushed to the github container registry. You can find it
+[here](https://github.com/Firmwehr/gentle/pkgs/container/gentle).
+
+Finally, if you are familiar with gradle, you can also directly build gentle using it.
+The `build` script is just a thin wrapper around `distInstall`.
 
 # Features
-Gentle is a fully functional Mini-Java-Compiler, which is a limited subset of Java without most object-oriented
-features. It contains all required compilation stages as well as the following optimizations:
+Gentle supports every feature MiniJava has to offer, but you will have to live
+without some conveniences. Notably, MiniJava does not contain any
+object-oriented features like inheritance or some basic concepts like
+`for`-loops or a `String` type. This doesn't stop you from writing proper
+programs in it though! Our team produced a working from-scratch
+re-implementation of the classic AsciiQuarium as well as a fully-functional
+fraction-based raytracer. Some dedicated individuals even re-implemented
+bitwise operations using addition, subtraction, multiplication and division
+resulting in a few beautiful images of Voronoi-noise.
 
-* Algebraic Identity Transformation
-* Boolean Optimizations
-* Escape Analysis
-* Global Value Numbering
-* Constant folding (this one was required)
-* Control Flow Optimizations
-* Loop-invariant code motion
-* Method Inlining
-* Pure Function Analysis
-* Strength Reduction
-* Unused Parameter Elimination
+## Optimizations
+Gentle has quite a few optimizations, many of which do indeed rapidly speed up
+the produced binaries. The main choke point currently is the lack of a proper
+register allocator. The "Lego" backend contains a WIP graph coloring register
+allocator, but that didn't get finished in time. It can produce valid coloring
+for simple programs, but has problems with anything else. Turns out, graph
+based register allocation isn't easy :) The implemented optimizations are quite
+decent and it would have been interesting to see how fast the compiler would be
+with a proper backend.
 
-Sadly we were unable to produce a proper register allocator which meant that the final submission was always loading
-and storing the operands from stack. We were not required to have any form of register allocation but it would have
-been nice, since the produced binary is actually really slow and would have benefited greatly from having a solid
-register allocation.
+Currently gentle implements the following optimizations:
+* **Algebraic identities** (distributive, associative, additive/multiplicative
+  identities and many more)
+* **Boolean optimizations** (e.g. elimination of unnecessary jumps)
+* **Escape analysis** (able to completely omit allocating objects or statically
+  accessed arrays)
+* **Global Value Numbering** (a form of common subexpression elimination)
+* **Constant folding (this one was required)** (computes constant expressions
+  at compile-time)
+* **Control Flow Optimizations** (e.g. omit unnecessary jumps, merge blocks
+  where possible, …)
+* **Loop-invariant code motion** (move computations outside of loops if they
+  don't depend on the iteration)
+* **Method Inlining** (essentially copy-paste one method into all callsites)
+* **Pure Function Analysis** (e.g. deduplicate calls to pure functions or omit
+  calling them if the result is never used)
+* **Strength Reduction** (e.g. convert costly divisions and multiplications
+  into bit shifts)
+* **Unused Parameter Elimination** (remove parameters from methods if they are
+  never used)
+
+Current rewrite border
+----
 
 # Summary
 There was an optional competition for generating the fastest binaries, that we probably had very good chances of winning,
