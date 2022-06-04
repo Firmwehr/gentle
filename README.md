@@ -39,7 +39,7 @@ implement global value numbering.
 libFirm is written in C and must therefore be called using JNI - the Java
 native interface. Thankfully, there is already a library providing JNA (Java
 native access) bindings for it: [jFirm](https://pp.ipd.kit.edu/git/jFirm/). We
-forked this project, converted it a more standard maven build and included a
+forked this project, converted it to a more standard maven build and included a
 few pre-built native binaries. This ensures that gentle is self-contained and
 can be run on its own, without needing to also manually compile and provide a
 libFirm binary. You can find this fork
@@ -86,7 +86,7 @@ resulting in a few beautiful images of Voronoi-noise.
 ## Optimizations
 Gentle has quite a few optimizations, many of which do indeed rapidly speed up
 the produced binaries. The main choke point currently is the lack of a proper
-register allocator. The "Lego" backend contains a WIP graph coloring register
+register allocator. The "Lego" backend contains a work-in-progress graph coloring register
 allocator, but that didn't get finished in time. It can produce valid coloring
 for simple programs, but has problems with anything else. Turns out, graph
 based register allocation isn't easy :) The implemented optimizations are quite
@@ -163,14 +163,14 @@ for the first day of Advent Of Code and a few more larger programs.
 To better understand what we are dealing with, you can find a summary of Mini-Java below:
 
 * (mostly) a subset of Java
-* no dynamic binding / interfaces / vtables
+* no dynamic binding, interfaces or vtables
 * only one input file
 * **very** basic IO (only able to read and write to/from `stdin/stdout`)
-* no memory managment, memory will never be `free`-ed
-* no constructors / no overloading / no visibility modifiers (or any modifiers)
+* no memory management, memory will never be `free`-ed
+* no constructors, no overloading and no visibility modifiers (or any modifiers)
 * no static variables and methods
 
-## But isn't Java using garbage collection and supposed to run everywere?
+## But isn't Java using garbage collection and supposed to run everywhere?
 The Java language itself only defines the *semantics* of the language, not implementation details.
 It does, in fact, *not* require a garbage collector.
 There is nothing preventing you from compiling it directly to native code and
