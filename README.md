@@ -69,7 +69,7 @@ Additionally, we also provide a docker image built with
 pushed to the github container registry. You can find it
 [here](https://github.com/Firmwehr/gentle/pkgs/container/gentle).
 
-Finally, if you are familiar with gradle, you can also directly build gentle using it.
+Finally, if you are familiar with Gradle, you can also directly build gentle using it.
 The `build` script is just a thin wrapper around `distInstall`.
 
 # Features
