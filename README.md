@@ -93,7 +93,7 @@ based register allocation isn't easy :) The implemented optimizations are quite
 decent and it would have been interesting to see how fast the compiler would be
 with a proper backend.
 
-Currently gentle implements the following optimizations:
+Currently, gentle implements the following optimizations:
 * **Algebraic identities** (distributive, associative, additive/multiplicative
   identities and many more)
 * **Boolean optimizations** (e.g. elimination of unnecessary jumps)
