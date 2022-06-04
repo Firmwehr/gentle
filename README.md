@@ -114,57 +114,85 @@ Currently gentle implements the following optimizations:
 * **Unused Parameter Elimination** (remove parameters from methods if they are
   never used)
 
-Current rewrite border
-----
-
 # Summary
-There was an optional competition for generating the fastest binaries, that we probably had very good chances of winning,
-given the capabilities of our code transformations during optimization. If it weren't for having not register allocation at all
-We ended up third place, which is right in the middle and was probably due to gentle being very robust, winning simply
-by default, for generating working binaries, where other compilers failed.
+To spice up the course a bit a competition was held and a prize awarded for the
+compiler producing the fastest (and correct of course!) binaries.
+Gentle has quite a few interesting optimizations but some major parts, like
+load-store optimizations and especially register allocation, weren't finished in
+time.
 
-Despite that, we had lots of fun working on this project and really learned a lot about compilers. We had to invest
-quite a lot of time, probably than you would in other courses, but who cares if you enjoy it? It's probably not advised
-to take this course if you are not interested and just want to get easy credits.
+Despite this we had lots of fun working on the project and learned a lot about
+how compilers work and why they do(n't do) certain things.
+Learning this on our own time and happily cooking up weird optimizations beyond
+what was needed took up considerable time though and far exceeded what the
+course credits suggest.
+If you are interested in compilers and have fun hacking away on one, the course
+is still a good choice :)
 
-As this repository demonstrates, we also went ham with the CI pipeline, creating multiple tests and unnecessary tools to
-save a few hours in total, that we never got back. On of which is [Flammenwehrfer](https://github.com/Flammenwehrfer),
-our cross-repository test bot, that would run all tests from our shared test framework against every groups current
-compiler, informing them if a test case broken their compiler.
+As our team consisted of quite a few people with an interest in modern software
+development practices, we also went ham with our CI pipeline and static
+analysis tools, resulting in a quite robust and stable compiler.
+During the course we integrated Qodana, wrote a Github Action to interpret its
+output, created a docker image, standardized on a development workflow with
+mandatory code review and also wrote
+[Flammenwehrfer](https://github.com/Flammenwehrfer) while we were at it.
+Flammenwehrfer is our cross-repository test bot, runing all tests from our
+shared test framework against the compilers of every group, opening and closing
+github issues depending on how well their compiler coped with new tests.
+Not yet satisfied with the existential dread we caused, we continued on and
+wrote an annotation processor parsing Ascii-Art program graphs and emitting
+type-safe tree matching code we could use from java.
 
 # FAQ
-The following section serves to answer what we believe to be common questions one might have, especially if you are a
-fellow student and consider taking this course.
+The following section serves to answer what we believe to be common questions,
+especially if you are a fellow student and consider taking this course.
 
-## What Language does it compile? Is it a real compiler?
+## What language does it compile? Is it a real compiler?
 gentle is able to compile *Mini-Java*. Mini-Java is a subset of Java (technically it contains programs which would be
-invalid in Java due to some edge cases). The language has been purposfully modified to reduce the scope of supported
-language features while maintaining all essential control primitives. You might have realized that this results in a
-very clunky to use language and you are correct. However the goal of this course was not in fact to engineer a good
-language but focus on the optimizations and code generation. Here is a quick summary of most of Mini-Java's key aspects.
+invalid in Java due to some edge cases).
+The language has been purposfully modified to reduce the scope of supported
+language features while maintaining all essential control primitives.
+It completly elides polymorphism, for a start, but also simpler things like for loops:
+After all, a `while` statement is perfectly sufficient!
+You might suspect that writing programs in MiniJava would be extremely tedious as a result and no sane person would try to write code in it.
+This isn't wrong, but as you might have notices by now we are *far* from sane.
+During the course we wrote our own from-scratch version of the popular
+asciiquarium, a brainfuck interpreter, a fraction-based raytracer, a solution
+for the first day of Advent Of Code and a few more larger programs.
 
-* mostly subset of Java
+To better understand what we are dealing with, you can find a summary of Mini-Java below:
+
+* (mostly) a subset of Java
 * no dynamic binding / interfaces / vtables
 * only one input file
 * **very** basic IO (only able to read and write to/from `stdin/stdout`)
 * no memory managment, memory will never be `free`-ed
 * no constructors / no overloading / no visibility modifiers (or any modifiers)
-* no static variables, `public static void main(String[])` is only static method (and kept to stay mostly compatible
-  with Java)
+* no static variables and methods
 
 ## But isn't Java using garbage collection and supposed to run everywere?
-The Java language itself only tells us the semantics of the language. It does in fact not specify the requirement of a
-garbage collector. That's the job of the JVM specification. There is nothing preventing you from compiling it directly
-to native code.
+The Java language itself only defines the *semantics* of the language, not implementation details.
+It does, in fact, *not* require a garbage collector.
+There is nothing preventing you from compiling it directly to native code and
+there exist projects that do just that (e.g. Oracle's `graal` native-image).
 
 ## This sounds really complicated, how did you not get overwhelmed?
-For starters, don't make mistakes, duh. (If you do, blame someone else, the last person to have merged code
-into `master` is a good candidate to start with. If it was you, blame the person who wrote the failing test.)
+Quite simple: Don't make mistakes, duh.
+(If you do, blame someone else! The last person to have merged code into
+`master` is a good candidate to start with. If it was you or you reviewed it,
+blame the person who wrote the failing test. Resort to
+[git-blame-someone-else](https://github.com/jayphelps/git-blame-someone-else)
+if necessary.)
 
-Part of the assignments was to contribute test cases to a common pool of tests, shared by all competing groups. This
-way we had solid foundation of test cases, that we could all use to test our compiler against. However as we later
-learned, our collection of tests turned out to be very lackluster, failing to spot quite a lot of very basic cases,
-which meant that we had to rely quite often on our mentors, who would have their own test suite from all the years before
-us combined. Towards the end of the project we started using [jazzer](https://github.com/CodeIntelligenceTesting/jazzer)
-which was kind of eye-opening, as it was able to spit out bugs faster than any test before that ever could, despite
-being hand-crafted.
+Part of the assignment was to contribute test cases to a common pool, shared by all groups.
+This ensured a solid foundation of test cases existed.
+However, as we later learned, our collection of tests turned out to be very lackluster.
+It failed to spot quite a lot of very basic bugs, forcing us to rely on our mentors to report bugs in our weekly meetings.
+They could fall back on the combined test suite of all the years before us,
+allowing them to uncover bugs a lot more efficiently.
+
+Towards the end of the project we started using
+[jazzer](https://github.com/CodeIntelligenceTesting/jazzer) which was
+eye-opening: It found a bug we were stumped on for a week in a few minutes and
+continued to produce bugs crashing our compiler, the compiler of other groups
+and even the holy reference compiler itself.
