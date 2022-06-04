@@ -66,7 +66,7 @@ suite - they should work out of the box.
 
 Additionally, we also provide a docker image built with
 [jib](https://github.com/GoogleContainerTools/jib) which is automatically
-pushed to the github container registry. You can find it
+pushed to the GitHub Container Registry. You can find it
 [here](https://github.com/Firmwehr/gentle/pkgs/container/gentle).
 
 Finally, if you are familiar with Gradle, you can also directly build gentle using it.
