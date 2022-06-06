@@ -149,10 +149,10 @@ especially if you are a fellow student and consider taking this course.
 
 ## What language does it compile? Is it a real compiler?
 Gentle is able to compile *Mini-Java*. Mini-Java is a subset of Java - technically it contains programs which would be
-invalid in Java due to some edge cases).
-The language has been purposfully modified to reduce the scope of supported
+invalid in Java due to some edge cases.
+The language has been purposefully modified to reduce the scope of supported
 language features while maintaining all essential control primitives.
-It completly elides polymorphism, for a start, but also simpler things like for loops:
+It completely elides polymorphism, for a start, but also simpler things like for loops:
 After all, a `while` statement is perfectly sufficient!
 You might suspect that writing programs in MiniJava would be extremely tedious as a result and no sane person would try to write code in it.
 This isn't wrong, but as you might have noticed by now we are *far* from sane.
