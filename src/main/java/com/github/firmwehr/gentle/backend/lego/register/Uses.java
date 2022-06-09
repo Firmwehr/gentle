@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
+@SuppressWarnings("UnstableApiUsage")
 public class Uses {
 
 	private static final Logger LOGGER = new Logger(Uses.class);
@@ -59,10 +60,16 @@ public class Uses {
 		boolean excludeFrom,
 		Set<LegoPlate> visitedBlocks
 	) {
-		// We found an (in-)direct loop. No need to look in that block again, if there is a use in there we found it
-		// already via a shorter path.
-		if (!visitedBlocks.add(from.block())) {
-			return Optional.empty();
+		if (from.block().nodes().indexOf(from) == 0) {
+			// We found an (in-)direct loop. No need to look in that block again, if there is a use in there we
+			// found it already via a shorter path.
+			if (!visitedBlocks.add(from.block())) {
+				return Optional.empty();
+			}
+		} else {
+			// If we are in a loop the next use might be above us (e.g. if the start of the loop body uses a value and
+			// from is in the middle of the loop body)
+			LOGGER.debug("Not marking %s as visited as we started in the middle", from.block());
 		}
 
 		int fromLoopDepth = loopTree.getBlockElement(from.block().origin()).depth();

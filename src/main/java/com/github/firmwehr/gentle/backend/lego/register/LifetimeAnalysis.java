@@ -38,6 +38,8 @@ public class LifetimeAnalysis {
 
 	public void recompute() {
 		LOGGER.info("Building lifetimes");
+		this.liveness.clear();
+
 		Set<LegoPlate> seen = new HashSet<>();
 
 		Queue<LegoPlate> worklist = new ArrayDeque<>(controlFlowGraph.getEnds());

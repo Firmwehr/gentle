@@ -29,6 +29,7 @@ import com.github.firmwehr.gentle.backend.lego.nodes.LegoProj;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoRet;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSal;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSar;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoSetcc;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoShr;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSub;
 import com.github.firmwehr.gentle.backend.lego.register.Belady;
@@ -36,12 +37,14 @@ import com.github.firmwehr.gentle.backend.lego.register.CalleeSavedPrepare;
 import com.github.firmwehr.gentle.backend.lego.register.ConstraintNodePrepare;
 import com.github.firmwehr.gentle.backend.lego.register.ControlFlowGraph;
 import com.github.firmwehr.gentle.backend.lego.register.Dominance;
+import com.github.firmwehr.gentle.backend.lego.register.LegoRegisterRequirement;
 import com.github.firmwehr.gentle.backend.lego.register.LifetimeAnalysis;
 import com.github.firmwehr.gentle.backend.lego.register.LowerPerms;
 import com.github.firmwehr.gentle.backend.lego.register.PerfectElimationOrderColorer;
 import com.github.firmwehr.gentle.backend.lego.register.Spillprepare;
 import com.github.firmwehr.gentle.backend.lego.register.Uses;
 import com.github.firmwehr.gentle.backend.lego.register.X86Register;
+import com.github.firmwehr.gentle.backend.lego.simplereg.Scanny;
 import com.github.firmwehr.gentle.firm.Util;
 import com.github.firmwehr.gentle.firm.model.LoopTree;
 import com.github.firmwehr.gentle.output.Logger;
@@ -69,6 +72,7 @@ import firm.nodes.Load;
 import firm.nodes.Minus;
 import firm.nodes.Mod;
 import firm.nodes.Mul;
+import firm.nodes.Mux;
 import firm.nodes.NoMem;
 import firm.nodes.Node;
 import firm.nodes.NodeVisitor;
@@ -139,6 +143,7 @@ public class CodeSelection extends NodeVisitor.Default {
 
 				LegoPlate block = blocks.get((Block) node.getBlock());
 				LegoPhi legoPhi = new LegoPhi(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node));
+				LOGGER.debug("Created phi %s at start of %s", legoPhi, block);
 				nodes.put(node, legoPhi);
 				block.nodes().add(legoPhi);
 				legoGraph.addNode(legoPhi, List.of());
@@ -193,12 +198,19 @@ public class CodeSelection extends NodeVisitor.Default {
 					LegoNode input = inputs.get(inputIndex);
 
 					if (input instanceof LegoConst constNode) {
-						LegoConst newConst = new LegoConst(legoGraph.nextId(), block, legoGraph, input.size(),
+						LegoPlate blockToAdd = block;
+						int insertIndex = nodeIndex;
+						if (node instanceof LegoPhi) {
+							blockToAdd = block.parents().get(inputIndex).parent();
+							insertIndex = block.parents().get(inputIndex).parent().nodes().size() - 1;
+						} else {
+							nodeIndex++;
+						}
+						LegoConst newConst = new LegoConst(legoGraph.nextId(), blockToAdd, legoGraph, input.size(),
 							input.underlyingFirmNodes(), constNode.value());
 						legoGraph.addNode(newConst, List.of());
 						legoGraph.setInput(node, inputIndex, newConst);
-						block.nodes().add(nodeIndex, newConst);
-						nodeIndex++;
+						blockToAdd.nodes().add(insertIndex, newConst);
 					}
 				}
 			}
@@ -222,6 +234,22 @@ public class CodeSelection extends NodeVisitor.Default {
 
 		GraphDumper.dumpGraph(controlFlowGraph, "backend-init");
 
+		// fancyRegister(controlFlowGraph, dominance, liveliness, uses, loopTree);
+
+		new Scanny(controlFlowGraph, uses, liveliness, dominance).assignRegisters();
+
+		GraphDumper.dumpGraph(controlFlowGraph, "backend-ra");
+
+		return orderedBlocks;
+	}
+
+	private void fancyRegister(
+		ControlFlowGraph controlFlowGraph,
+		Dominance dominance,
+		LifetimeAnalysis liveliness,
+		Uses uses,
+		LoopTree loopTree
+	) {
 		CalleeSavedPrepare calleeSavedPrepare = new CalleeSavedPrepare(legoGraph, controlFlowGraph);
 		calleeSavedPrepare.prepare();
 		liveliness.recompute();
@@ -261,8 +289,6 @@ public class CodeSelection extends NodeVisitor.Default {
 		new LowerPerms(legoGraph, controlFlowGraph).lower();
 
 		GraphDumper.dumpGraph(controlFlowGraph, "lower-perms");
-
-		return orderedBlocks;
 	}
 
 	private Mut<Optional<X86Register>> noReg() {
@@ -350,13 +376,15 @@ public class CodeSelection extends NodeVisitor.Default {
 			.map(nodes::get)
 			.toList();
 
-		MethodType type = (MethodType) ((Address) node.getPtr()).getEntity().getType();
+		Address address = (Address) node.getPtr();
+		MethodType type = (MethodType) address.getEntity().getType();
 		LegoRegisterSize size = ILLEGAL;
 		if (type.getNRess() > 0 && !type.getResType(0).getMode().equals(Mode.getANY())) {
 			size = forMode(type.getResType(0).getMode());
 		}
 
-		LegoCall legoCall = new LegoCall(legoGraph.nextId(), block, legoGraph, size, List.of(node));
+		LegoCall legoCall =
+			new LegoCall(legoGraph.nextId(), block, legoGraph, size, List.of(node), address.getEntity());
 		legoGraph.addNode(legoCall, arguments);
 		nodes.put(node, legoCall);
 		block.nodes().add(legoCall);
@@ -442,13 +470,17 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		LegoPlate block = blocks.get((Block) node.getBlock());
-		LegoDiv legoDiv = new LegoDiv(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node));
+		boolean small = node.getLeft() instanceof Const cl && cl.getTarval().asInt() != Integer.MIN_VALUE ||
+			node.getRight() instanceof Const cr && cr.getTarval().asInt() != -1;
+		LegoDiv legoDiv =
+			new LegoDiv(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node), small);
 		nodes.put(node, legoDiv);
 		block.nodes().add(legoDiv);
 		legoGraph.addNode(legoDiv, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
 
 		LegoProj divProj =
 			new LegoProj(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node), 0, "div");
+		divProj.registerRequirement(LegoRegisterRequirement.singleRegister(X86Register.RAX));
 		block.nodes().add(divProj);
 		nodes.put(node, divProj);
 		legoGraph.addNode(divProj, List.of(legoDiv));
@@ -524,13 +556,17 @@ public class CodeSelection extends NodeVisitor.Default {
 		}
 
 		LegoPlate block = blocks.get((Block) node.getBlock());
-		LegoDiv legoDiv = new LegoDiv(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node));
+		boolean small = node.getLeft() instanceof Const cl && cl.getTarval().asInt() != Integer.MIN_VALUE ||
+			node.getRight() instanceof Const cr && cr.getTarval().asInt() != -1;
+		LegoDiv legoDiv =
+			new LegoDiv(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node), small);
 		nodes.put(node, legoDiv);
 		block.nodes().add(legoDiv);
 		legoGraph.addNode(legoDiv, List.of(nodes.get(node.getLeft()), nodes.get(node.getRight())));
 
 		LegoProj modProj =
 			new LegoProj(legoGraph.nextId(), block, legoGraph, forMode(node.getResmode()), List.of(node), 1, "mod");
+		modProj.registerRequirement(LegoRegisterRequirement.singleRegister(X86Register.RDX));
 		nodes.put(node, modProj);
 		block.nodes().add(modProj);
 		legoGraph.addNode(modProj, List.of(legoDiv));
@@ -549,6 +585,27 @@ public class CodeSelection extends NodeVisitor.Default {
 		nodes.put(node, legoMul);
 		block.nodes().add(legoMul);
 		legoGraph.addNode(legoMul, List.of(nodes.get(node.getLeft()), right));
+	}
+
+	@Override
+	public void visit(Mux node) {
+		// skip node if code selection has replaced it with better x86 specific op
+		if (preselection.hasBeenReplaced(node)) {
+			return;
+		}
+
+		LegoPlate block = blocks.get((Block) node.getBlock());
+		Relation relation = ((Cmp) node.getSel()).getRelation();
+
+		Pair<LegoCmp, LegoNode> pair = visitFromCond((Cmp) node.getSel());
+		LegoCmp cmp = pair.first();
+		LegoSetcc legoSetcc =
+			new LegoSetcc(legoGraph.nextId(), block, legoGraph, forMode(node), List.of(node), relation);
+		this.nodes.put(node, legoSetcc);
+		block.nodes().add(cmp);
+		block.nodes().add(legoSetcc);
+		legoGraph.addNode(cmp, List.of(this.nodes.get(((Cmp) node.getSel()).getLeft()), pair.second()));
+		legoGraph.addNode(legoSetcc, List.of(cmp));
 	}
 
 	@Override
@@ -717,6 +774,7 @@ public class CodeSelection extends NodeVisitor.Default {
 		LegoNode right = nodes.get(node);
 		if (node instanceof Const constant) {
 			right = new LegoImmediate(legoGraph.nextId(), block, legoGraph, constant);
+			block.nodes().add(right);
 		}
 		return right;
 	}

@@ -45,7 +45,9 @@ public class GentleCompiler {
 	private static final Logger LOGGER = new Logger(GentleCompiler.class);
 
 	public static void main(String[] args) {
-		LOGGER.info("Hello World, please be gentle UwU");
+		LOGGER.info(" ___________________________________\n" + "< Hello world, please be gentle UwU >\n" +
+			" -----------------------------------\n" + "        \\   ^__^\n" + "         \\  (oo)\\_______\n" +
+			"            (__)\\       )\\/\\\n" + "                ||----w |\n" + "                ||     ||");
 
 		try {
 			new CommandDispatcher().command(CommandArguments.ECHO, CommandArguments::echo, GentleCompiler::echoCommand)
@@ -281,12 +283,15 @@ public class GentleCompiler {
 		for (Graph graph : firm.Program.getGraphs()) {
 
 			com.github.firmwehr.gentle.backend.lego.codegen.CodePreselection codePreselection;
+			/*
 			if (CompilerArguments.optimizations().advancedCodeSelection()) {
 				codePreselection = new com.github.firmwehr.gentle.backend.lego.codegen.CodePreselectionMatcher(graph);
 			} else {
 				codePreselection = com.github.firmwehr.gentle.backend.lego.codegen.CodePreselection.DUMMY;
 			}
+			*/
 
+			codePreselection = com.github.firmwehr.gentle.backend.lego.codegen.CodePreselection.DUMMY;
 			preselectionCount += codePreselection.replacedSubtrees();
 
 			var codeSelection =

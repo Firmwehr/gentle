@@ -9,7 +9,7 @@ public record LegoRegisterRequirement(
 ) {
 
 	public boolean limited() {
-		return limitedTo.size() < X86Register.values().length;
+		return limitedTo.size() < X86Register.registerCount();
 	}
 
 	public static LegoRegisterRequirement gpRegister() {

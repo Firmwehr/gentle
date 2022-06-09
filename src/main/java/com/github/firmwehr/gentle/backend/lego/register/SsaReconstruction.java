@@ -3,8 +3,10 @@ package com.github.firmwehr.gentle.backend.lego.register;
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.lego.LegoParentBløck;
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoConst;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoNode;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoPhi;
+import com.github.firmwehr.gentle.output.Logger;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -14,6 +16,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SsaReconstruction {
+
+	private static final Logger LOGGER = new Logger(SsaReconstruction.class, Logger.LogLevel.DEBUG);
 
 	private final Dominance dominance;
 	private final Uses uses;
@@ -42,6 +46,10 @@ public class SsaReconstruction {
 	 * @param brokenVariable all variables that now have multiple definitions
 	 */
 	public void ssaReconstruction(LegoNode brokenVariable) {
+		if (brokenVariable instanceof LegoConst) {
+			throw new InternalCompilerException("Tried to reconstruct SSA for const value");
+		}
+
 		Set<LegoPlate> F = definitions.stream()
 			.flatMap(it -> dominance.getDominanceFrontier(it.block()).stream())
 			.collect(Collectors.toSet());
@@ -92,6 +100,7 @@ public class SsaReconstruction {
 				// TODO: This size calculation is a bit crude...
 				LegoPhi phi = new LegoPhi(use.graph().nextId(), use.block(), use.graph(),
 					brokenVariables.iterator().next().size(), List.of());
+				LOGGER.debug("Created phi %s at frontier when repairing %s", phi, brokenVariables);
 				use.block().nodes().add(0, phi);
 				List<LegoNode> phiParents = new ArrayList<>();
 

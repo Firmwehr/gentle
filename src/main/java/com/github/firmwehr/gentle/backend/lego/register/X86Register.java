@@ -4,7 +4,10 @@ import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.lego.LegoBøx;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoNode;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -49,10 +52,20 @@ public enum X86Register {
 	}
 
 	public static Set<X86Register> all() {
-		return EnumSet.allOf(X86Register.class);
+		EnumSet<X86Register> registers = EnumSet.allOf(X86Register.class);
+		registers.remove(RSP);
+		registers.remove(RBP);
+		return registers;
+	}
+
+	public static List<X86Register> allOrdered() {
+		List<X86Register> registers = new ArrayList<>(Arrays.asList(values()));
+		registers.remove(RSP);
+		registers.remove(RBP);
+		return registers;
 	}
 
 	public static int registerCount() {
-		return values().length;
+		return all().size();
 	}
 }

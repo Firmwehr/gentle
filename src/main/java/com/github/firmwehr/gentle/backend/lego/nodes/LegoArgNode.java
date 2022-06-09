@@ -12,6 +12,8 @@ import java.util.List;
 
 public class LegoArgNode extends LegoNode {
 
+	private static final boolean USE_CDECL = true;
+
 	private final int index;
 
 	public LegoArgNode(
@@ -35,8 +37,12 @@ public class LegoArgNode extends LegoNode {
 	 * Returns the offset of this argument in the stack.
 	 */
 	public int stackOffset() {
+		int offset = LegoCall.REGISTER_ORDER.size();
+		if (USE_CDECL) {
+			offset = 0;
+		}
 		Preconditions.checkState(!isPassedInRegister(), "Not on stack");
-		return (index - LegoCall.REGISTER_ORDER.size()) * 8 + 16;
+		return (index - offset) * 8 + 16;
 	}
 
 	@Override
@@ -50,6 +56,9 @@ public class LegoArgNode extends LegoNode {
 	}
 
 	public boolean isPassedInRegister() {
+		if (USE_CDECL) {
+			return false;
+		}
 		return index < LegoCall.REGISTER_ORDER.size();
 	}
 

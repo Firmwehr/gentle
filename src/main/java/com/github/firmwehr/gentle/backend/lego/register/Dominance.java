@@ -26,7 +26,7 @@ import static java.util.function.Predicate.not;
 @SuppressWarnings("UnstableApiUsage")
 public class Dominance {
 
-	private static final Logger LOGGER = new Logger(Dominance.class, Logger.LogLevel.DEBUG);
+	private static final Logger LOGGER = new Logger(Dominance.class);
 
 	private final MutableGraph<LegoNode> dominatorTree;
 	private final MutableGraph<LegoPlate> blockDominators;
@@ -47,6 +47,10 @@ public class Dominance {
 	}
 
 	public void recompute() {
+		blockDominators.nodes().stream().toList().forEach(blockDominators::removeNode);
+		dominatorTree.nodes().stream().toList().forEach(dominatorTree::removeNode);
+		dominanceFrontier.nodes().stream().toList().forEach(dominanceFrontier::removeNode);
+
 		computeDominance();
 		computeDominanceFrontier();
 	}
@@ -79,7 +83,7 @@ public class Dominance {
 				this.blockDominators.putEdge(dominator, block);
 			}
 			worklist.addAll(controlFlowGraph.outputBlocks(block));
-			LOGGER.debug("Adding succesors %s", controlFlowGraph.outputBlocks(block));
+			LOGGER.debug("Adding successors %s", controlFlowGraph.outputBlocks(block));
 		}
 
 		for (LegoPlate block : blockDominators.nodes()) {
@@ -90,6 +94,9 @@ public class Dominance {
 		}
 
 		for (LegoPlate block : controlFlowGraph.getAllBlocks()) {
+			// Model strict dominance
+			this.blockDominators.removeEdge(block, block);
+
 			Set<LegoPlate> dominators = this.blockDominators.predecessors(block);
 
 			// Handle dominance from other blocks
@@ -108,6 +115,9 @@ public class Dominance {
 			for (LegoNode node : block.nodes()) {
 				visitedNodes.add(node);
 				for (LegoNode visitedNode : visitedNodes) {
+					if (visitedNode.equals(node)) {
+						continue;
+					}
 					dominatorTree.putEdge(visitedNode, node);
 				}
 			}
@@ -180,7 +190,10 @@ public class Dominance {
 		}
 		for (LegoPlate possibleIdom : dominators) {
 			// Dominator dominated by all others
-			if (dominators.stream().allMatch(it -> blockDominators.hasEdgeConnecting(it, possibleIdom))) {
+			boolean dominatedByAll = dominators.stream()
+				.filter(it -> !it.equals(possibleIdom))
+				.allMatch(it -> blockDominators.hasEdgeConnecting(it, possibleIdom));
+			if (dominatedByAll) {
 				return Optional.of(possibleIdom);
 			}
 		}

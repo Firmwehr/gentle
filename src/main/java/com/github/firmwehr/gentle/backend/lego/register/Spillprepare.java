@@ -27,6 +27,23 @@ public class Spillprepare {
 
 	public void prepare(ControlFlowGraph graph) {
 		insertMissingCopies(graph);
+
+		liveliness.recompute();
+		dominance.recompute();
+	}
+
+	public void fixMultipleConstrainedArguments(ControlFlowGraph graph) {
+		for (LegoPlate block : graph.getAllBlocks()) {
+			for (ListIterator<LegoNode> iterator = block.nodes().listIterator(); iterator.hasNext(); ) {
+				LegoNode node = iterator.next();
+				List<LegoCopy> copies = new ArrayList<>();
+				copies.addAll(getCopiesForMultipleConstrainedArguments(node));
+
+				for (LegoCopy copy : copies) {
+					iterator.add(copy);
+				}
+			}
+		}
 	}
 
 	private void insertMissingCopies(ControlFlowGraph graph) {

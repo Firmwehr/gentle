@@ -1,8 +1,10 @@
 package com.github.firmwehr.gentle.backend.lego.visit;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
-import com.github.firmwehr.gentle.backend.lego.LegoBøx;
+import com.github.firmwehr.gentle.backend.lego.LegoBøx.LegoRegisterSize;
+import com.github.firmwehr.gentle.backend.lego.LegoParentBløck;
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
+import com.github.firmwehr.gentle.backend.lego.codegen.RegisterTransferGraph;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoAdd;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoAnd;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoArgNode;
@@ -31,16 +33,25 @@ import com.github.firmwehr.gentle.backend.lego.nodes.LegoReload;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoRet;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSal;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSar;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoSetcc;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoShift;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoShr;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSpill;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoSub;
 import com.github.firmwehr.gentle.backend.lego.register.X86Register;
 import com.github.firmwehr.gentle.output.Logger;
+import com.github.firmwehr.gentle.util.Pair;
+import com.google.common.collect.Lists;
 import firm.Graph;
+import firm.MethodType;
+import firm.Relation;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+
+import static com.github.firmwehr.gentle.backend.lego.LegoBøx.LegoRegisterSize.BITS_32;
+import static com.github.firmwehr.gentle.backend.lego.LegoBøx.LegoRegisterSize.BITS_64;
 
 // TODO Rename to JättestorCodegenVisitor
 public class GentleCodegenVisitor implements LegoVisitor<Void> {
@@ -63,18 +74,108 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 	public String visit(Graph graph, List<LegoPlate> blocks) {
 		String functionName = graph.getEntity().getLdName();
 
+		int paramCount = ((MethodType) graph.getEntity().getType()).getNParams();
+
+		int stackFrameSize = blocks.stream()
+			.flatMap(it -> it.nodes().stream())
+			.filter(it -> it instanceof LegoSpill)
+			.mapToInt(it -> (((LegoSpill) it).spillSlot() + 1) * 8)
+			.max()
+			.orElse(0);
+
+		// pad stack frame to next 16 bytes for alignment
+		if (stackFrameSize % 16 != 0) {
+			// misaligned
+			stackFrameSize = (stackFrameSize / 16) * 16 + 16;
+		}
+
 		StringBuilder source = new StringBuilder();
-		source.append("/* function: ").append(functionName).append(" */\n");
+		source.append("/* function: ")
+			.append(functionName)
+			.append(", argument count: ")
+			.append(paramCount)
+			.append(" */\n");
+
+		// prologue
+		code = new CodeBlock();
+		code.noSuffixOp(".globl", functionName);
+		code.noSuffixOp(".type", functionName, "@function");
+		code.label(functionName);
+
+		code.noSuffixOp("push", "%rbp");
+		code.noSuffixOp("movq", "%rsp", "%rbp");
+		code.noSuffixOp("sub", "$" + stackFrameSize, "%rsp");
+
+		source.append(code.code()).append("\n");
+
 		for (LegoPlate block : blocks) {
 			code = new CodeBlock();
 			code.comment("start block " + block.id() + ":");
-			code.label("block_" + block.id());
+
+			code.label(labelForBlock(block));
+			lowerSpilledPhis(block);
+			lowerPhi(block);
+
 			block.accept(this);
 			code.comment("end block: " + block.id());
 			source.append(code.code()).append("\n\n");
 		}
 
 		return source.toString();
+	}
+
+	private void lowerSpilledPhis(LegoPlate block) {
+		List<LegoPhi> spilledPhis = new ArrayList<>();
+		for (LegoNode node : block.nodes()) {
+			if (!(node instanceof LegoPhi phi)) {
+				continue;
+			}
+			if (phi.inputs().get(0) instanceof LegoSpill) {
+				spilledPhis.add(phi);
+			}
+		}
+
+		if (spilledPhis.isEmpty()) {
+			return;
+		}
+
+		code.line("TODO: Cool spilled phi handling");
+	}
+
+	private void lowerPhi(LegoPlate block) {
+		X86Register stackPointer = X86Register.RSP;
+		String rsp = stackPointer.nameForSize(BITS_64);
+		RegisterTransferGraph<X86Register> transferGraph = new RegisterTransferGraph<>(Set.of(X86Register.RSP));
+		List<LegoPhi> phis = block.nodes()
+			.stream()
+			.filter(it -> it instanceof LegoPhi)
+			.filter(it -> !(it.inputs().get(0) instanceof LegoSpill))
+			.map(it -> (LegoPhi) it)
+			.toList();
+
+		for (LegoParentBløck parent : block.parents()) {
+			for (LegoPhi phi : phis) {
+				X86Register source = phi.parent(parent.parent()).uncheckedRegister();
+				transferGraph.addMove(source, phi.uncheckedRegister());
+			}
+		}
+
+		List<Pair<X86Register, X86Register>> moves = transferGraph.generateMoveSequence();
+
+		if (moves.isEmpty()) {
+			return;
+		}
+
+		code.comment("lower phi (spill stack pointer)");
+		code.line("vmovd %s, %%xmm0".formatted(rsp));
+		for (var pair : moves) {
+			code.op("mov", BITS_64, pair.first().nameForSize(BITS_64), pair.second().nameForSize(BITS_64));
+		}
+		code.line("vmovd %%xmm0, %s".formatted(rsp));
+	}
+
+	public String labelForBlock(LegoPlate block) {
+		return "block_" + block.id();
 	}
 
 	@Override
@@ -90,7 +191,29 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoCall call) {
-		return LegoVisitor.super.visit(call);
+		code.comment("Argument count: " + call.inputs().size());
+
+		if (call.inputs().size() % 2 != 0) {
+			code.comment("aligning stack on 16 byte boundary");
+			code.op("sub", BITS_64, "$8", "%rsp");
+		}
+
+		code.comment("pushing arguments");
+		for (LegoNode input : Lists.reverse(call.inputs())) {
+			code.line("push " + input.uncheckedRegister().nameForSize(BITS_64));
+		}
+
+		code.line("call " + call.entity().getLdName());
+
+		int pushedArgumentsSize = call.inputs().size() * 8;
+		if (call.inputs().size() % 2 != 0) {
+			code.comment("re-added 8 padding bytes");
+			pushedArgumentsSize += 8;
+		}
+		code.comment("restoring stack");
+		code.op("add", BITS_64, "$" + pushedArgumentsSize, "%rsp");
+
+		return null;
 	}
 
 	@Override
@@ -109,28 +232,60 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoDiv div) {
-		return LegoVisitor.super.visit(div);
-	}
-
-	@Override
-	public Void visit(LegoJcc jcc) {
-		String op = switch (jcc.relation()) {
-			case Equal -> "je";
-			case Less -> "jl";
-			case Greater -> "jg";
-			case LessEqual -> "jle";
-			case GreaterEqual -> "jge";
-			case LessGreater, UnorderedLessGreater -> "jne";
-			default -> throw new InternalCompilerException(":( Where do we use " + jcc.relation());
-		};
-		// FIXME
-		code.noSuffixOp(op, "TODO TODO TODO TODO");
+		LegoRegisterSize divSize;
+		LegoNode left = div.inputs().get(0);
+		if (left.uncheckedRegister() != X86Register.RAX) {
+			code.op("mov", left, left.asRegisterName(), X86Register.RAX.nameForSize(left));
+		}
+		if (div.small()) {
+			divSize = BITS_32;
+			code.comment("small div possible, generating 32bit division (extending to 64bit)");
+			code.line("cltd");
+		} else {
+			code.comment("both arguments are unknown, generating 64bit division (extending to 128bit)");
+			code.line("cqto");
+			divSize = BITS_64;
+		}
+		code.op("idiv", divSize, div.inputs().get(1).uncheckedRegister().nameForSize(divSize));
 		return null;
 	}
 
 	@Override
+	public Void visit(LegoSetcc legoSetcc) {
+		String op = "set" + relationSuffix(legoSetcc.relation());
+		String registerName = legoSetcc.uncheckedRegister().nameForSize(LegoRegisterSize.BITS_8);
+		code.noSuffixOp(op, registerName);
+		code.comment("clear upper bits, setcc only sets one byte");
+		code.noSuffixOp("movsx", registerName, legoSetcc.uncheckedRegister().nameForSize(BITS_64));
+		return null;
+	}
+
+	@Override
+	public Void visit(LegoJcc jcc) {
+		String op = "j" + relationSuffix(jcc.relation());
+		code.comment("if true");
+		code.noSuffixOp(op, labelForBlock(jcc.trueTarget()));
+		code.comment("else false");
+		code.noSuffixOp("jmp", labelForBlock(jcc.falseTarget()));
+		return null;
+	}
+
+	private String relationSuffix(Relation relation) {
+		return switch (relation) {
+			case Equal -> "e";
+			case Less -> "l";
+			case Greater -> "g";
+			case LessEqual -> "le";
+			case GreaterEqual -> "ge";
+			case LessGreater, UnorderedLessGreater -> "ne";
+			default -> throw new InternalCompilerException(":( Where do we use " + relation + "⸘‽");
+		};
+	}
+
+	@Override
 	public Void visit(LegoJmp jmp) {
-		return LegoVisitor.super.visit(jmp);
+		code.noSuffixOp("jmp", labelForBlock(jmp.target()));
+		return null;
 	}
 
 	@Override
@@ -142,7 +297,12 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoMovLoadEx movLoadEx) {
-		return LegoVisitor.super.visit(movLoadEx);
+		throw new InternalCompilerException("movLoadEx is not supported");
+	}
+
+	@Override
+	public Void visit(LegoMovStoreEx movStoreEx) {
+		throw new InternalCompilerException("movStoreEx is not supported");
 	}
 
 	@Override
@@ -151,12 +311,7 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 		LegoNode address = inputs.get(0);
 		LegoNode value = inputs.get(1);
 		code.op("mov", value.size(), value.asRegisterName(), "(%s)".formatted(address.asRegisterName()));
-		return LegoVisitor.super.visit(movStore);
-	}
-
-	@Override
-	public Void visit(LegoMovStoreEx movStoreEx) {
-		return LegoVisitor.super.visit(movStoreEx);
+		return null;
 	}
 
 	@Override
@@ -171,7 +326,8 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoPhi phi) {
-		return LegoVisitor.super.visit(phi);
+		code.comment("needs no code, has been lowered on block enter");
+		return null;
 	}
 
 	@Override
@@ -192,7 +348,7 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 			// TODO maybe choose randomly? Or the last one?
 			a1Reg = registers.iterator().next();
 			code.comment("always spill the full register, we don't know its content");
-			code.line("vmovd %s, %%xmm0".formatted(a1Reg.nameForSize(LegoBøx.LegoRegisterSize.BITS_64)));
+			code.line("vmovd %s, %%xmm0".formatted(a1Reg.nameForSize(BITS_64)));
 			code.op("mov", right, right.asRegisterName(), a1Reg.nameForSize(right));
 		}
 		if (sub.uncheckedRegister() != left.uncheckedRegister()) {
@@ -202,7 +358,7 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 		if (a1Reg != right.uncheckedRegister()) {
 			// always un-spill the full register, we don't know its content
 			code.comment("always reload the full register, we don't know its content");
-			code.line("vmovd %%xmm0, %s".formatted(a1Reg.nameForSize(LegoBøx.LegoRegisterSize.BITS_64)));
+			code.line("vmovd %%xmm0, %s".formatted(a1Reg.nameForSize(BITS_64)));
 		}
 		return null;
 	}
@@ -234,12 +390,12 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoCopy copy) {
-		return LegoVisitor.super.visit(copy);
+		throw new InternalCompilerException("lego copy has been deprecated");
 	}
 
 	@Override
 	public Void visit(LegoPerm perm) {
-		return LegoVisitor.super.visit(perm);
+		throw new InternalCompilerException("backend is not supposed to generate perm");
 	}
 
 	@Override
@@ -259,7 +415,6 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 		return null;
 	}
 
-	@SuppressWarnings("CommentedOutCode") // TODO Remove
 	@Override
 	public Void visit(LegoAdd legoAdd) {
 		LegoNode left = legoAdd.left();
@@ -276,27 +431,6 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 		// otherwise, we just go the common way for all commutative operations
 		visitCommutative(legoAdd, "add");
 		return null;
-/*		if (right instanceof LegoImmediate imm) {
-			moveToTarget(left, legoAdd);
-			code.op("add", legoAdd, imm(imm), legoAdd.asRegisterName());
-			return null;
-		}
-		X86Register targetRegister = legoAdd.uncheckedRegister();
-		if (right.uncheckedRegister() != targetRegister && left.uncheckedRegister() != targetRegister) {
-			// we have the same register for both the right argument and the target
-			// but this can't be expressed in 2 address
-			code.op("lea", legoAdd, "(%s, %s)".formatted(left.asRegisterName(), right.asRegisterName()),
-				legoAdd.asRegisterName());
-			return null;
-		}
-		if (left.uncheckedRegister() != targetRegister) {
-			// a0 + a1 = target => add a1, a0 => move a0 to target if necessary
-			code.op("mov", left, left.asRegisterName(), legoAdd.asRegisterName());
-		}
-		code.op("add", legoAdd, right.asRegisterName(), legoAdd.asRegisterName());
-			*//*var other = convert2AddressCode(legoAdd, a0, a1);
-			code.op("add", legoAdd, other.uncheckedRegister().nameForSize(legoAdd), legoAdd.asRegisterName());*//*
-		return null;*/
 	}
 
 	@Override
@@ -307,7 +441,7 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoMul legoMul) {
-		visitCommutative(legoMul, "mul");
+		visitCommutative(legoMul, "imul");
 		return null;
 	}
 
@@ -345,40 +479,16 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 		code.op(mnemonic, binaryOp, right.asRegisterName(), binaryOp.asRegisterName());
 	}
 
-	// TODO: Pretty sure we are going to nuke this method from orbit eventually, no need to document
-	private LegoNode convert2AddressCode(LegoNode target, LegoNode n0, LegoNode n1) {
-		var r = target.uncheckedRegister();
-
-		// return whichever register is not target (or copy one operant into target and return other)
-		if (r == n0.uncheckedRegister()) {
-			return n1;
-		} else if (r == n1.uncheckedRegister()) {
-			return n0;
-		} else {
-			var r0 = n0.uncheckedRegister();
-			var r1 = n1.uncheckedRegister();
-
-			// destination register is not in operants, need to duplicate one arg in r
-			code.comment(
-				"both operants (%s, %s) survive, need to duplicate into target register %s".formatted(r0, r1, r));
-
-			// we always copy r0 into r and return r1
-			code.op("mov", target, n0.uncheckedRegister().nameForSize(target), target.asRegisterName());
-			return n1;
-		}
-	}
-
 	@Override
 	public Void visit(LegoProj node) {
-		code.comment("no code required"); // TODO: unless div
-
+		code.comment("Omitting codegen as proj is only register limitation");
 		return null;
 	}
 
 	@Override
 	public Void visit(LegoSpill node) {
 		// well, we seem to be always going with the 8 byte sized slot
-		var slotOffset = node.spillSlot() * 8;
+		var slotOffset = (node.spillSlot() + 1) * 8;
 		code.op("mov", node, node.inputs().get(0).asRegisterName(), "-%d(%%rbp)".formatted(slotOffset));
 
 		return null;
@@ -387,7 +497,7 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 	@Override
 	public Void visit(LegoReload node) {
 		// well, we seem to be always going with the 8 byte sized slot
-		var slotOffset = node.spillSlot() * 8;
+		var slotOffset = (node.spillSlot() + 1) * 8;
 		code.op("mov", node, "-%d(%%rbp)".formatted(slotOffset), node.asRegisterName());
 
 		return null;
@@ -403,13 +513,36 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 
 	@Override
 	public Void visit(LegoConv node) {
-		code.comment(" TODO: this is super complicated to do right and DjungelskogVisitor might be doing it wrong");
+		LegoNode input = node.inputs().get(0);
 
-		return null;
+		if (node.size() == input.size()) {
+			code.comment("Same size, moving...");
+			code.op("mov", node.size(), input.asRegisterName(), node.asRegisterName());
+			return null;
+		}
+
+		if (input.size() == BITS_64 && node.size() == BITS_32) {
+			code.comment("Truncating 64 to 32 bit by using mov of lower 32 bit");
+			String from = input.uncheckedRegister().nameForSize(BITS_32);
+			code.op("mov", node, node.asRegisterName(), from);
+			return null;
+		}
+
+		if (input.size() == BITS_32 && node.size() == BITS_64) {
+			code.comment("Sign extending from 32 to 64 bit");
+			code.noSuffixOp("movsxd", input.asRegisterName(), node.asRegisterName());
+			return null;
+		}
+
+		throw new InternalCompilerException(
+			"Unknown conversion. Tried to convert " + input.size() + " to " + node.size());
 	}
 
 	@Override
 	public Void visit(LegoRet node) {
+		code.comment("function epilogue, restore stackframe and previous frame's basepointer");
+		code.line("mov %rbp, %rsp");
+		code.line("pop %rbp");
 		code.line("ret");
 		return null;
 	}
@@ -433,7 +566,7 @@ public class GentleCodegenVisitor implements LegoVisitor<Void> {
 			line("/* " + comment + " */");
 		}
 
-		public void op(String op, LegoBøx.LegoRegisterSize size, String... arg) {
+		public void op(String op, LegoRegisterSize size, String... arg) {
 			line(op + size.getOldRegisterSuffix() + " " + String.join(", ", arg));
 		}
 

@@ -3,6 +3,7 @@ package com.github.firmwehr.gentle.backend.lego.register;
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.backend.lego.LegoPlate;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoArgNode;
+import com.github.firmwehr.gentle.backend.lego.nodes.LegoConst;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoNode;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoPerm;
 import com.github.firmwehr.gentle.backend.lego.nodes.LegoPhi;
@@ -11,6 +12,7 @@ import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.Mut;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -42,12 +44,14 @@ public class ConstraintNodePrepare {
 
 	private void addPermForNode(LegoNode node) {
 		LOGGER.debug("Adding perm for node %s", node);
-		List<LegoNode> toPerm = List.copyOf(liveliness.getLiveBefore(node, dominance));
+		List<LegoNode> toPerm =
+			liveliness.getLiveBefore(node, dominance).stream().sorted(Comparator.comparingInt(LegoNode::id)).toList();
 		LegoPerm perm = new LegoPerm(node.graph().nextId(), node.block(), node.graph(), List.of());
 		node.graph().addNode(perm, toPerm);
 		int nodeIndex = node.block().nodes().indexOf(node);
 		node.block().nodes().add(nodeIndex, perm);
 		nodeIndex++;
+		LOGGER.debug("Added perm %s for node %s with live values %s", perm, node, toPerm);
 
 		// Yay, we have a perm now. Congrats. This also breaks SSA:
 		//             Head
@@ -66,7 +70,11 @@ public class ConstraintNodePrepare {
 			node.block().nodes().add(nodeIndex++, proj);
 			projs.add(proj);
 
-			new SsaReconstruction(dominance, uses).addDef(proj).ssaReconstruction(legoNode);
+			if (legoNode instanceof LegoConst) {
+				rewireConst(legoNode, proj);
+			} else {
+				new SsaReconstruction(dominance, uses).addDef(proj).ssaReconstruction(legoNode);
+			}
 		}
 
 		for (int i = 0; i < node.inputs().size(); i++) {
@@ -83,7 +91,7 @@ public class ConstraintNodePrepare {
 		// TODO: Pair up perm args that die at node with node defs => They can use the same register. Use intersection
 		//  of allowed registers as requirements.
 
-		Set<X86Register> freeRegisters = EnumSet.allOf(X86Register.class);
+		Set<X86Register> freeRegisters = X86Register.all();
 		freeRegisters.removeAll(node.clobbered());
 		if (node.registerRequirement().limited() && !node.registerIgnore()) {
 			if (node.registerRequirement().limitedTo().size() != 1) {
@@ -105,6 +113,16 @@ public class ConstraintNodePrepare {
 		// We might have screwed these things over royally
 		liveliness.recompute();
 		dominance.recompute();
+	}
+
+	private void rewireConst(LegoNode constNode, LegoProj newProj) {
+		for (LegoNode use : uses.uses(constNode)) {
+			for (int i = 0; i < use.inputs().size(); i++) {
+				if (use.inputs().get(i).equals(constNode)) {
+					use.graph().setInput(use, i, newProj);
+				}
+			}
+		}
 	}
 
 	private boolean isConstrained(LegoNode node) {

@@ -14,10 +14,13 @@ import java.util.Set;
 
 public final class LegoDiv extends LegoNode {
 
+	private final boolean small;
+
 	public LegoDiv(
-		int id, LegoPlate block, LegoGraph graph, LegoBøx.LegoRegisterSize size, List<Node> firmNodes
+		int id, LegoPlate block, LegoGraph graph, LegoBøx.LegoRegisterSize size, List<Node> firmNodes, boolean small
 	) {
 		super(id, block, graph, size, firmNodes);
+		this.small = small;
 	}
 
 	@Override
@@ -50,4 +53,7 @@ public final class LegoDiv extends LegoNode {
 		return getClass().getSimpleName() + " (" + id() + ")";
 	}
 
+	public boolean small() {
+		return this.small;
+	}
 }
