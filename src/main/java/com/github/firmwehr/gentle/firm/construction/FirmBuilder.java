@@ -9,6 +9,7 @@ import com.github.firmwehr.gentle.firm.optimization.ConstantFolding;
 import com.github.firmwehr.gentle.firm.optimization.EscapeAnalysisOptimization;
 import com.github.firmwehr.gentle.firm.optimization.FirmGraphCleanup;
 import com.github.firmwehr.gentle.firm.optimization.GlobalValueNumbering;
+import com.github.firmwehr.gentle.firm.optimization.LoadStoreOptimization;
 import com.github.firmwehr.gentle.firm.optimization.LoopInvariantOptimization;
 import com.github.firmwehr.gentle.firm.optimization.MethodInliningOptimization;
 import com.github.firmwehr.gentle.firm.optimization.Optimizer;
@@ -44,6 +45,7 @@ public class FirmBuilder {
 	static {
 		// Must be set before Firm.init is called!
 		var maybeVersion = CompilerArguments.get().firmVersion();
+
 		if (maybeVersion.isPresent()) {
 			var version = maybeVersion.get();
 			LOGGER.info("picked up firm version override to: %s", version);
@@ -126,6 +128,9 @@ public class FirmBuilder {
 		}
 		if (opts.inlining()) {
 			builder.addCallGraphStep(MethodInliningOptimization.methodInlineOptimization());
+		}
+		if (opts.loadStore()) {
+			builder.addGraphStep(LoadStoreOptimization.loadStoreOptimizations());
 		}
 		if (opts.removeUnusedGraphs()) {
 			builder.freeUnusedGraphs();

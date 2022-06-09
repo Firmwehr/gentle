@@ -139,6 +139,12 @@ public interface CommandArguments {
 	@Option(names = "--no-reorder", description = "don't reorder inputs of binary ops")
 	boolean noReorder();
 
+	@Option(names = "--load-store", description = "optimize memory accesses")
+	boolean loadStore();
+
+	@Option(names = "--no-load-store", description = "don't optimize memory accesses")
+	boolean noLoadStore();
+
 	@Parameter(index = 0, converter = ExistingFileConverter.class, description = "file to read and operate on",
 		paramLabel = "FILE")
 	Path path();

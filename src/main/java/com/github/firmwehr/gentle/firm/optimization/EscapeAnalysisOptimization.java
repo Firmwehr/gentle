@@ -2,13 +2,13 @@ package com.github.firmwehr.gentle.firm.optimization;
 
 import com.github.firmwehr.gentle.InternalCompilerException;
 import com.github.firmwehr.gentle.firm.Util;
+import com.github.firmwehr.gentle.firm.optimization.memory.LocalAddress;
 import com.github.firmwehr.gentle.output.Logger;
 import com.github.firmwehr.gentle.util.GraphDumper;
 import com.github.firmwehr.gentle.util.Pair;
 import firm.BackEdges;
 import firm.Graph;
 import firm.Mode;
-import firm.nodes.Add;
 import firm.nodes.Call;
 import firm.nodes.Cmp;
 import firm.nodes.Const;
@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import static java.util.stream.Collectors.toMap;
@@ -137,16 +136,15 @@ public class EscapeAnalysisOptimization {
 		walkDown(call, new NodeVisitor.Default() {
 			@Override
 			public void visit(Load node) {
-				remember(node, node.getPtr(), successor(node, false));
+				remember(node, node.getPtr(), successor(node, false), fromLoadUnchecked(node));
 			}
 
 			@Override
 			public void visit(Store node) {
-				remember(node, node.getPtr(), node.getValue());
+				remember(node, node.getPtr(), node.getValue(), fromStoreUnchecked(node));
 			}
 
-			private void remember(Node node, Node ptr, Node modeHolder) {
-				LocalAddress localAddress = fromPred(ptr);
+			private void remember(Node node, Node ptr, Node modeHolder, LocalAddress localAddress) {
 				LOGGER.debug("remember %s with ptr %s (mode %s) for %s", node, ptr, modeHolder, localAddress);
 				accessNodes.add(node);
 				modes.putIfAbsent(localAddress, modeHolder.getMode());
@@ -177,27 +175,16 @@ public class EscapeAnalysisOptimization {
 		throw new InternalCompilerException("No successor found for " + node);
 	}
 
-	private static LocalAddress fromPred(Node pred) {
-		return fromPredIfMatches(pred).orElseThrow(
-			() -> new InternalCompilerException("Don't know how to transform " + pred + " into local address"));
+	private static LocalAddress fromLoadUnchecked(Load load) {
+		return LocalAddress.fromLoad(load)
+			.orElseThrow(() -> new InternalCompilerException(
+				"Don't know how to transform " + load.getPtr() + " into local address"));
 	}
 
-	/**
-	 * Returns a {@link LocalAddress} if the given node matches the required layout.
-	 * <p>
-	 * Valid layouts are direct Projs (a pointer with offset 0), or Adds of a Proj and a Const.
-	 */
-	private static Optional<LocalAddress> fromPredIfMatches(Node pred) {
-		if (pred instanceof Proj proj) {
-			return Optional.of(new LocalAddress(proj, 0)); // 0th field in class
-		} else if (pred instanceof Add add) {
-			if (add.getLeft() instanceof Proj proj && add.getRight() instanceof Const val) {
-				return Optional.of(new LocalAddress(proj, val.getTarval().asLong()));
-			} else if (add.getRight() instanceof Proj proj && add.getLeft() instanceof Const val) {
-				return Optional.of(new LocalAddress(proj, val.getTarval().asLong()));
-			}
-		}
-		return Optional.empty();
+	private static LocalAddress fromStoreUnchecked(Store store) {
+		return LocalAddress.fromStore(store)
+			.orElseThrow(() -> new InternalCompilerException(
+				"Don't know how to transform " + store.getPtr() + " into local address"));
 	}
 
 	private static void walkDown(Node node, NodeVisitor visitor) {
@@ -257,7 +244,7 @@ public class EscapeAnalysisOptimization {
 					return true;
 				}
 				if (edge.node instanceof Load load) {
-					if (fromPredIfMatches(load.getPtr()).isEmpty()) {
+					if (LocalAddress.fromLoad(load).isEmpty()) {
 						LOGGER.debug("%s escapes on %s (invalid address)", callResProj, edge.node);
 						return true;
 					} else if (BackEdges.getNOuts(edge.node) <= 1) {
@@ -275,7 +262,7 @@ public class EscapeAnalysisOptimization {
 					// when walking up the predecessors -> case a)
 					if (!callResProjIsReachableFromStoreValue(store.getValue(), callResProj, new HashSet<>())) {
 						// if address is dynamic/in an unknown format -> case b)
-						if (fromPredIfMatches(store.getPtr()).isPresent()) {
+						if (LocalAddress.fromStore(store).isPresent()) {
 							// Store *in* allocated object would be replaced
 							LOGGER.debug("stop at %s", edge.node);
 							continue;
@@ -304,8 +291,8 @@ public class EscapeAnalysisOptimization {
 	}
 
 	/**
-	 * Walks up the predecessors of the stored value to see if the call is reachable through data nodes. The {@code
-	 * seen} set is required to avoid infinite recursion caused by data phis.
+	 * Walks up the predecessors of the stored value to see if the call is reachable through data nodes. The
+	 * {@code seen} set is required to avoid infinite recursion caused by data phis.
 	 */
 	private boolean callResProjIsReachableFromStoreValue(Node storePred, Proj callResProj, Set<Node> seen) {
 		if (!seen.add(storePred)) {
@@ -415,7 +402,7 @@ public class EscapeAnalysisOptimization {
 					follow = follow.assign(address, dataPhi);
 				}
 			} else if (node instanceof Load load && interestingNodes.contains(load)) {
-				LocalAddress address = fromPred(load.getPtr());
+				LocalAddress address = fromLoadUnchecked(load);
 				// load the last value that would have been stored (including Phis)
 				Node value = follow.get(address);
 				LOGGER.debug("remember replacement %s -> %s", load, value);
@@ -423,7 +410,7 @@ public class EscapeAnalysisOptimization {
 			} else if (node instanceof Store store && interestingNodes.contains(store)) {
 				// assign to the value that would have been stored, so the next Load/Phi can use it
 				LOGGER.debug("update pred %s -> %s", store, store.getValue());
-				follow = follow.assign(fromPred(store.getPtr()), store.getValue());
+				follow = follow.assign(fromStoreUnchecked(store), store.getValue());
 				replacements.add(() -> replaceStore(store));
 			}
 
@@ -484,18 +471,10 @@ public class EscapeAnalysisOptimization {
 	}
 
 	/**
-	 * A field of an object, identified by a base pointer and the offset within the object.
-	 */
-	private record LocalAddress(
-		Proj pointer,
-		long offset
-	) {
-	}
-
-	/**
-	 * When replacing, the stored pred might be already replaced (load 1 -> store  2 -> load 3).
-	 * If load 1 is replaced before load 3, the value stored at 2 does still point to the old successor
-	 * of load 1. We need to rewire it to the replaced value of load 1.
+	 * When replacing, the stored pred might be already replaced (load 1 -> store  2 -> load 3). If load 1 is replaced
+	 * before load 3, the value stored at 2 does still point to the old successor of load 1. We need to rewire it to
+	 * the
+	 * replaced value of load 1.
 	 */
 	private static class ForwardChain {
 		private final Map<Node, Node> forwards = new HashMap<>();
